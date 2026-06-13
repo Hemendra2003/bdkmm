@@ -25,12 +25,21 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 .page.active{display:flex;flex-direction:column;align-items:center}
 
 /* ── TOP BAR ── */
-.top-bar{width:100%;max-width:680px;display:flex;justify-content:space-between;align-items:center;padding:28px 0 0;margin-bottom:28px}
-.brand{font-family:var(--pixel);font-size:10px;letter-spacing:.12em;color:var(--red);cursor:pointer;text-shadow:0 0 12px rgba(214,40,40,.5)}
-.nav-links{display:flex;gap:16px;align-items:center}
-.nav-link{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate2);cursor:pointer;background:none;border:none;padding:0;transition:color .15s}
+.top-bar{width:100%;max-width:680px;display:flex;justify-content:space-between;align-items:center;padding:20px 0 0;margin-bottom:24px;gap:8px}
+.brand{font-family:var(--pixel);font-size:10px;letter-spacing:.12em;color:var(--red);cursor:pointer;text-shadow:0 0 12px rgba(214,40,40,.5);flex-shrink:0}
+.nav-links{display:flex;gap:14px;align-items:center;flex-wrap:nowrap}
+.nav-link{font-family:var(--mono);font-size:11px;letter-spacing:.10em;text-transform:uppercase;color:var(--slate2);cursor:pointer;background:none;border:none;padding:0;transition:color .15s;white-space:nowrap}
 .nav-link:hover,.nav-link.active-nav{color:var(--gold)}
-.date-label{font-family:var(--mono);font-size:11px;color:var(--slate2);letter-spacing:.08em}
+.date-label{font-family:var(--mono);font-size:11px;color:var(--slate2);letter-spacing:.06em;white-space:nowrap}
+.top-bar-row2{display:flex;align-items:center;gap:20px}
+@media(max-width:480px){
+  .top-bar{padding:14px 0 0;margin-bottom:14px;flex-direction:column;gap:8px;align-items:flex-start}
+  .top-bar-row2{width:100%;justify-content:space-between}
+  .brand{font-size:9px}
+  .nav-links{gap:10px}
+  .nav-link{font-size:10px;letter-spacing:.07em}
+  .date-label{display:none}
+}
 
 /* ═══════════════════════════════════
    DASHBOARD
@@ -104,43 +113,40 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 .streak-badge-num.neg{color:var(--negred)}
 .streak-badge-label{font-family:var(--mono);font-size:9px;color:var(--slate2);letter-spacing:.1em}
 
-/* ── TODAY'S ENTRY — clean card below hero ── */
+/* ── TODAY'S ENTRY — minimal, no heavy box ── */
 .entry-card{
   width:100%;max-width:680px;
-  background:var(--bg2);
-  border:1px solid var(--bg4);
-  padding:16px 18px;
+  padding:0;
   margin-bottom:0;
 }
 .entry-card-header{
   display:flex;justify-content:space-between;align-items:center;
-  margin-bottom:12px;
+  margin-bottom:10px;
 }
-.entry-card-title{font-family:var(--mono);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--slate2)}
-.entry-net{font-family:var(--pixel);font-size:10px}
-.entry-net.pos{color:var(--green)}.entry-net.neg{color:var(--negred)}
+.entry-card-title{font-family:var(--mono);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--slate)}
+/* entry-net removed from header — delta lives in hero only */
 
 /* Two columns: best items, worst items */
-.entry-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.entry-cols{display:grid;grid-template-columns:1fr 1fr;gap:0}
 .entry-col-label{
   font-family:var(--mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;
-  margin-bottom:6px;
+  margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid;
 }
-.entry-col.thrust .entry-col-label{color:rgba(61,255,110,.6)}
-.entry-col.drag   .entry-col-label{color:rgba(255,80,80,.6)}
+.entry-col.thrust{padding-right:20px;border-right:1px solid rgba(255,255,255,.05)}
+.entry-col.drag{padding-left:20px}
+.entry-col.thrust .entry-col-label{color:rgba(61,255,110,.5);border-bottom-color:rgba(61,255,110,.12)}
+.entry-col.drag   .entry-col-label{color:rgba(255,80,80,.5);border-bottom-color:rgba(255,80,80,.12)}
 .entry-row{
   display:flex;justify-content:space-between;align-items:center;
-  padding:4px 0;
-  border-bottom:1px solid rgba(255,255,255,.04);
+  padding:5px 0;
 }
-.entry-row:last-child{border-bottom:none}
 .entry-row-name{font-family:var(--serif);font-size:14px;color:var(--silver)}
-.entry-row-score{font-family:var(--mono);font-size:11px}
-.entry-col.thrust .entry-row-score{color:var(--green)}
-.entry-col.drag   .entry-row-score{color:var(--negred)}
+.entry-row-score{font-family:var(--mono);font-size:10px;letter-spacing:.06em}
+.entry-col.thrust .entry-row-score{color:rgba(61,255,110,.7)}
+.entry-col.drag   .entry-row-score{color:rgba(255,80,80,.7)}
 .entry-partial-bar{
-  margin-top:10px;
-  height:3px;background:var(--bg3);
+  margin-top:12px;
+  height:2px;background:rgba(255,255,255,.06);
   position:relative;
 }
 .entry-partial-fill{height:100%;background:var(--gold);transition:width .4s}
@@ -176,8 +182,9 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 .bar-val.pos-v{color:var(--green)}.bar-val.neg-v{color:var(--negred)}
 
 /* ── STATS ROW ── */
-.stats-row{width:100%;max-width:680px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:6px}
-.stat-card{background:var(--bg2);border:1px solid var(--bg3);padding:14px}
+.stats-row{width:100%;max-width:680px;display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:6px}
+.stat-card{padding:14px 0 14px;border-top:1px solid rgba(255,255,255,.07)}
+.stat-card+.stat-card{border-left:1px solid rgba(255,255,255,.04);padding-left:18px}
 .stat-card-label{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--slate2);margin-bottom:7px}
 .stat-card-value{font-family:var(--pixel);font-size:16px;color:var(--white);line-height:1;text-shadow:2px 2px 0 rgba(0,0,0,.4)}
 .stat-card-sub{font-family:var(--mono);font-size:9px;color:var(--slate2);margin-top:5px}
@@ -324,6 +331,30 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 .sum-close-btn{background:transparent;border:2px solid var(--red);color:var(--red2);font-family:var(--pixel);font-size:9px;padding:13px 32px;cursor:pointer;letter-spacing:.1em;transition:background .15s,box-shadow .15s;width:100%;margin-top:24px}
 .sum-close-btn:hover{background:rgba(214,40,40,.1);box-shadow:0 0 16px rgba(214,40,40,.4)}
 
+/* ── MOBILE RESPONSIVE ── */
+@media(max-width:600px){
+  #page-dashboard,#page-habits,#page-why{padding:0 16px 60px}
+  .velocity-number{font-size:clamp(32px,11vw,52px)}
+  .hero-block{margin-top:6px;margin-bottom:14px}
+  .hero-right{gap:8px}
+  .delta-badge-num,.streak-badge-num{font-size:11px}
+  .entry-col.thrust{padding-right:12px}
+  .entry-col.drag{padding-left:12px}
+  .entry-row-name{font-size:13px}
+  .habit-row{grid-template-columns:1fr 40px 80px;gap:8px}
+  .habit-name{font-size:14px}
+  .stats-row{gap:0}
+  .stat-card+.stat-card{padding-left:14px}
+  .week-graph{height:140px}
+  .q-text{font-size:clamp(9px,3vw,12px)}
+  .q-option{padding:11px 14px;font-size:15px}
+  .sum-hero{gap:8px}
+  .sum-hero-card{padding:16px 12px}
+  .compare-grid{grid-template-columns:repeat(3,1fr);gap:6px}
+  .compare-card{padding:10px 8px}
+  .compare-vel{font-size:14px}
+}
+
 /* ─── WHY PAGE ─── */
 #page-why{padding:0 24px 80px}
 .why-hero{width:100%;max-width:680px;padding:48px 0 32px;text-align:center}
@@ -372,10 +403,12 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 <div id="page-dashboard" class="page active">
   <div class="top-bar">
     <span class="brand" onclick="showPage('dashboard')">MOMENTUM</span>
-    <div class="nav-links">
-      <button class="nav-link active-nav" id="nav-dashboard" onclick="showPage('dashboard')">Dashboard</button>
-      <button class="nav-link" id="nav-habits" onclick="showPage('habits')">Habits</button>
-      <button class="nav-link" id="nav-why" onclick="showPage('why')">Why?</button>
+    <div class="top-bar-row2">
+      <div class="nav-links">
+        <button class="nav-link active-nav" id="nav-dashboard" onclick="showPage('dashboard')">Dashboard</button>
+        <button class="nav-link" id="nav-habits" onclick="showPage('habits')">Habits</button>
+        <button class="nav-link" id="nav-why" onclick="showPage('why')">Why?</button>
+      </div>
       <span class="date-label" id="date-label">—</span>
     </div>
   </div>
@@ -490,7 +523,6 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
     <div class="entry-card">
       <div class="entry-card-header">
         <span class="entry-card-title">TODAY'S ENTRY</span>
-        <span class="entry-net" id="entry-net">+0 Δv</span>
       </div>
       <div class="entry-cols">
         <div class="entry-col thrust" id="entry-thrust-col">
@@ -546,10 +578,12 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 <div id="page-habits" class="page" style="padding:0 24px 80px">
   <div class="top-bar">
     <span class="brand" onclick="showPage('dashboard')">MOMENTUM</span>
-    <div class="nav-links">
-      <button class="nav-link" onclick="showPage('dashboard')">Dashboard</button>
-      <button class="nav-link active-nav" onclick="showPage('habits')">Habits</button>
-      <button class="nav-link" onclick="showPage('why')">Why?</button>
+    <div class="top-bar-row2">
+      <div class="nav-links">
+        <button class="nav-link" id="nav-dashboard" onclick="showPage('dashboard')">Dashboard</button>
+        <button class="nav-link" id="nav-habits" onclick="showPage('habits')">Habits</button>
+        <button class="nav-link" id="nav-why" onclick="showPage('why')">Why?</button>
+      </div>
     </div>
   </div>
   <div class="habits-hero">
@@ -571,10 +605,12 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 <div id="page-why" class="page" style="padding:0 24px 80px">
   <div class="top-bar">
     <span class="brand" onclick="showPage('dashboard')">MOMENTUM</span>
-    <div class="nav-links">
-      <button class="nav-link" onclick="showPage('dashboard')">Dashboard</button>
-      <button class="nav-link" onclick="showPage('habits')">Habits</button>
-      <button class="nav-link active-nav" onclick="showPage('why')">Why?</button>
+    <div class="top-bar-row2">
+      <div class="nav-links">
+        <button class="nav-link" id="nav-dashboard" onclick="showPage('dashboard')">Dashboard</button>
+        <button class="nav-link" id="nav-habits" onclick="showPage('habits')">Habits</button>
+        <button class="nav-link" id="nav-why" onclick="showPage('why')">Why?</button>
+      </div>
     </div>
   </div>
   <div class="why-hero">
@@ -818,10 +854,9 @@ function showPage(n){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('page-'+n).classList.add('active');
   window.scrollTo(0,0);
-  // update nav state
+  // update all nav buttons on all pages
   ['dashboard','habits','why'].forEach(pg=>{
-    const el=document.getElementById('nav-'+pg);
-    if(el) el.classList.toggle('active-nav',pg===n);
+    document.querySelectorAll('#nav-'+pg).forEach(el=>el.classList.toggle('active-nav',pg===n));
   });
   if(n==='habits') renderHabitsPage();
 }
@@ -867,6 +902,8 @@ async function savePartialAndClose(){
   const cache=await loadCache();renderDashboard(cache);
 }
 function renderQ(){
+  // clear any lingering flash from previous answer (fixes mobile highlight bug)
+  document.querySelectorAll('.q-option').forEach(o=>o.classList.remove('flash'));
   const q=QS[currentQ];
   document.getElementById('q-progress').style.width=(currentQ/QS.length*100)+'%';
   document.getElementById('q-counter').textContent=String(currentQ+1).padStart(2,'0')+' / '+QS.length;
@@ -1052,13 +1089,6 @@ function renderStreakBadge(posS,negS){
 }
 
 function renderEntryCard(c,isPartial,answeredCount){
-  // Net score
-  const net=c.finalDv;
-  const netEl=document.getElementById('entry-net');
-  netEl.textContent=(net>=0?'+':'')+net+' Δv';
-  netEl.className='entry-net '+(net>=0?'pos':'neg');
-
-  // Thrust column — top 3 items
   const tc=document.getElementById('entry-thrust-col');
   tc.innerHTML='<div class="entry-col-label">Thrust</div>';
   const topThrust=(c.thrustItems||[]).sort((a,b)=>b.score-a.score).slice(0,3);
