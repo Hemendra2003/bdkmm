@@ -33,12 +33,12 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 .date-label{font-family:var(--mono);font-size:11px;color:var(--slate2);letter-spacing:.06em;white-space:nowrap}
 .top-bar-row2{display:flex;align-items:center;gap:20px}
 @media(max-width:480px){
-  .top-bar{padding:14px 0 0;margin-bottom:14px;flex-direction:column;gap:8px;align-items:flex-start}
-  .top-bar-row2{width:100%;justify-content:space-between}
-  .brand{font-size:9px}
-  .nav-links{gap:10px}
-  .nav-link{font-size:10px;letter-spacing:.07em}
-  .date-label{display:none}
+  .top-bar{padding:20px 0 0;margin-bottom:20px;flex-direction:column;gap:12px;align-items:center;text-align:center}
+  .top-bar-row2{width:100%;justify-content:center;flex-direction:column;gap:12px}
+  .brand{font-size:12px;letter-spacing:.16em}
+  .nav-links{gap:16px;justify-content:center}
+  .nav-link{font-size:12px;letter-spacing:.10em}
+  .date-label{display:block;font-size:10px}
 }
 
 /* ═══════════════════════════════════
@@ -211,6 +211,10 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 .habits-hero{width:100%;max-width:680px;margin-bottom:28px}
 .habits-hero-title{font-family:var(--pixel);font-size:12px;color:var(--white);line-height:1.8;margin-bottom:6px}
 .habits-hero-sub{font-family:var(--mono);font-size:11px;color:var(--slate2);letter-spacing:.1em}
+.habits-filter{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+.filter-btn{background:var(--bg2);border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:10px;letter-spacing:.12em;padding:8px 14px;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.filter-btn:hover{border-color:var(--slate2);background:var(--bg3)}
+.filter-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(255,184,48,.08)}
 
 /* Category header */
 .habit-cat-header{
@@ -230,8 +234,10 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
   gap:12px;
   padding:12px 0;
   border-bottom:1px solid rgba(255,255,255,.04);
+  transition:background .2s;
 }
 .habit-row:last-of-type{border-bottom:none}
+.habit-row.lacking{background:rgba(255,48,48,.03);border-left:2px solid rgba(255,48,48,.25);padding-left:10px}
 .habit-name{font-family:var(--serif);font-size:16px;color:var(--white);line-height:1.2}
 .habit-name-sub{font-family:var(--mono);font-size:9px;color:var(--slate2);letter-spacing:.1em;margin-top:2px}
 .habit-score-num{
@@ -288,9 +294,11 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 .q-option.flash{border-color:var(--gold);background:rgba(255,184,48,.1)}
 .q-key{font-family:var(--pixel);font-size:9px;color:var(--gold);background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.35);width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .q-nav{display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;justify-content:center}
-.q-back{background:none;border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:7px 16px;cursor:pointer;transition:all .15s}
-.q-back:hover{border-color:var(--slate2);color:var(--white)}
-.q-back:disabled{opacity:.2;cursor:default}
+.q-back,.q-next{background:none;border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:7px 16px;cursor:pointer;transition:all .15s}
+.q-back:hover,.q-next:hover{border-color:var(--slate2);color:var(--white)}
+.q-back:disabled,.q-next:disabled{opacity:.2;cursor:default}
+.q-next:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.q-next:not(:disabled):hover{background:rgba(255,184,48,.08);border-color:var(--gold)}
 .q-save{background:none;border:1px solid var(--gold);color:var(--gold);font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:7px 16px;cursor:pointer;transition:all .15s}
 .q-save:hover{background:rgba(255,184,48,.08)}
 .q-hint{font-family:var(--mono);font-size:10px;color:rgba(144,144,176,.4);letter-spacing:.12em}
@@ -548,6 +556,9 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
     </div>
   </div>
 
+  <button class="log-btn" id="open-log-btn" onclick="openLog()">[ BEGIN TODAY'S ENTRY ]</button>
+  <div class="logged-note" id="logged-note"></div>
+
   <hr class="section-divider">
   <div class="section-label">7-DAY VELOCITY TREND</div>
   <div class="week-graph-wrap"><div class="week-graph" id="week-graph"></div></div>
@@ -559,9 +570,6 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
     <div class="stat-card"><div class="stat-card-label">Clean streak</div><div class="stat-card-value" id="stat-streak">—</div><div class="stat-card-sub">days</div></div>
     <div class="stat-card"><div class="stat-card-label">Days logged</div><div class="stat-card-value" id="stat-days">—</div><div class="stat-card-sub">total</div></div>
   </div>
-
-  <button class="log-btn" id="open-log-btn" onclick="openLog()">[ BEGIN TODAY'S ENTRY ]</button>
-  <div class="logged-note" id="logged-note"></div>
   <div class="dev-row">
     <button class="dev-btn danger" onclick="devReset()">↺ RESET DB</button>
     <button class="dev-btn" onclick="devExport()">↑ EXPORT</button>
@@ -589,6 +597,11 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
   <div class="habits-hero">
     <div class="habits-hero-title">HABIT PERFORMANCE</div>
     <div class="habits-hero-sub" id="habits-hero-sub">Loading…</div>
+    <div class="habits-filter" id="habits-filter">
+      <button class="filter-btn active" data-filter="all" onclick="setHabitsFilter('all')">ALL TIME</button>
+      <button class="filter-btn" data-filter="month" onclick="setHabitsFilter('month')">THIS MONTH</button>
+      <button class="filter-btn" data-filter="week" onclick="setHabitsFilter('week')">THIS WEEK</button>
+    </div>
   </div>
   <div id="habits-list"></div>
   <div class="habits-legend">
@@ -679,6 +692,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
   <div class="q-options" id="q-options"></div>
   <div class="q-nav">
     <button class="q-back" id="q-back-btn" onclick="goBack()" disabled>← BACK</button>
+    <button class="q-next" id="q-next-btn" onclick="goNext()" disabled>NEXT →</button>
     <button class="q-save" onclick="savePartialAndClose()">SAVE &amp; CLOSE</button>
     <div class="q-hint">1 · 2 · 3</div>
   </div>
@@ -910,6 +924,12 @@ function renderQ(){
   document.getElementById('q-category').textContent=q.cat;
   document.getElementById('q-text').textContent=q.text;
   document.getElementById('q-back-btn').disabled=currentQ===0;
+
+  // Enable/disable next button based on whether current question is answered
+  const nextBtn=document.getElementById('q-next-btn');
+  const isAnswered=answers[q.key]!==undefined;
+  nextBtn.disabled=!isAnswered;
+
   const c=document.getElementById('q-options');c.innerHTML='';
   q.opts.forEach((opt,i)=>{
     const btn=document.createElement('button');btn.className='q-option';
@@ -922,9 +942,25 @@ function selectAnswer(idx){
   opts.forEach(o=>o.classList.remove('flash'));
   if(opts[idx]) opts[idx].classList.add('flash');
   answers[QS[currentQ].key]=idx+1;
-  setTimeout(()=>{currentQ++;if(currentQ>=QS.length)finishQuestionnaire();else renderQ();},100);
+
+  // Enable next button after selection
+  document.getElementById('q-next-btn').disabled=false;
+
+  setTimeout(()=>{
+    // Clear flash class before moving to next question (fixes mobile highlight bug)
+    opts.forEach(o=>o.classList.remove('flash'));
+    currentQ++;
+    if(currentQ>=QS.length)finishQuestionnaire();
+    else renderQ();
+  },100);
 }
 function goBack(){if(currentQ>0){currentQ--;renderQ();}}
+function goNext(){
+  if(currentQ<QS.length-1&&answers[QS[currentQ].key]!==undefined){
+    currentQ++;
+    renderQ();
+  }
+}
 async function finishQuestionnaire(){
   closeQuestionnaire();
   const tk=todayKey();
@@ -1027,8 +1063,9 @@ function renderDashboard(cache){
       btn.textContent='[ RESUME ENTRY — '+te.answeredCount+'/15 ]';
       document.getElementById('logged-note').textContent='';
     } else {
-      btn.disabled=true;
-      document.getElementById('logged-note').textContent='ENTRY COMPLETE — RETURN TOMORROW';
+      btn.disabled=false;
+      btn.textContent='[ UPDATE TODAY\'S ENTRY ]';
+      document.getElementById('logged-note').textContent='Entry complete — click to update answers';
     }
 
   } else {
@@ -1153,19 +1190,46 @@ function renderWeekGraph(cache){
 // HABITS PAGE
 // ══════════════════════════════════
 let _habitsCache = null;
+let _habitsFilter = 'all'; // 'all', 'month', 'week'
+
+function setHabitsFilter(filter){
+  _habitsFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(btn=>{
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  renderHabitsPage();
+}
+
+function getFilteredKeys(cache, filter){
+  const allKeys = Object.keys(cache).sort();
+  if(filter === 'all') return allKeys;
+
+  const now = new Date();
+  const cutoff = new Date();
+
+  if(filter === 'week'){
+    cutoff.setDate(now.getDate() - 7);
+  } else if(filter === 'month'){
+    cutoff.setMonth(now.getMonth() - 1);
+  }
+
+  const cutoffStr = cutoff.toISOString().slice(0,10);
+  return allKeys.filter(k => k >= cutoffStr);
+}
 
 async function renderHabitsPage(){
   const cache = _habitsCache || (await loadCache());
   _habitsCache = cache;
-  const keys=Object.keys(cache).sort();
+  const keys = getFilteredKeys(cache, _habitsFilter);
   const totalDays=keys.length;
 
+  const filterText = _habitsFilter === 'week' ? 'this week' : _habitsFilter === 'month' ? 'this month' : 'all time';
   document.getElementById('habits-hero-sub').textContent=
-    totalDays>0?`Based on ${totalDays} logged day${totalDays===1?'':'s'}.`:'No entries yet. Log your first day to see habit data.';
+    totalDays>0?`Based on ${totalDays} logged day${totalDays===1?'':'s'} (${filterText}).`:`No entries ${filterText}. Log days to see habit data.`;
 
   if(totalDays===0){
     document.getElementById('habits-list').innerHTML=
-      '<div style="font-family:var(--mono);font-size:11px;color:var(--slate2);margin-top:16px;letter-spacing:.08em">Log your first entry to see habit scores.</div>';
+      '<div style="font-family:var(--mono);font-size:11px;color:var(--slate2);margin-top:16px;letter-spacing:.08em">No entries in this time period.</div>';
     return;
   }
 
@@ -1223,7 +1287,11 @@ async function renderHabitsPage(){
       const bucket=s.pct>=80?'great':s.pct>=60?'good':s.pct>=40?'mid':'bad';
       const scoreColor=bucket==='great'?'var(--green)':bucket==='good'?'#8BEF5A':bucket==='mid'?'var(--gold)':'var(--negred)';
 
-      const row=document.createElement('div');row.className='habit-row';
+      // Mark as lacking if below 60%
+      const isLacking = s.pct < 60;
+
+      const row=document.createElement('div');
+      row.className='habit-row' + (isLacking ? ' lacking' : '');
       row.innerHTML=`
         <div>
           <div class="habit-name">${q.text}</div>
