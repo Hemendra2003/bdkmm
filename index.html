@@ -1049,7 +1049,6 @@ function closeSummaryToHome(){document.getElementById('summary-overlay').classLi
 // ══════════════════════════════════
 function renderDashboard(cache){
   const tk=todayKey();
-  document.getElementById('date-label').textContent=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}).toUpperCase();
   const keys=Object.keys(cache).sort();
   const te=cache[tk];
   const prevKey=keys[keys.indexOf(tk)-1];
