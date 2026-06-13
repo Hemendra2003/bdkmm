@@ -18,7 +18,8 @@
   --mono:'DM Mono',monospace;
   --serif:'EB Garamond',Georgia,serif;
 }
-html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:var(--serif);overflow-x:hidden}
+html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:var(--serif);overflow-x:hidden;overflow-y:auto}
+body{margin:0;padding:0;width:100vw;max-width:100%}
 #starfield-bg,#starfield-fg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
 #starfield-fg{opacity:.6}
 .page{display:none;min-height:100vh;position:relative;z-index:1}
@@ -269,7 +270,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 /* ═══════════════════════════════════
    OVERLAYS — shared
 ═══════════════════════════════════ */
-.overlay{display:none;position:fixed;inset:0;background:rgba(5,6,13,.97);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;flex-direction:column;padding:32px 24px}
+.overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;align-items:center;justify-content:center;flex-direction:column;padding:32px 24px}
 .overlay.active{display:flex}
 .q-close{position:absolute;top:22px;right:24px;background:none;border:none;color:var(--slate2);font-family:var(--pixel);font-size:10px;cursor:pointer}
 
@@ -289,20 +290,19 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 .q-category{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:9px;text-align:center}
 .q-text{font-family:var(--pixel);font-size:clamp(10px,2.5vw,14px);text-align:center;color:var(--white);max-width:460px;line-height:1.8;margin-bottom:28px}
 .q-options{display:flex;flex-direction:column;gap:9px;width:100%;max-width:400px}
-.q-option{display:flex;align-items:center;gap:14px;background:var(--bg2);border:2px solid var(--bg3);padding:13px 18px;cursor:pointer;transition:border-color .1s,background .1s;font-family:var(--serif);font-size:17px;color:var(--white);position:relative}
+.q-option{display:flex;align-items:center;gap:14px;background:var(--bg2);border:2px solid var(--bg3);padding:13px 18px;cursor:pointer;transition:none;font-family:var(--serif);font-size:17px;color:var(--white);position:relative}
 .q-option:hover{border-color:var(--red);background:rgba(214,40,40,.06)}
-.q-option.flash{border-color:var(--gold);background:rgba(255,184,48,.1);animation:flashFade 0.1s ease-out}
+.q-option.flash{border-color:var(--gold)!important;background:rgba(255,184,48,.1)!important;animation:flashFade 0.15s ease-out forwards}
 @keyframes flashFade{0%{border-color:var(--gold);background:rgba(255,184,48,.1)}100%{border-color:var(--bg3);background:var(--bg2)}}
 .q-key{font-family:var(--pixel);font-size:9px;color:var(--gold);background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.35);width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.q-nav{display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;justify-content:center}
+.q-nav{display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;justify-content:space-between;width:100%;max-width:400px}
 .q-back,.q-next{background:none;border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:7px 16px;cursor:pointer;transition:all .15s}
 .q-back:hover,.q-next:hover{border-color:var(--slate2);color:var(--white)}
 .q-back:disabled,.q-next:disabled{opacity:.2;cursor:default}
-.q-next:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.q-next:not(:disabled){border-color:var(--gold);color:var(--gold);margin-left:auto}
 .q-next:not(:disabled):hover{background:rgba(255,184,48,.08);border-color:var(--gold)}
-.q-save{background:none;border:1px solid var(--gold);color:var(--gold);font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:7px 16px;cursor:pointer;transition:all .15s}
+.q-save{background:none;border:1px solid var(--gold);color:var(--gold);font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:7px 16px;cursor:pointer;transition:all .15s;position:absolute;left:50%;transform:translateX(-50%)}
 .q-save:hover{background:rgba(255,184,48,.08)}
-.q-hint{font-family:var(--mono);font-size:10px;color:rgba(144,144,176,.4);letter-spacing:.12em}
 
 /* Summary */
 #summary-overlay{position:fixed;overflow-y:auto;align-items:flex-start;justify-content:flex-start;padding:36px 24px 60px}
@@ -693,9 +693,8 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
   <div class="q-options" id="q-options"></div>
   <div class="q-nav">
     <button class="q-back" id="q-back-btn" onclick="goBack()" disabled>← BACK</button>
-    <button class="q-next" id="q-next-btn" onclick="goNext()" disabled>NEXT →</button>
     <button class="q-save" onclick="savePartialAndClose()">SAVE &amp; CLOSE</button>
-    <div class="q-hint">1 · 2 · 3</div>
+    <button class="q-next" id="q-next-btn" onclick="goNext()" disabled>NEXT →</button>
   </div>
 </div>
 
