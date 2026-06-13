@@ -18,12 +18,16 @@
   --mono:'DM Mono',monospace;
   --serif:'EB Garamond',Georgia,serif;
 }
-html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:var(--serif);overflow-x:hidden;overflow-y:auto}
+html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:var(--serif);overflow:hidden}
 body{margin:0;padding:0;width:100vw;max-width:100%}
 #starfield-bg,#starfield-fg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
 #starfield-fg{opacity:.6}
-.page{display:none;min-height:100vh;position:relative;z-index:1}
+.page{display:none;min-height:100vh;position:relative;z-index:1;overflow-y:auto;overflow-x:hidden}
 .page.active{display:flex;flex-direction:column;align-items:center}
+/* Hide scrollbar for Chrome, Safari and Opera */
+.page::-webkit-scrollbar{display:none}
+/* Hide scrollbar for IE, Edge and Firefox */
+.page{-ms-overflow-style:none;scrollbar-width:none}
 
 /* ── TOP BAR ── */
 .top-bar{width:100%;max-width:680px;display:flex;justify-content:space-between;align-items:center;padding:20px 0 0;margin-bottom:24px;gap:8px}
@@ -294,6 +298,9 @@ body{margin:0;padding:0;width:100vw;max-width:100%}
 .q-option:hover{border-color:var(--red);background:rgba(214,40,40,.06)}
 .q-option.flash{border-color:var(--gold)!important;background:rgba(255,184,48,.1)!important;animation:flashFade 0.15s ease-out forwards}
 @keyframes flashFade{0%{border-color:var(--gold);background:rgba(255,184,48,.1)}100%{border-color:var(--bg3);background:var(--bg2)}}
+@media(max-width:480px){
+  .q-option:hover{border-color:var(--bg3);background:var(--bg2)}
+}
 .q-key{font-family:var(--pixel);font-size:9px;color:var(--gold);background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.35);width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .q-nav{display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;justify-content:space-between;width:100%;max-width:400px}
 .q-back,.q-next{background:none;border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:7px 16px;cursor:pointer;transition:all .15s}
@@ -564,13 +571,12 @@ body{margin:0;padding:0;width:100vw;max-width:100%}
   <div class="section-label">7-DAY VELOCITY TREND</div>
   <div class="week-graph-wrap"><div class="week-graph" id="week-graph"></div></div>
 
-  <hr class="section-divider">
-  <div class="section-label">AT A GLANCE</div>
   <div class="stats-row">
     <div class="stat-card"><div class="stat-card-label">Best velocity</div><div class="stat-card-value" id="stat-best">—</div><div class="stat-card-sub">all time</div></div>
     <div class="stat-card"><div class="stat-card-label">Clean streak</div><div class="stat-card-value" id="stat-streak">—</div><div class="stat-card-sub">days</div></div>
     <div class="stat-card"><div class="stat-card-label">Days logged</div><div class="stat-card-value" id="stat-days">—</div><div class="stat-card-sub">total</div></div>
   </div>
+
   <div class="dev-row">
     <button class="dev-btn danger" onclick="devReset()">↺ RESET DB</button>
     <button class="dev-btn" onclick="devExport()">↑ EXPORT</button>
