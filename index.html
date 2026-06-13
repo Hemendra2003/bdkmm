@@ -289,9 +289,10 @@ html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:va
 .q-category{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:9px;text-align:center}
 .q-text{font-family:var(--pixel);font-size:clamp(10px,2.5vw,14px);text-align:center;color:var(--white);max-width:460px;line-height:1.8;margin-bottom:28px}
 .q-options{display:flex;flex-direction:column;gap:9px;width:100%;max-width:400px}
-.q-option{display:flex;align-items:center;gap:14px;background:var(--bg2);border:2px solid var(--bg3);padding:13px 18px;cursor:pointer;transition:border-color .1s,background .1s;font-family:var(--serif);font-size:17px;color:var(--white)}
+.q-option{display:flex;align-items:center;gap:14px;background:var(--bg2);border:2px solid var(--bg3);padding:13px 18px;cursor:pointer;transition:border-color .1s,background .1s;font-family:var(--serif);font-size:17px;color:var(--white);position:relative}
 .q-option:hover{border-color:var(--red);background:rgba(214,40,40,.06)}
-.q-option.flash{border-color:var(--gold);background:rgba(255,184,48,.1)}
+.q-option.flash{border-color:var(--gold);background:rgba(255,184,48,.1);animation:flashFade 0.1s ease-out}
+@keyframes flashFade{0%{border-color:var(--gold);background:rgba(255,184,48,.1)}100%{border-color:var(--bg3);background:var(--bg2)}}
 .q-key{font-family:var(--pixel);font-size:9px;color:var(--gold);background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.35);width:26px;height:26px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .q-nav{display:flex;align-items:center;gap:12px;margin-top:20px;flex-wrap:wrap;justify-content:center}
 .q-back,.q-next{background:none;border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:11px;letter-spacing:.1em;padding:7px 16px;cursor:pointer;transition:all .15s}
@@ -884,27 +885,23 @@ async function openLog(){
   const cache=await loadCache();
   const tk=todayKey();
   const te=cache[tk];
-  if(te&&!te.partial) return;
-  if(te&&te.partial){
+
+  // If entry exists (partial or complete), load it for updating
+  if(te){
     answers={...te.answers};
     currentQ=0;
+    // Find first unanswered question, or start from beginning if all answered
     for(let i=0;i<QS.length;i++){
       if(answers[QS[i].key]===undefined){currentQ=i;break;}
-      if(i===QS.length-1) currentQ=QS.length;
+      if(i===QS.length-1) currentQ=0; // Start from beginning if complete
     }
-    if(currentQ>=QS.length){await finishQuestionnaire();return;}
-    document.getElementById('start-sub-text').textContent=`${te.answeredCount} of 15 done. Resume from where you left off.`;
-    document.getElementById('start-resume-note').style.display='block';
-    document.getElementById('start-resume-note').textContent=`▶ CONTINUING FROM Q${currentQ+1}`;
-    document.getElementById('start-begin-btn').textContent='[ RESUME ]';
   } else {
     currentQ=0;answers={};
-    document.getElementById('start-sub-text').textContent='15 questions. Press 1, 2, or 3 to answer each one instantly.';
-    document.getElementById('start-resume-note').style.display='none';
-    document.getElementById('start-begin-btn').textContent='[ BEGIN ]';
   }
-  document.getElementById('start-screen').classList.add('active');
-  setTimeout(()=>document.getElementById('start-begin-btn').focus(),50);
+
+  // Skip start screen and go directly to questionnaire
+  document.getElementById('questionnaire').classList.add('active');
+  renderQ();
 }
 function closeStart(){document.getElementById('start-screen').classList.remove('active');}
 function beginQuestionnaire(){closeStart();document.getElementById('questionnaire').classList.add('active');renderQ();}
@@ -939,20 +936,30 @@ function renderQ(){
 }
 function selectAnswer(idx){
   const opts=document.querySelectorAll('.q-option');
+
+  // Remove flash from all options first
   opts.forEach(o=>o.classList.remove('flash'));
+
+  // Add flash to selected option
   if(opts[idx]) opts[idx].classList.add('flash');
+
   answers[QS[currentQ].key]=idx+1;
 
   // Enable next button after selection
   document.getElementById('q-next-btn').disabled=false;
 
+  // Wait for animation, then remove flash class and move to next question
   setTimeout(()=>{
-    // Clear flash class before moving to next question (fixes mobile highlight bug)
-    opts.forEach(o=>o.classList.remove('flash'));
+    // Force remove flash class from ALL options
+    document.querySelectorAll('.q-option').forEach(o=>{
+      o.classList.remove('flash');
+      o.style.animation='none';
+    });
+
     currentQ++;
     if(currentQ>=QS.length)finishQuestionnaire();
     else renderQ();
-  },100);
+  },150);
 }
 function goBack(){if(currentQ>0){currentQ--;renderQ();}}
 function goNext(){
