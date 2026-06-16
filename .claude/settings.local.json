@@ -2,9 +2,9 @@
   "env": {
     "ANTHROPIC_BASE_URL": "http://localhost:20128/v1",
     "ANTHROPIC_AUTH_TOKEN": "sk-812fb730e7e03fa2-a04f83-dc36141e",
-    "ANTHROPIC_MODEL": "kr/claude-sonnet-4.5",
+    "ANTHROPIC_MODEL": "nvidia/z-ai/glm-5.1",
     "ANTHROPIC_API_KEY": "sk-812fb730e7e03fa2-a04f83-dc36141e",
-    "ANTHROPIC_SMALL_FAST_MODEL": "kr/claude-sonnet-4.5",
+    "ANTHROPIC_SMALL_FAST_MODEL": "nvidia/z-ai/glm-5.1",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "true"
   }
 }
