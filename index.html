@@ -21,7 +21,8 @@
   --max:680px;
   --nav-h:56px;
 }
-html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:var(--sans);overflow-x:hidden}
+html,body{min-height:100%;background:var(--bg);color:var(--white);font-family:var(--sans);overflow-x:hidden;scrollbar-width:none}
+html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}
 body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 #starfield-bg,#starfield-fg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
 #starfield-fg{opacity:.5}
@@ -44,13 +45,14 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 }
 .nav-inner{width:100%;max-width:var(--max);display:flex;align-items:stretch;justify-content:space-around;padding:0;height:100%}
 .nav-item{
-  flex:1;display:flex;align-items:center;justify-content:center;
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   background:none;border:none;cursor:pointer;
   color:var(--slate2);
-  font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;
+  font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;
   transition:color .15s;
   position:relative;border-top:2px solid transparent;margin-top:-1px;
 }
+.nav-item svg{flex-shrink:0}
 .nav-item.active{color:var(--gold);border-top-color:var(--gold)}
 
 /* PAGE WRAPPER */
@@ -65,6 +67,8 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 }
 .page-header-title{font-family:var(--pixel);font-size:10px;color:var(--red);letter-spacing:.18em;text-shadow:0 0 12px rgba(214,40,40,.4)}
 .page-header-right{font-family:var(--mono);font-size:10px;color:var(--slate2);letter-spacing:.1em}
+.page-header-back{background:none;border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:6px 12px;cursor:pointer;border-radius:4px;transition:all .15s}
+.page-header-back:hover{border-color:var(--slate2);color:var(--white)}
 
 /* HERO — centered */
 .hero-wrap{
@@ -86,11 +90,7 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
   letter-spacing:.02em;line-height:1;text-align:center;
   text-shadow:0 0 40px rgba(255,184,48,.75),0 0 80px rgba(255,184,48,.3),4px 4px 0 rgba(120,70,0,.45);
 }
-.velocity-meta{
-  display:flex;align-items:center;justify-content:center;gap:12px;
-  margin-top:10px;
-}
-.velocity-unit{font-family:var(--mono);font-size:11px;color:var(--slate2);letter-spacing:.2em}
+.velocity-unit-center{font-family:var(--mono);font-size:11px;color:var(--slate2);letter-spacing:.25em;text-align:center;margin-top:6px}
 .multiplier-pill{
   display:inline-flex;align-items:center;gap:5px;
   font-family:var(--mono);font-size:10px;color:var(--gold);letter-spacing:.06em;
@@ -179,6 +179,14 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 .dev-btn.danger:hover{border-color:var(--red);color:var(--red)}
 .db-status{font-family:var(--mono);font-size:9px;margin-top:8px;letter-spacing:.06em;min-height:14px}
 
+.why-link-btn{
+  width:100%;background:none;border:1px solid var(--bg3);color:var(--slate2);
+  font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  padding:14px;margin-top:20px;cursor:pointer;border-radius:var(--radius);
+  transition:all .15s;text-align:center;
+}
+.why-link-btn:hover{border-color:rgba(255,184,48,.35);color:var(--gold);background:rgba(255,184,48,.04)}
+
 /* HABITS */
 .habits-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:24px}
 .filter-btn{background:var(--bg2);border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:9px;letter-spacing:.14em;padding:8px 16px;cursor:pointer;transition:all .15s;text-transform:uppercase;border-radius:4px}
@@ -239,6 +247,8 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 }
 .q-option:hover{border-color:rgba(214,40,40,.5);background:rgba(214,40,40,.05)}
 .q-option.flash{border-color:var(--gold)!important;background:rgba(255,184,48,.08)!important}
+.q-option.prev-selected{border-color:rgba(255,105,180,.45)!important;background:rgba(255,105,180,.07)!important}
+.q-prev-tag{font-family:var(--mono);font-size:8px;color:#FF69B4;letter-spacing:.1em;margin-left:auto;flex-shrink:0}
 .q-key{
   font-family:var(--mono);font-size:9px;color:var(--gold);
   background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.3);
@@ -257,7 +267,8 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 .q-next:not(:disabled):hover{background:rgba(255,184,48,.07)}
 
 /* SUMMARY */
-#summary-overlay{position:fixed;overflow-y:auto;align-items:flex-start;justify-content:flex-start;padding:36px 24px 80px}
+#summary-overlay{position:fixed;overflow-y:auto;align-items:flex-start;justify-content:flex-start;padding:36px 24px 80px;scrollbar-width:none}
+#summary-overlay::-webkit-scrollbar{display:none}
 .sum-inner{width:100%;max-width:520px;margin:0 auto}
 .sum-title{font-family:var(--pixel);font-size:16px;color:var(--gold);line-height:1.7;text-shadow:0 0 24px rgba(255,184,48,.45),2px 2px 0 rgba(120,70,0,.4)}
 .sum-subtitle{font-family:var(--mono);font-size:11px;color:var(--slate2);letter-spacing:.06em;margin-top:6px;margin-bottom:24px}
@@ -286,8 +297,13 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 .compare-dv{font-family:var(--mono);font-size:10px;margin-top:4px}
 .today-card{border-color:rgba(255,184,48,.35)!important;background:rgba(255,184,48,.04)!important}
 .today-card .compare-vel{color:var(--gold)}
-.streak-vis{width:100%;display:flex;gap:4px;align-items:flex-end;height:44px;margin-top:10px;margin-bottom:4px}
-.streak-bar-vis{flex:1;min-height:3px;border-radius:2px}
+/* LOADING */
+.loading-pulse{font-family:var(--mono);font-size:11px;color:var(--gold);letter-spacing:.2em;text-transform:uppercase}
+.loading-dots{display:flex;gap:6px;margin-top:18px}
+.loading-dots span{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:ldot 1.1s ease-in-out infinite}
+.loading-dots span:nth-child(2){animation-delay:.15s}
+.loading-dots span:nth-child(3){animation-delay:.3s}
+@keyframes ldot{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1.15)}}
 
 /* WHY PAGE */
 .why-hero{width:100%;padding:36px 0 24px;text-align:center}
@@ -350,9 +366,14 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 <!-- NAV -->
 <nav class="bottom-nav">
   <div class="nav-inner">
-    <button class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')">Dashboard</button>
-    <button class="nav-item" id="nav-habits" onclick="showPage('habits')">Habits</button>
-    <button class="nav-item" id="nav-why" onclick="showPage('why')">The Engine</button>
+    <button class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12L12 4l9 8"/><path d="M5 10v9h14v-9"/></svg>
+      <span>Dashboard</span>
+    </button>
+    <button class="nav-item" id="nav-habits" onclick="showPage('habits')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19V10M12 19V5M20 19v-7"/></svg>
+      <span>Habits</span>
+    </button>
   </div>
 </nav>
 
@@ -435,10 +456,7 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 
       <div class="status-eyebrow" id="status-line"></div>
       <div class="velocity-number" id="velocity-display">—</div>
-      <div class="velocity-meta">
-        <span class="velocity-unit">KM / S</span>
-        <span class="multiplier-pill"><span class="mult-dot"></span><span id="mult-text">—</span></span>
-      </div>
+      <div class="velocity-unit-center">KM / S</div>
 
       <!-- badges row -->
       <div class="hero-badges">
@@ -446,10 +464,15 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
           <div class="h-badge-num" id="delta-badge-num">—</div>
           <div class="h-badge-label">VS YESTERDAY</div>
         </div>
-        <div class="h-badge-sep" id="badge-sep" style="display:none"></div>
+        <div class="h-badge-sep" id="badge-sep-1" style="display:none"></div>
         <div class="h-badge" id="streak-badge">
           <div class="h-badge-num dim" id="streak-badge-num">—</div>
           <div class="h-badge-label" id="streak-badge-label">STREAK</div>
+        </div>
+        <div class="h-badge-sep" id="badge-sep-2"></div>
+        <div class="h-badge">
+          <div class="multiplier-pill"><span class="mult-dot"></span><span id="mult-text">—</span></div>
+          <div class="h-badge-label">MULTIPLIER</div>
         </div>
       </div>
     </div>
@@ -471,7 +494,7 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
     <!-- 7-day line graph -->
     <div class="section-label">7-DAY Δv TREND</div>
     <div class="line-graph-wrap" style="margin-bottom:4px">
-      <svg id="week-line-svg" class="line-graph-svg" height="140"></svg>
+      <svg id="week-line-svg" class="line-graph-svg" height="200"></svg>
       <div class="lg-tooltip" id="week-tooltip"></div>
     </div>
 
@@ -480,7 +503,7 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
     <!-- 30-day velocity line graph -->
     <div class="section-label">30-DAY VELOCITY</div>
     <div class="line-graph-wrap" style="margin-bottom:4px">
-      <svg id="month-line-svg" class="line-graph-svg" height="140"></svg>
+      <svg id="month-line-svg" class="line-graph-svg" height="170"></svg>
       <div class="lg-tooltip" id="month-tooltip"></div>
     </div>
 
@@ -521,6 +544,8 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
       </div>
     </div>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
+
+    <button class="why-link-btn" onclick="showPage('why')">Why Momentum? — read about the engine →</button>
   </div>
 </div>
 
@@ -546,7 +571,10 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 <!-- WHY -->
 <div id="page-why" class="page">
   <div class="page-wrap">
-    <div class="page-header"><div class="page-header-title">THE ENGINE</div></div>
+    <div class="page-header">
+      <div class="page-header-title">THE ENGINE</div>
+      <button class="page-header-back" onclick="showPage('dashboard')">← Back</button>
+    </div>
     <div class="why-hero">
       <div class="why-eyebrow">The operating system</div>
       <h1 class="why-headline">You don't have a<br><em>discipline problem.</em></h1>
@@ -609,6 +637,13 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
   </div>
 </div>
 
+
+<!-- LOADING OVERLAY — bridges questionnaire close to summary open -->
+<div id="loading-overlay" class="overlay">
+  <div class="loading-pulse">CALCULATING TRAJECTORY</div>
+  <div class="loading-dots"><span></span><span></span><span></span></div>
+</div>
+
 <!-- SUMMARY OVERLAY -->
 <div id="summary-overlay" class="overlay">
   <div class="sum-inner">
@@ -626,7 +661,9 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
     <div class="sum-compare-title">VS PREVIOUS DAYS</div>
     <div class="compare-grid" id="sh-compare"></div>
     <div class="section-label" style="margin-top:4px;width:100%">THIS WEEK Δv</div>
-    <div class="streak-vis" id="sh-week-bars"></div>
+    <div class="line-graph-wrap" style="margin-bottom:4px">
+      <svg id="sum-week-line-svg" class="line-graph-svg" height="120"></svg>
+    </div>
     <button class="btn btn-primary-red" onclick="closeSummaryToHome()" style="margin:24px 0">Back to Dashboard</button>
   </div>
 </div>
@@ -781,30 +818,50 @@ function toggleDevTools(){
 // ══════════════════════════════════
 // QUESTIONNAIRE — open instantly
 // ══════════════════════════════════
-let currentQ=0,answers={};
-let _pendingCacheLoad=null;
+let currentQ=0,answers={},savedAnswers={};
+let activeQueue=[];   // indices into QS that are actually shown this session
+let _resumeMode=false; // true = skip already-answered (begin/resume flow); false = show all (update flow)
+
+function buildQueue(skipAnswered){
+  if(skipAnswered){
+    const q=QS.map((_,i)=>i).filter(i=>answers[QS[i].key]===undefined);
+    return q.length?q:QS.map((_,i)=>i);
+  }
+  return QS.map((_,i)=>i);
+}
 
 function openLog(){
   // Show overlay immediately — don't wait for network
-  currentQ=0;answers={};
+  answers={};savedAnswers={};_resumeMode=true;
+  activeQueue=buildQueue(false); // until we know if there's a partial, show all
+  currentQ=0;
   document.getElementById('questionnaire').classList.add('active');
   renderQ();
-  // Load existing answers in background, update if found
-  _pendingCacheLoad=loadCache().then(cache=>{
+  loadCache().then(cache=>{
     const te=cache[todayKey()];
     if(te&&te.answers){
-      answers={...te.answers};
-      // Find first unanswered
-      for(let i=0;i<QS.length;i++){
-        if(answers[QS[i].key]===undefined){currentQ=i;break;}
-        if(i===QS.length-1) currentQ=0;
-      }
+      answers={...te.answers};savedAnswers={...te.answers};
+      activeQueue=buildQueue(true); // skip already-answered ones
+      currentQ=0;
       renderQ();
     }
   }).catch(()=>{});
 }
 
-function closeQuestionnaire(){document.getElementById('questionnaire').classList.remove('active');}
+// "Update Today's Entry" — full edit mode, shows all 15, highlights prior picks pink
+function openLogFullEdit(){
+  answers={};savedAnswers={};_resumeMode=false;
+  currentQ=0;
+  document.getElementById('questionnaire').classList.add('active');
+  activeQueue=buildQueue(false);
+  renderQ();
+  loadCache().then(cache=>{
+    const te=cache[todayKey()];
+    if(te&&te.answers){answers={...te.answers};savedAnswers={...te.answers};renderQ();}
+  }).catch(()=>{});
+}
+
+function closeQuestionnaire(){clearAdvanceTimer();document.getElementById('questionnaire').classList.remove('active');}
 
 async function savePartialAndClose(){
   closeQuestionnaire();
@@ -814,46 +871,67 @@ async function savePartialAndClose(){
 }
 
 function renderQ(){
-  const q=QS[currentQ];
-  document.getElementById('q-progress').style.width=(currentQ/QS.length*100)+'%';
-  document.getElementById('q-counter').textContent=String(currentQ+1).padStart(2,'0')+' / '+QS.length;
+  const total=activeQueue.length;
+  const qIdx=activeQueue[currentQ];
+  const q=QS[qIdx];
+  document.getElementById('q-progress').style.width=(currentQ/total*100)+'%';
+  document.getElementById('q-counter').textContent=String(currentQ+1).padStart(2,'0')+' / '+total;
   document.getElementById('q-category').textContent=q.cat;
   document.getElementById('q-text').textContent=q.text;
   document.getElementById('q-back-btn').disabled=currentQ===0;
-  document.getElementById('q-next-btn').disabled=answers[q.key]===undefined;
+  const nextBtn=document.getElementById('q-next-btn');
+  nextBtn.disabled=false;
+  const isLast=currentQ===total-1;
+  nextBtn.textContent=isLast?(answers[q.key]===undefined?'Skip & Finish':'Finish ✓'):(answers[q.key]===undefined?'Skip →':'Next →');
   const c=document.getElementById('q-options');c.innerHTML='';
+  const wasSavedBefore=savedAnswers[q.key]!==undefined;
   q.opts.forEach((opt,i)=>{
     const btn=document.createElement('button');btn.className='q-option';
-    if(answers[q.key]===i+1) btn.classList.add('flash');
-    btn.innerHTML=`<span class="q-key">${i+1}</span><span>${opt}</span>`;
+    const isCurrent=answers[q.key]===i+1;
+    const isPrevSaved=wasSavedBefore&&savedAnswers[q.key]===i+1&&!isCurrent;
+    if(isCurrent) btn.classList.add('flash');
+    else if(isPrevSaved) btn.classList.add('prev-selected');
+    btn.innerHTML=`<span class="q-key">${i+1}</span><span>${opt}</span>`+(isPrevSaved?'<span class="q-prev-tag">PREVIOUS</span>':'');
     btn.onclick=()=>selectAnswer(i);
     c.appendChild(btn);
   });
 }
 
+let _advanceTimer=null;
+function clearAdvanceTimer(){if(_advanceTimer){clearTimeout(_advanceTimer);_advanceTimer=null;}}
+
 function selectAnswer(idx){
-  answers[QS[currentQ].key]=idx+1;
-  document.getElementById('q-next-btn').disabled=false;
-  // flash selected
+  clearAdvanceTimer();
+  const qIdx=activeQueue[currentQ];
+  answers[QS[qIdx].key]=idx+1;
   const opts=document.querySelectorAll('.q-option');
-  opts.forEach((o,i)=>{o.classList.toggle('flash',i===idx);});
-  setTimeout(()=>{
-    currentQ++;
-    if(currentQ>=QS.length) finishQuestionnaire();
-    else renderQ();
-  },140);
+  opts.forEach((o,i)=>{o.classList.toggle('flash',i===idx);o.classList.remove('prev-selected');});
+  document.getElementById('q-next-btn').textContent=currentQ===activeQueue.length-1?'Finish ✓':'Next →';
+  _advanceTimer=setTimeout(()=>{
+    _advanceTimer=null;
+    if(currentQ<activeQueue.length-1){currentQ++;renderQ();}
+    else finishQuestionnaire();
+  },350);
 }
 
-function goBack(){if(currentQ>0){currentQ--;renderQ();}}
+function goBack(){clearAdvanceTimer();if(currentQ>0){currentQ--;renderQ();}}
 function goNext(){
-  if(currentQ<QS.length-1&&answers[QS[currentQ].key]!==undefined){currentQ++;renderQ();}
+  clearAdvanceTimer();
+  if(currentQ<activeQueue.length-1){currentQ++;renderQ();}
+  else finishQuestionnaire();
 }
 
 async function finishQuestionnaire(){
   closeQuestionnaire();
+  document.getElementById('loading-overlay').classList.add('active');
   const tk=todayKey();
+  const startTime=Date.now();
   try{await sbUpsert({date:tk,answers});}catch(e){}
   const cache=await loadCache();
+  // ensure loading frame shows for a minimum perceptible duration
+  const elapsed=Date.now()-startTime;
+  if(elapsed<450) await new Promise(r=>setTimeout(r,450-elapsed));
+  document.getElementById('loading-overlay').classList.remove('active');
   if(cache[tk]) showSummary(cache[tk].computed,cache,tk);
   renderDashboard(cache);
 }
@@ -883,31 +961,45 @@ function showSummary(c,cache,tk){
     card.innerHTML=`<div class="compare-day-label">${labels[i]}</div><div class="compare-vel">${cc.newVelocity}</div><div class="compare-dv" style="color:${dvC}">${dvS} km/s</div>`;
     cEl.appendChild(card);
   });
-  const bEl=document.getElementById('sh-week-bars');bEl.innerHTML='';
   const wd=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);wd.push(d.toISOString().slice(0,10));}
-  const wv=wd.map(k=>cache[k]?cache[k].computed.finalDv:null);
-  const mA=Math.max(1,...wv.filter(v=>v!==null).map(Math.abs));
-  wd.forEach((k,i)=>{
-    const v=wv[i],bar=document.createElement('div');bar.className='streak-bar-vis';
-    bar.style.height=v!==null?Math.max(3,Math.round(Math.abs(v)/mA*40))+'px':'3px';
-    bar.style.background=v===null?'rgba(96,96,128,.15)':v>=0?'linear-gradient(180deg,#3DFF6E,#064A1A)':'linear-gradient(180deg,#FF4444,#4A0606)';
-    if(k===tk) bar.style.outline='1px solid var(--gold)';
-    bEl.appendChild(bar);
-  });
+  const DN=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const sumPoints=wd.map(k=>({
+    label:DN[new Date(k+'T12:00:00').getDay()],
+    value:cache[k]?cache[k].computed.finalDv:null,
+    isToday:k===tk,
+  }));
+  renderLineGraph('sum-week-line-svg',null,sumPoints,{centreZero:true,lineColor:'rgba(255,184,48,.95)',fillColor:'rgba(255,184,48,.22)'});
 }
 function closeSummaryToHome(){document.getElementById('summary-overlay').classList.remove('active');showPage('dashboard');}
 
 // ══════════════════════════════════
-// LINE GRAPH RENDERER
-// Uses SVG polyline; normalizes properly so few data points don't fill bars
+// LINE GRAPH RENDERER — smoothed (Catmull-Rom -> cubic bezier)
 // ══════════════════════════════════
+function smoothPath(coords){
+  // coords: [{x,y}] -> smooth SVG path "d" string via Catmull-Rom
+  if(coords.length<2) return '';
+  if(coords.length===2) return `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)} L ${coords[1].x.toFixed(1)} ${coords[1].y.toFixed(1)}`;
+  let d=`M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+  for(let i=0;i<coords.length-1;i++){
+    const p0=coords[i-1]||coords[i];
+    const p1=coords[i];
+    const p2=coords[i+1];
+    const p3=coords[i+2]||p2;
+    const c1x=p1.x+(p2.x-p0.x)/6;
+    const c1y=p1.y+(p2.y-p0.y)/6;
+    const c2x=p2.x-(p3.x-p1.x)/6;
+    const c2y=p2.y-(p3.y-p1.y)/6;
+    d+=` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 function renderLineGraph(svgId, tooltipId, points, opts){
-  // points: [{label, value, isToday, isFilled}] — value can be null
   const svg=document.getElementById(svgId);
   if(!svg) return;
   const W=svg.parentElement.getBoundingClientRect().width||340;
   const H=parseInt(svg.getAttribute('height'))||140;
-  const PAD_L=8,PAD_R=8,PAD_T=20,PAD_B=28;
+  const PAD_L=8,PAD_R=8,PAD_T=18,PAD_B=18;
   const gW=W-PAD_L-PAD_R,gH=H-PAD_T-PAD_B;
 
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
@@ -925,78 +1017,72 @@ function renderLineGraph(svgId, tooltipId, points, opts){
   const vals=filled.map(p=>p.value);
   let minV=Math.min(...vals),maxV=Math.max(...vals);
 
-  // For dv graph: centre around zero
   if(opts&&opts.centreZero){
-    const absMax=Math.max(1,Math.max(Math.abs(minV),Math.abs(maxV)));
-    // add 20% headroom
-    minV=-(absMax*1.2);maxV=absMax*1.2;
+    // aggressive zoom so even tiny variation reads as a strong curve
+    const absMax=Math.max(2,Math.max(Math.abs(minV),Math.abs(maxV)));
+    minV=-(absMax*1.35);maxV=absMax*1.35;
   } else {
-    // add 10% headroom above/below
-    const range=Math.max(1,maxV-minV);
-    minV=minV-range*.1;maxV=maxV+range*.15;
+    const dataRange=maxV-minV;
+    const span=Math.max(dataRange,Math.max(4,maxV*.06));
+    minV=minV-span*.3;maxV=maxV+span*.3;
   }
 
   const range=maxV-minV||1;
-  const xOf=(i)=>PAD_L+i/(points.length-1||1)*gW;
+  const xOf=(i)=>PAD_L+(points.length>1?i/(points.length-1)*gW:gW/2);
   const yOf=(v)=>PAD_T+gH-(((v-minV)/range)*gH);
+  const baseY=PAD_T+gH; // bottom of chart area — fill always anchors here
 
-  // zero line (for dv graph)
   if(opts&&opts.centreZero){
     const zy=yOf(0);
-    const zl=mk('line',{x1:PAD_L,y1:zy,x2:PAD_L+gW,y2:zy,stroke:'rgba(144,144,176,.2)','stroke-width':'1','stroke-dasharray':'3,4'});
-    svg.appendChild(zl);
+    svg.appendChild(mk('line',{x1:PAD_L,y1:zy,x2:PAD_L+gW,y2:zy,stroke:'rgba(144,144,176,.2)','stroke-width':'1','stroke-dasharray':'3,4'}));
   }
 
-  // gradient defs
+  // gradient anchored to chart pixel bounds (userSpace) so it's always
+  // low-opacity at top of chart, high-opacity at the base — visible
+  // no matter where the curve sits in range.
   const defs=mk('defs',{});
-  const grad=mk('linearGradient',{id:svgId+'_grad',x1:'0',y1:'0',x2:'0',y2:'1'});
-  const s1=mk('stop',{offset:'0%','stop-color':opts&&opts.negativeColor?'rgba(61,255,110,.25)':'rgba(255,184,48,.18)'});
-  const s2=mk('stop',{offset:'100%','stop-color':'rgba(5,6,13,0)'});
-  grad.appendChild(s1);grad.appendChild(s2);defs.appendChild(grad);svg.appendChild(defs);
+  const grad=mk('linearGradient',{id:svgId+'_grad',x1:'0',y1:PAD_T,x2:'0',y2:baseY,gradientUnits:'userSpaceOnUse'});
+  const fillCol=opts&&opts.fillColor?opts.fillColor:'rgba(255,184,48,1)';
+  const fillBase=fillCol.replace(/[\d.]+\)$/,'');
+  grad.appendChild(mk('stop',{offset:'0%','stop-color':fillBase+'0.04)'}));
+  grad.appendChild(mk('stop',{offset:'55%','stop-color':fillBase+'0.22)'}));
+  grad.appendChild(mk('stop',{offset:'100%','stop-color':fillBase+'0.55)'}));
+  defs.appendChild(grad);svg.appendChild(defs);
 
-  // build coordinate arrays — skip nulls with line breaks
   const segments=[];let cur=[];
   points.forEach((p,i)=>{
-    if(p.value===null){if(cur.length>1)segments.push(cur);cur=[];}
-    else cur.push({i,v:p.value,p});
+    if(p.value===null){if(cur.length>1)segments.push(cur);else cur=[];cur=[];}
+    else cur.push({i,v:p.value,p,x:xOf(i),y:yOf(p.value)});
   });
   if(cur.length>1) segments.push(cur);
+  else if(cur.length===1) segments.push(cur);
 
-  // area fill for each segment
   segments.forEach(seg=>{
-    const apts=seg.map(pt=>`${xOf(pt.i).toFixed(1)},${yOf(pt.v).toFixed(1)}`).join(' ');
-    const zY=(yOf(0)).toFixed(1);
-    const polyPts=`${xOf(seg[0].i).toFixed(1)},${zY} ${apts} ${xOf(seg[seg.length-1].i).toFixed(1)},${zY}`;
-    const poly=mk('polygon',{points:polyPts,fill:`url(#${svgId}_grad)`,'opacity':'.5'});
-    svg.appendChild(poly);
+    if(seg.length<2) return;
+    const path=smoothPath(seg);
+    const areaPath=path+` L ${seg[seg.length-1].x.toFixed(1)} ${baseY.toFixed(1)} L ${seg[0].x.toFixed(1)} ${baseY.toFixed(1)} Z`;
+    svg.appendChild(mk('path',{d:areaPath,fill:`url(#${svgId}_grad)`}));
   });
 
-  // line for each segment
   segments.forEach(seg=>{
-    const lpts=seg.map(pt=>`${xOf(pt.i).toFixed(1)},${yOf(pt.v).toFixed(1)}`).join(' ');
-    const line=mk('polyline',{points:lpts,fill:'none',stroke:opts&&opts.lineColor?opts.lineColor:'rgba(255,184,48,.9)','stroke-width':'1.5','stroke-linejoin':'round','stroke-linecap':'round'});
-    svg.appendChild(line);
+    if(seg.length<2) return;
+    const path=smoothPath(seg);
+    svg.appendChild(mk('path',{d:path,fill:'none',stroke:opts&&opts.lineColor?opts.lineColor:'rgba(255,184,48,.9)','stroke-width':'2','stroke-linejoin':'round','stroke-linecap':'round'}));
   });
 
-  // dots + labels
   points.forEach((p,i)=>{
-    const x=xOf(i),lbl=p.label;
-    // x-axis label
-    const lt=mk('text',{x:x.toFixed(1),y:(H-4).toFixed(1),'text-anchor':'middle',fill:p.isToday?'#FFB830':'#505068','font-family':'DM Mono,monospace','font-size':'9','letter-spacing':'.04em'});
-    lt.textContent=lbl;svg.appendChild(lt);
-
+    const x=xOf(i);
+    if(p.label){
+      const lt=mk('text',{x:x.toFixed(1),y:(H-4).toFixed(1),'text-anchor':'middle',fill:p.isToday?'#FFB830':'#505068','font-family':'DM Mono,monospace','font-size':'9','letter-spacing':'.04em'});
+      lt.textContent=p.label;svg.appendChild(lt);
+    }
     if(p.value===null) return;
-
     const y=yOf(p.value);
-    const col=p.value>=0?(opts&&opts.centreZero?'#3DFF6E':'#FFB830'):'#FF3030';
-    // dot
-    const circle=mk('circle',{cx:x.toFixed(1),cy:y.toFixed(1),r:p.isToday?'4':'2.5',fill:col,'stroke':p.isToday?'#05060D':'none','stroke-width':'2'});
-    svg.appendChild(circle);
-
-    // value label (only if not too crowded — show for today and every other point if <=10)
-    if(points.length<=10||(p.isToday)){
-      const valStr=(p.value>=0&&opts&&opts.centreZero?'+':'')+Math.round(p.value);
-      const vt=mk('text',{x:x.toFixed(1),y:(y-7).toFixed(1),'text-anchor':'middle',fill:col,'font-family':'DM Mono,monospace','font-size':'8'});
+    const col=opts&&opts.centreZero?(p.value>=0?'#3DFF6E':'#FF3030'):(opts&&opts.dotColor?opts.dotColor:'#FFB830');
+    svg.appendChild(mk('circle',{cx:x.toFixed(1),cy:y.toFixed(1),r:p.isToday?'4':'2.5',fill:col,stroke:p.isToday?'#05060D':'none','stroke-width':'2'}));
+    if(points.length<=10||p.isToday){
+      const valStr=(opts&&opts.centreZero&&p.value>=0?'+':'')+Math.round(p.value);
+      const vt=mk('text',{x:x.toFixed(1),y:(y-8).toFixed(1),'text-anchor':'middle',fill:col,'font-family':'DM Mono,monospace','font-size':'8'});
       vt.textContent=valStr;svg.appendChild(vt);
     }
   });
@@ -1012,25 +1098,33 @@ function renderWeekLineGraph(cache){
     value:(cache[k]&&cache[k].computed)?cache[k].computed.finalDv:null,
     isToday:k===tk,
   }));
-  renderLineGraph('week-line-svg','week-tooltip',points,{centreZero:true,lineColor:'rgba(255,184,48,.9)'});
+  renderLineGraph('week-line-svg','week-tooltip',points,{centreZero:true,lineColor:'rgba(255,184,48,.95)',fillColor:'rgba(255,184,48,.22)'});
 }
 
-// MONTH LINE GRAPH (absolute velocity, last 30 days)
+// MONTH LINE GRAPH — responsive: shows actual logged span, up to 30 days
 function renderMonthLineGraph(cache){
-  const days=[];for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  const allKeys=Object.keys(cache).filter(k=>cache[k]&&cache[k].computed).sort();
   const tk=todayKey();
+  let spanDays=30;
+  if(allKeys.length>0){
+    const earliest=new Date(allKeys[0]+'T12:00:00');
+    const today=new Date(tk+'T12:00:00');
+    const daysSinceEarliest=Math.round((today-earliest)/86400000)+1;
+    spanDays=Math.max(1,Math.min(30,daysSinceEarliest));
+  }
+  const days=[];for(let i=spanDays-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  const labelEvery=spanDays<=7?1:spanDays<=14?2:5;
   const points=days.map((k,i)=>{
     const d=new Date(k+'T12:00:00');
     const dayNum=d.getDate();
-    // label: show date number every 5 days and today
-    const showLabel=i===0||i===29||dayNum%5===0||k===tk;
+    const showLabel=i===0||i===days.length-1||i%labelEvery===0||k===tk;
     return{
       label:showLabel?String(dayNum):'',
       value:(cache[k]&&cache[k].computed)?cache[k].computed.newVelocity:null,
       isToday:k===tk,
     };
   });
-  renderLineGraph('month-line-svg','month-tooltip',points,{centreZero:false,lineColor:'rgba(91,191,255,.85)'});
+  renderLineGraph('month-line-svg','month-tooltip',points,{centreZero:false,lineColor:'rgba(91,191,255,.9)',fillColor:'rgba(91,191,255,.2)',dotColor:'#5BBFFF'});
 }
 
 // DASHBOARD RENDER
@@ -1058,9 +1152,9 @@ function renderDashboard(cache){
     if(prev&&prev.computed){
       const diff=c.newVelocity-prev.computed.newVelocity;
       document.getElementById('delta-badge').style.display='flex';
-      document.getElementById('badge-sep').style.display='block';
+      document.getElementById('badge-sep-1').style.display='block';
       const dn=document.getElementById('delta-badge-num');
-      dn.textContent=(diff>=0?'▲+':'▼')+diff;
+      dn.textContent=Math.abs(diff);
       dn.className='h-badge-num '+(diff>=0?'pos-green':'neg');
     }
     document.getElementById('mult-text').textContent=c.mult+'×';
@@ -1071,9 +1165,11 @@ function renderDashboard(cache){
     if(isPartial){
       btn.classList.add('btn-primary-blue');btn.disabled=false;
       btn.textContent='Resume Entry — '+te.answeredCount+'/15 answered';
+      btn.onclick=openLog;
     } else {
       btn.classList.add('btn-primary-green');btn.disabled=false;
       btn.textContent='Update Today\'s Entry';
+      btn.onclick=openLogFullEdit;
     }
   } else {
     const last=keys.length?cache[keys[keys.length-1]]:null;
@@ -1084,7 +1180,7 @@ function renderDashboard(cache){
     if(isFirstLaunch){slEl.textContent='LAUNCH SEQUENCE READY';slEl.style.color='var(--slate2)';}
     else{slEl.textContent='LOG TODAY TO UPDATE';slEl.style.color='var(--slate2)';}
     document.getElementById('delta-badge').style.display='none';
-    document.getElementById('badge-sep').style.display='none';
+    document.getElementById('badge-sep-1').style.display='none';
     document.getElementById('mult-text').textContent='—';
     let posS=0,negS=0;
     for(let i=keys.length-1;i>=0;i--){
@@ -1095,7 +1191,7 @@ function renderDashboard(cache){
     }
     renderStreakBadge(posS,negS);
     document.getElementById('empty-state').style.display=isFirstLaunch?'block':'none';
-    btn.className='btn btn-primary-gold';btn.disabled=false;btn.textContent='Begin Today\'s Entry';
+    btn.className='btn btn-primary-gold';btn.disabled=false;btn.textContent='Begin Today\'s Entry';btn.onclick=openLog;
   }
 
   document.getElementById('logged-note').textContent='';
