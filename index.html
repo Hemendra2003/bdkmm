@@ -93,12 +93,12 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 .velocity-unit-center{font-family:var(--mono);font-size:11px;color:var(--slate2);letter-spacing:.25em;text-align:center;margin-top:6px}
 .multiplier-pill{
   display:inline-flex;align-items:center;gap:5px;
-  font-family:var(--mono);font-size:10px;color:var(--gold);letter-spacing:.06em;
-  background:rgba(255,184,48,.08);border:1px solid rgba(255,184,48,.2);
+  font-family:var(--mono);font-size:10px;color:var(--silver);letter-spacing:.06em;
+  background:rgba(184,184,208,.06);border:1px solid rgba(184,184,208,.18);
   padding:3px 10px;border-radius:3px;
 }
 @keyframes mpulse{0%,100%{opacity:1}50%{opacity:0}}
-.mult-dot{width:4px;height:4px;background:var(--gold);border-radius:50%;display:inline-block;animation:mpulse 1.2s steps(2) infinite;flex-shrink:0}
+.mult-dot{width:4px;height:4px;background:var(--silver);border-radius:50%;display:inline-block;animation:mpulse 1.2s steps(2) infinite;flex-shrink:0}
 
 /* hero badges row */
 .hero-badges{
@@ -106,11 +106,7 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
   margin-top:16px;
 }
 .h-badge{display:flex;flex-direction:column;align-items:center;gap:3px}
-.h-badge-num{font-family:var(--pixel);font-size:14px;line-height:1}
-.h-badge-num.pos-green{color:var(--green);text-shadow:0 0 10px rgba(61,255,110,.4)}
-.h-badge-num.pos-gold{color:var(--gold)}
-.h-badge-num.neg{color:var(--negred);text-shadow:0 0 10px rgba(255,48,48,.4)}
-.h-badge-num.dim{color:var(--slate2)}
+.h-badge-num{font-family:var(--pixel);font-size:14px;line-height:1;color:var(--silver)}
 .h-badge-label{font-family:var(--mono);font-size:8px;color:var(--slate2);letter-spacing:.12em;text-transform:uppercase}
 .h-badge-sep{width:1px;height:28px;background:var(--bg3)}
 
@@ -160,7 +156,7 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 
 /* STATS GRID */
 .stats-grid{width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--bg3);border:1px solid var(--bg3);border-radius:var(--radius);overflow:hidden;margin-bottom:16px}
-.stat-cell{padding:14px 12px;background:var(--bg2)}
+.stat-cell{padding:14px 12px;background:var(--bg2);text-align:center}
 .stat-cell-label{font-family:var(--mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--slate2);margin-bottom:6px}
 .stat-cell-value{font-family:var(--pixel);font-size:14px;color:var(--white);line-height:1}
 .stat-cell-sub{font-family:var(--mono);font-size:8px;color:var(--slate);margin-top:4px}
@@ -305,6 +301,35 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 .loading-dots span:nth-child(3){animation-delay:.3s}
 @keyframes ldot{0%,80%,100%{opacity:.2;transform:scale(.8)}40%{opacity:1;transform:scale(1.15)}}
 
+/* DASHBOARD SKELETON — shown until first data load resolves */
+#dashboard-content{position:relative}
+.skeleton-wrap{
+  display:none;
+  position:absolute;inset:0;z-index:50;
+  background:var(--bg);
+  flex-direction:column;align-items:center;
+  padding:24px 20px 0;
+}
+#dashboard-content.is-loading .skeleton-wrap{display:flex}
+.skel-row,.skel-pill,.skel-rocket{
+  background:linear-gradient(100deg,var(--bg2) 30%,var(--bg3) 50%,var(--bg2) 70%);
+  background-size:200% 100%;
+  animation:skelshim 1.4s ease-in-out infinite;
+  border-radius:6px;
+}
+@keyframes skelshim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.skel-header{width:100%;height:18px;margin-bottom:38px}
+.skel-rocket{width:88px;height:120px;border-radius:12px;margin-bottom:14px}
+.skel-eyebrow{width:140px;height:10px;margin-bottom:14px}
+.skel-score{width:200px;height:58px;margin-bottom:10px;border-radius:10px}
+.skel-unit{width:80px;height:10px;margin-bottom:20px}
+.skel-badges-row{display:flex;gap:18px;margin-bottom:24px}
+.skel-pill{width:64px;height:30px}
+.skel-btn{width:100%;height:48px;margin-bottom:28px}
+.skel-graph{width:100%;height:130px;margin-bottom:24px}
+#dashboard-content.is-loading > *:not(#dashboard-skeleton){visibility:hidden}
+@media(prefers-reduced-motion:reduce){.skel-row,.skel-pill,.skel-rocket{animation:none}}
+
 /* WHY PAGE */
 .why-hero{width:100%;padding:36px 0 24px;text-align:center}
 .why-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
@@ -379,7 +404,20 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page active">
-  <div class="page-wrap">
+  <div class="page-wrap" id="dashboard-content">
+    <div id="dashboard-skeleton" class="skeleton-wrap">
+      <div class="skel-row skel-header"></div>
+      <div class="skel-rocket"></div>
+      <div class="skel-row skel-eyebrow"></div>
+      <div class="skel-row skel-score"></div>
+      <div class="skel-row skel-unit"></div>
+      <div class="skel-badges-row">
+        <div class="skel-pill"></div><div class="skel-pill"></div><div class="skel-pill"></div>
+      </div>
+      <div class="skel-row skel-btn"></div>
+      <div class="skel-row skel-graph"></div>
+      <div class="skel-row skel-graph"></div>
+    </div>
     <div class="page-header">
       <div class="page-header-title">MOMENTUM</div>
       <div class="page-header-right" id="today-date-label"></div>
@@ -466,7 +504,7 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
         </div>
         <div class="h-badge-sep" id="badge-sep-1" style="display:none"></div>
         <div class="h-badge" id="streak-badge">
-          <div class="h-badge-num dim" id="streak-badge-num">—</div>
+          <div class="h-badge-num" id="streak-badge-num">—</div>
           <div class="h-badge-label" id="streak-badge-label">STREAK</div>
         </div>
         <div class="h-badge-sep" id="badge-sep-2"></div>
@@ -808,6 +846,13 @@ function showPage(n){
 }
 
 // DEV TOGGLE
+function showDashboardSkeleton(){
+  document.getElementById('dashboard-content').classList.add('is-loading');
+}
+function hideDashboardSkeleton(){
+  document.getElementById('dashboard-content').classList.remove('is-loading');
+}
+
 function toggleDevTools(){
   const body=document.getElementById('dev-body');
   const toggle=document.getElementById('dev-toggle');
@@ -821,6 +866,7 @@ function toggleDevTools(){
 let currentQ=0,answers={},savedAnswers={};
 let activeQueue=[];   // always all 15 question indices, in order
 let _resumeMode=false; // true = jump to first unanswered on open (begin/resume flow); false = stay at 0 (update flow)
+let _dataCache=null;   // shared in-memory cache, refreshed after every write — avoids refetch glitches
 
 function buildQueue(){return QS.map((_,i)=>i);}
 
@@ -832,33 +878,64 @@ function firstUnansweredIdx(){
 }
 
 function openLog(){
-  // Show overlay immediately — don't wait for network
   answers={};savedAnswers={};_resumeMode=true;
   activeQueue=buildQueue();
-  currentQ=0;
-  document.getElementById('questionnaire').classList.add('active');
-  renderQ();
-  loadCache().then(cache=>{
+
+  const applyEntry=(cache)=>{
     const te=cache[todayKey()];
     if(te&&te.answers){
       answers={...te.answers};savedAnswers={...te.answers};
-      currentQ=firstUnansweredIdx(); // jump to first unanswered, but full 1-15 stays navigable
-      renderQ();
+      currentQ=firstUnansweredIdx();
+    } else {
+      currentQ=0;
     }
-  }).catch(()=>{});
+  };
+
+  if(_dataCache){
+    applyEntry(_dataCache); // synchronous — correct question shows on first paint, no flash
+    document.getElementById('questionnaire').classList.add('active');
+    renderQ();
+  } else {
+    // cache not warmed yet (rare/first load) — fetch before showing anything
+    loadCache().then(cache=>{
+      _dataCache=cache;
+      applyEntry(cache);
+      document.getElementById('questionnaire').classList.add('active');
+      renderQ();
+    }).catch(()=>{
+      currentQ=0;
+      document.getElementById('questionnaire').classList.add('active');
+      renderQ();
+    });
+  }
 }
 
 // "Update Today's Entry" — full edit mode, shows all 15, highlights prior picks pink
 function openLogFullEdit(){
   answers={};savedAnswers={};_resumeMode=false;
   currentQ=0;
-  document.getElementById('questionnaire').classList.add('active');
   activeQueue=buildQueue();
-  renderQ();
-  loadCache().then(cache=>{
+
+  const applyEntry=(cache)=>{
     const te=cache[todayKey()];
-    if(te&&te.answers){answers={...te.answers};savedAnswers={...te.answers};renderQ();}
-  }).catch(()=>{});
+    if(te&&te.answers){answers={...te.answers};savedAnswers={...te.answers};}
+  };
+
+  if(_dataCache){
+    applyEntry(_dataCache);
+    document.getElementById('questionnaire').classList.add('active');
+    renderQ();
+  } else {
+    loadCache().then(cache=>{
+      _dataCache=cache;
+      applyEntry(cache);
+      document.getElementById('questionnaire').classList.add('active');
+      renderQ();
+    }).catch(()=>{
+      document.getElementById('questionnaire').classList.add('active');
+      renderQ();
+    });
+  }
 }
 
 function closeQuestionnaire(){clearAdvanceTimer();document.getElementById('questionnaire').classList.remove('active');}
@@ -867,7 +944,7 @@ async function savePartialAndClose(){
   closeQuestionnaire();
   if(!Object.keys(answers).length) return;
   try{await sbUpsert({date:todayKey(),answers});}catch(e){}
-  const cache=await loadCache();renderDashboard(cache);
+  const cache=await loadCache();_dataCache=cache;renderDashboard(cache);
 }
 
 function renderQ(){
@@ -927,10 +1004,10 @@ async function finishQuestionnaire(){
   const tk=todayKey();
   const startTime=Date.now();
   try{await sbUpsert({date:tk,answers});}catch(e){}
-  const cache=await loadCache();
-  // ensure loading frame shows for a minimum perceptible duration
+  const cache=await loadCache();_dataCache=cache;
+  // brief minimum so the frame doesn't feel like a flicker, but stays snappy
   const elapsed=Date.now()-startTime;
-  if(elapsed<450) await new Promise(r=>setTimeout(r,450-elapsed));
+  if(elapsed<180) await new Promise(r=>setTimeout(r,180-elapsed));
   document.getElementById('loading-overlay').classList.remove('active');
   if(cache[tk]) showSummary(cache[tk].computed,cache,tk);
   renderDashboard(cache);
@@ -999,7 +1076,7 @@ function renderLineGraph(svgId, tooltipId, points, opts){
   if(!svg) return;
   const W=svg.parentElement.getBoundingClientRect().width||340;
   const H=parseInt(svg.getAttribute('height'))||140;
-  const PAD_L=8,PAD_R=8,PAD_T=18,PAD_B=18;
+  const PAD_L=10,PAD_R=10,PAD_T=14,PAD_B=20;
   const gW=W-PAD_L-PAD_R,gH=H-PAD_T-PAD_B;
 
   svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
@@ -1017,25 +1094,18 @@ function renderLineGraph(svgId, tooltipId, points, opts){
   const vals=filled.map(p=>p.value);
   let minV=Math.min(...vals),maxV=Math.max(...vals);
 
-  if(opts&&opts.centreZero){
-    // aggressive zoom so even tiny variation reads as a strong curve
-    const absMax=Math.max(2,Math.max(Math.abs(minV),Math.abs(maxV)));
-    minV=-(absMax*1.35);maxV=absMax*1.35;
-  } else {
-    const dataRange=maxV-minV;
-    const span=Math.max(dataRange,Math.max(4,maxV*.06));
-    minV=minV-span*.3;maxV=maxV+span*.3;
-  }
+  // True min/max zoom: lowest point sits just above the base, highest point
+  // just below the top margin — small headroom only, so curves read as dramatic
+  // even when the underlying variation is small.
+  const dataRange=maxV-minV;
+  const pad=Math.max(dataRange*.12,opts&&opts.centreZero?1:0.5);
+  minV=minV-pad;maxV=maxV+pad;
+  if(minV===maxV){minV-=1;maxV+=1;} // guard against flat-line zero-range
 
   const range=maxV-minV||1;
   const xOf=(i)=>PAD_L+(points.length>1?i/(points.length-1)*gW:gW/2);
   const yOf=(v)=>PAD_T+gH-(((v-minV)/range)*gH);
   const baseY=PAD_T+gH; // bottom of chart area — fill always anchors here
-
-  if(opts&&opts.centreZero){
-    const zy=yOf(0);
-    svg.appendChild(mk('line',{x1:PAD_L,y1:zy,x2:PAD_L+gW,y2:zy,stroke:'rgba(144,144,176,.2)','stroke-width':'1','stroke-dasharray':'3,4'}));
-  }
 
   // gradient anchored to chart pixel bounds (userSpace) so it's always
   // low-opacity at top of chart, high-opacity at the base — visible
@@ -1073,7 +1143,14 @@ function renderLineGraph(svgId, tooltipId, points, opts){
   points.forEach((p,i)=>{
     const x=xOf(i);
     if(p.label){
-      const lt=mk('text',{x:x.toFixed(1),y:(H-4).toFixed(1),'text-anchor':'middle',fill:p.isToday?'#FFB830':'#505068','font-family':'DM Mono,monospace','font-size':'9','letter-spacing':'.04em'});
+      const lt=mk('text',{
+        x:x.toFixed(1),y:(H-5).toFixed(1),'text-anchor':'middle',
+        fill:p.isToday?'#FFB830':'#B8B8D0',
+        'font-family':'DM Mono,monospace',
+        'font-size':p.isToday?'10':'9',
+        'font-weight':p.isToday?'500':'400',
+        'letter-spacing':'.04em'
+      });
       lt.textContent=p.label;svg.appendChild(lt);
     }
     if(p.value===null) return;
@@ -1082,7 +1159,13 @@ function renderLineGraph(svgId, tooltipId, points, opts){
     svg.appendChild(mk('circle',{cx:x.toFixed(1),cy:y.toFixed(1),r:p.isToday?'4':'2.5',fill:col,stroke:p.isToday?'#05060D':'none','stroke-width':'2'}));
     if(points.length<=10||p.isToday){
       const valStr=(opts&&opts.centreZero&&p.value>=0?'+':'')+Math.round(p.value);
-      const vt=mk('text',{x:x.toFixed(1),y:(y-8).toFixed(1),'text-anchor':'middle',fill:col,'font-family':'DM Mono,monospace','font-size':'8'});
+      const vt=mk('text',{
+        x:x.toFixed(1),y:(y-9).toFixed(1),'text-anchor':'middle',
+        fill:p.isToday?'#FFFFFF':col,
+        'font-family':'DM Mono,monospace',
+        'font-size':p.isToday?'10':'8.5',
+        'font-weight':p.isToday?'600':'400'
+      });
       vt.textContent=valStr;svg.appendChild(vt);
     }
   });
@@ -1160,8 +1243,8 @@ function renderDashboard(cache){
       document.getElementById('delta-badge').style.display='flex';
       document.getElementById('badge-sep-1').style.display='block';
       const dn=document.getElementById('delta-badge-num');
-      dn.textContent=Math.abs(diff);
-      dn.className='h-badge-num '+(diff>=0?'pos-green':'neg');
+      dn.textContent=(diff>=0?'+':'-')+Math.abs(diff);
+      dn.className='h-badge-num';
     }
     document.getElementById('mult-text').textContent=c.mult+'×';
     renderStreakBadge(c.posStreak||0,c.negStreak||0);
@@ -1216,11 +1299,11 @@ function renderStreakBadge(posS,negS){
   const numEl=document.getElementById('streak-badge-num');
   const lblEl=document.getElementById('streak-badge-label');
   if(posS>0){
-    numEl.textContent=posS;numEl.className='h-badge-num pos-gold';lblEl.textContent='DAY STREAK';
+    numEl.textContent='⚡'+posS;numEl.className='h-badge-num';lblEl.textContent='DAY STREAK';
   } else if(negS>0){
-    numEl.textContent=negS;numEl.className='h-badge-num neg';lblEl.textContent='DAY DRAG';
+    numEl.textContent='⚡'+negS;numEl.className='h-badge-num';lblEl.textContent='DAY DRAG';
   } else {
-    numEl.textContent='—';numEl.className='h-badge-num dim';lblEl.textContent='STREAK';
+    numEl.textContent='—';numEl.className='h-badge-num';lblEl.textContent='STREAK';
   }
 }
 
@@ -1323,8 +1406,10 @@ document.addEventListener('keydown',e=>{
 
 // INIT
 (async()=>{
+  showDashboardSkeleton();
   const cache=await loadCache();
-  _habitsCache=cache;
+  _dataCache=cache;_habitsCache=cache;
+  hideDashboardSkeleton();
   renderDashboard(cache);
   // Re-render graphs on resize
   window.addEventListener('resize',()=>renderDashboard(cache));
