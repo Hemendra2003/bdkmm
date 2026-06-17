@@ -91,15 +91,10 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
   text-shadow:0 0 40px rgba(255,184,48,.75),0 0 80px rgba(255,184,48,.3),4px 4px 0 rgba(120,70,0,.45);
 }
 .velocity-unit-center{font-family:var(--mono);font-size:11px;color:var(--slate2);letter-spacing:.25em;text-align:center;margin-top:6px}
-.h-badge-pill{
-  display:inline-flex;align-items:center;justify-content:center;gap:6px;
-  background:rgba(255,200,100,.08);border:1px solid rgba(255,200,100,.22);
-  padding:5px 13px;border-radius:5px;min-height:28px;
-}
-.h-badge-pill span:not(.mult-dot){font-family:var(--pixel);font-size:13px;line-height:1;color:#FFC864}
+.h-badge span:not(.mult-dot){font-family:var(--pixel);font-size:13px;line-height:1;color:var(--green);text-shadow:0 0 10px rgba(61,255,110,.35)}
 .badge-emoji{font-family:initial;font-size:13px;margin-left:5px;vertical-align:-1px;display:inline-block}
 @keyframes mpulse{0%,100%{opacity:1}50%{opacity:0}}
-.mult-dot{width:4px;height:4px;background:#FFC864;border-radius:50%;display:inline-block;animation:mpulse 1.2s steps(2) infinite;flex-shrink:0}
+.mult-dot{width:4px;height:4px;background:var(--green);border-radius:50%;display:inline-block;animation:mpulse 1.2s steps(2) infinite;flex-shrink:0}
 
 /* hero badges row */
 .hero-badges{
@@ -499,17 +494,17 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
       <!-- badges row -->
       <div class="hero-badges">
         <div class="h-badge" id="delta-badge" style="display:none">
-          <div class="h-badge-pill"><span id="delta-badge-num">—</span></div>
+          <span id="delta-badge-num">—</span>
           <div class="h-badge-label">VS YESTERDAY</div>
         </div>
         <div class="h-badge-sep" id="badge-sep-1" style="display:none"></div>
         <div class="h-badge" id="streak-badge">
-          <div class="h-badge-pill"><span id="streak-badge-num">—</span></div>
+          <span id="streak-badge-num">—</span>
           <div class="h-badge-label" id="streak-badge-label">STREAK</div>
         </div>
         <div class="h-badge-sep" id="badge-sep-2"></div>
         <div class="h-badge">
-          <div class="h-badge-pill"><span class="mult-dot"></span><span id="mult-text">—</span></div>
+          <span class="mult-dot"></span><span id="mult-text">—</span>
           <div class="h-badge-label">MULTIPLIER</div>
         </div>
       </div>
@@ -1298,9 +1293,9 @@ function renderStreakBadge(posS,negS){
   const numEl=document.getElementById('streak-badge-num');
   const lblEl=document.getElementById('streak-badge-label');
   if(posS>0){
-    numEl.innerHTML=posS+'<span class="badge-emoji">⚡</span>';lblEl.textContent='DAY STREAK';
+    numEl.innerHTML=posS+'<span class="badge-emoji">🔥</span>';lblEl.textContent='DAY STREAK';
   } else if(negS>0){
-    numEl.innerHTML=negS+'<span class="badge-emoji">⚡</span>';lblEl.textContent='DAY DRAG';
+    numEl.innerHTML=negS+'<span class="badge-emoji">🔥</span>';lblEl.textContent='DAY DRAG';
   } else {
     numEl.textContent='—';lblEl.textContent='STREAK';
   }
