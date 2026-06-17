@@ -1152,26 +1152,31 @@ function renderLineGraph(svgId, tooltipId, points, opts){
     }
     if(p.value===null) return;
     const y=yOf(p.value);
-    const col=opts&&opts.centreZero?(p.value>=0?'#3DFF6E':'#FF3030'):(opts&&opts.dotColor?opts.dotColor:'#FFB830');
-    svg.appendChild(mk('circle',{cx:x.toFixed(1),cy:y.toFixed(1),r:p.isToday?'4':'2.5',fill:col,stroke:p.isToday?'#05060D':'none','stroke-width':'2'}));
+    // week graph (centreZero): value labels yellow; dot color green/red by sign
+    // month/summary (non-centreZero): value labels use dotColor (blue/gold)
+    const dotCol=opts&&opts.centreZero?(p.value>=0?'#3DFF6E':'#FF3030'):(opts&&opts.dotColor?opts.dotColor:'#FFB830');
+    const valCol=opts&&opts.centreZero?(p.isToday?'#FFFFFF':'#FFB830'):(p.isToday?'#FFFFFF':(opts&&opts.dotColor?opts.dotColor:'#FFB830'));
+    svg.appendChild(mk('circle',{cx:x.toFixed(1),cy:y.toFixed(1),r:p.isToday?'4':'2.5',fill:dotCol,stroke:p.isToday?'#05060D':'none','stroke-width':'2'}));
     if(points.length<=10||p.isToday){
       const valStr=Math.round(p.value);
       const vt=mk('text',{
         x:x.toFixed(1),y:(y-11).toFixed(1),'text-anchor':'middle',
-        fill:p.isToday?'#FFFFFF':col,
+        fill:valCol,
         'font-family':'DM Mono,monospace',
-        'font-size':p.isToday?'12':'10',
+        'font-size':p.isToday?(W>480?'16':'14'):(W>480?'14':'12'),
         'font-weight':p.isToday?'700':'500'
       });
       vt.textContent=valStr;svg.appendChild(vt);
     }
-    if(i<points.length-1){
+    // delta between points: only on week (centreZero) graph
+    if((opts&&opts.centreZero)&&i<points.length-1){
       const next=points[i+1];
       if(next.value!==null){
         const nx=xOf(i+1);
         const ny=yOf(next.value);
         const midX=((x+nx)/2).toFixed(1);
-        const midY=(Math.min(y,ny)-14).toFixed(1);
+        // sit closer to the line: 6px above the higher of the two points
+        const midY=(Math.min(y,ny)-6).toFixed(1);
         const diff=Math.round(next.value-p.value);
         if(diff!==0){
           const dt=mk('text',{x:midX,y:midY,'text-anchor':'middle',fill:diff>0?'#3DFF6E':'#FF3030','font-family':'DM Mono,monospace','font-size':'8','font-weight':'600',opacity:'0.85'});
