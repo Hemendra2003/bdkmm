@@ -19,11 +19,14 @@
   window.addEventListener('resize',resize);resize();loop();
 })();
 
-// DATE / STORAGE COMPATIBILITY
-function todayKey(){return new Date().toISOString().slice(0,10);}
+// STORAGE ADAPTERS
+// These wrappers preserve the original app call-sites while routing all data
+// through storage.js. Later, storage.js can become local-first without touching
+// the dashboard/questionnaire engine.
 async function sbLoadAll(){return window.Storage.loadEntries();}
 async function sbUpsert(row){return window.Storage.saveEntry(row.date,row.answers);}
 async function sbDeleteAll(){return window.Storage.deleteEntries();}
+function todayKey(){return new Date().toISOString().slice(0,10);}
 
 // QUESTIONS
 const QS=[
@@ -88,8 +91,7 @@ function recomputeAll(rows){
 
 async function loadCache(){
   let rows;
-  try{rows=await window.Storage.loadEntries();}
-  catch(e){console.warn('Load failed:',e.message);throw e;}
+  try{rows=await sbLoadAll();}catch(e){console.warn('Load failed:',e.message);return{};}
   if(!rows||!rows.length) return{};
   return recomputeAll(rows);
 }
@@ -231,9 +233,11 @@ function closeQuestionnaire(){clearAdvanceTimer();document.getElementById('quest
 async function savePartialAndClose(){
   closeQuestionnaire();
   if(!Object.keys(answers).length) return;
-  try{await window.Storage.saveEntry(todayKey(),answers);}
+  try{await sbUpsert({date:todayKey(),answers});}
   catch(e){alert('Save failed: '+e.message);return;}
-  const cache=await loadCache();_dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;renderDashboard(cache);
+  const cache=await loadCache();
+  _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
+  renderDashboard(cache);
 }
 
 function renderQ(){
@@ -292,10 +296,10 @@ async function finishQuestionnaire(){
   document.getElementById('loading-overlay').classList.add('active');
   const tk=todayKey();
   const startTime=Date.now();
-  try{await window.Storage.saveEntry(tk,answers);}
+  try{await sbUpsert({date:tk,answers});}
   catch(e){document.getElementById('loading-overlay').classList.remove('active');alert('Save failed: '+e.message);return;}
-  const cache=await loadCache();_dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
-  // brief minimum so the frame doesn't feel like a flicker, but stays snappy
+  const cache=await loadCache();
+  _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
   const elapsed=Date.now()-startTime;
   if(elapsed<180) await new Promise(r=>setTimeout(r,180-elapsed));
   document.getElementById('loading-overlay').classList.remove('active');
@@ -663,14 +667,19 @@ async function renderHabitsPage(){
 // DEV TOOLS
 async function devReset(){
   if(!confirm('Reset ALL your Momentum data?'))return;
-  try{await window.Storage.deleteEntries();}
+  try{await sbDeleteAll();}
   catch(e){alert('Reset failed: '+e.message);return;}
-  const cache={};_dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;renderDashboard(cache);
+  const cache={};
+  _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
+  renderDashboard(cache);
 }
 function devExport(){
-  window.Storage.exportEntries().then(rows=>{
+  sbLoadAll().then(rows=>{
     const b=new Blob([JSON.stringify(rows,null,2)],{type:'application/json'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='momentum_'+todayKey()+'.json';a.click();
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    a.download='momentum_'+todayKey()+'.json';
+    a.click();
   }).catch(e=>alert('Export failed: '+e.message));
 }
 function devImport(){document.getElementById('import-file').click();}
@@ -683,71 +692,22 @@ async function handleImport(e){
     else if(obj.entries)rows=Object.entries(obj.entries).map(([date,v])=>({date,answers:v.answers||{}}));
     else rows=Object.entries(obj).map(([date,v])=>({date,answers:v.answers||v}));
     await window.Storage.importEntries(rows);
-    const cache=await loadCache();_dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;renderDashboard(cache);alert('Imported '+rows.length+' entries.');
+    const cache=await loadCache();
+    _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
+    renderDashboard(cache);
+    alert('Imported '+rows.length+' entries.');
   }catch(err){alert('Import failed: '+err.message);}};
   r.readAsText(file);e.target.value='';
 }
 async function testDB(){
   const el=document.getElementById('db-status');el.textContent='Testing...';el.style.color='var(--slate2)';
-  try{const rows=await window.Storage.loadEntries();el.textContent='Connected - '+rows.length+' row(s)';el.style.color='var(--green)';}
+  try{const rows=await sbLoadAll();el.textContent='Connected — '+rows.length+' row(s)';el.style.color='var(--green)';}
   catch(e){el.textContent='Failed: '+e.message.slice(0,80);el.style.color='var(--negred)';}
   setTimeout(()=>{el.textContent='';},6000);
 }
 
-// AUTH UI
-function showAuthScreen(){
-  document.getElementById('auth-screen').classList.add('active');
-  const nav=document.querySelector('.bottom-nav');if(nav)nav.style.display='none';
-  document.querySelectorAll('.page').forEach(page=>page.style.display='none');
-}
-function showAppScreen(){
-  document.getElementById('auth-screen').classList.remove('active');
-  const nav=document.querySelector('.bottom-nav');if(nav)nav.style.display='flex';
-  document.querySelectorAll('.page').forEach(page=>page.style.display='');
-}
-function getAuthCredentials(){
-  return {
-    email:document.getElementById('auth-email').value,
-    password:document.getElementById('auth-password').value,
-  };
-}
-async function handlePasswordLogin(){
-  const {email,password}=getAuthCredentials();
-  const msg=document.getElementById('auth-message');
-  msg.style.color='var(--slate2)';msg.textContent='Logging in...';
-  try{await window.Auth.signInWithPassword(email,password);msg.style.color='var(--green)';msg.textContent='Logged in.';}
-  catch(e){msg.style.color='var(--negred)';msg.textContent=e.message||'Login failed.';}
-}
-async function handlePasswordSignup(){
-  const {email,password}=getAuthCredentials();
-  const msg=document.getElementById('auth-message');
-  msg.style.color='var(--slate2)';msg.textContent='Creating account...';
-  try{
-    const data=await window.Auth.signUpWithPassword(email,password);
-    if(data?.session){
-      msg.style.color='var(--green)';msg.textContent='Account created. You are logged in.';
-    } else {
-      msg.style.color='var(--green)';msg.textContent='Account created. Check your email if Supabase requires confirmation, then log in.';
-    }
-  }
-  catch(e){msg.style.color='var(--negred)';msg.textContent=e.message||'Signup failed.';}
-}
-async function handleGoogleLogin(){
-  const msg=document.getElementById('auth-message');
-  msg.style.color='var(--slate2)';msg.textContent='Opening Google sign in...';
-  try{await window.Auth.signInWithGoogle();}
-  catch(e){msg.style.color='var(--negred)';msg.textContent=e.message||'Google login failed.';}
-}
-async function handleSignOut(){
-  try{await window.Auth.signOut();}
-  catch(e){alert(e.message||'Sign out failed.');}
-}
-
 // KEYBOARD
 document.addEventListener('keydown',e=>{
-  if(document.getElementById('auth-screen').classList.contains('active')){
-    if(e.key==='Enter'){e.preventDefault();handlePasswordLogin();return;}
-  }
   if(document.getElementById('questionnaire').classList.contains('active')){
     if(['1','2','3'].includes(e.key)){e.preventDefault();selectAnswer(parseInt(e.key)-1);return;}
     if(e.key==='Backspace'||e.key==='ArrowLeft'){e.preventDefault();goBack();return;}
@@ -766,11 +726,8 @@ document.addEventListener('keydown',e=>{
 // INIT
 let _lastRenderedCache={};
 let _resizeBound=false;
-let _booting=false;
 
-async function bootAppForSession(){
-  if(_booting)return;
-  _booting=true;
+async function bootMomentum(){
   showDashboardSkeleton();
   try{
     const cache=await loadCache();
@@ -783,10 +740,8 @@ async function bootAppForSession(){
     }
   }catch(e){
     hideDashboardSkeleton();
-    console.error('App boot failed:',e.message);
+    console.error('Boot failed:',e);
     alert('Could not load your Momentum data: '+e.message);
-  }finally{
-    _booting=false;
   }
 }
 
@@ -796,10 +751,12 @@ async function bootAppForSession(){
     if(!session){
       _dataCache={};_habitsCache={};_lastRenderedCache={};
       hideDashboardSkeleton();
-      showAuthScreen();
+      document.body.classList.add('app-auth-locked');
+      window.AuthUI.show();
       return;
     }
-    showAppScreen();
-    await bootAppForSession();
+    document.body.classList.remove('app-auth-locked');
+    window.AuthUI.hide();
+    await bootMomentum();
   });
 })();
