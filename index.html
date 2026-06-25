@@ -70,6 +70,16 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 .page-header-back{background:none;border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:6px 12px;cursor:pointer;border-radius:4px;transition:all .15s}
 .page-header-back:hover{border-color:var(--slate2);color:var(--white)}
 
+/* IMBALANCE BANNER */
+.imbalance-banner{
+  width:100%;display:flex;align-items:flex-start;gap:10px;
+  background:rgba(255,184,48,.07);border:1px solid rgba(255,184,48,.25);
+  border-radius:var(--radius);padding:12px 14px;margin-bottom:20px;
+}
+.imbalance-banner-text{flex:1;font-family:var(--sans);font-size:13px;color:var(--gold);line-height:1.55}
+.imbalance-banner-dismiss{background:none;border:none;color:var(--slate2);cursor:pointer;font-size:13px;padding:2px 4px;flex-shrink:0;transition:color .15s}
+.imbalance-banner-dismiss:hover{color:var(--white)}
+
 /* HERO — centered */
 .hero-wrap{
   width:100%;
@@ -405,6 +415,111 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
 
 @media(max-width:600px){.auth-actions{flex-direction:column}.auth-card{padding:24px 18px}.auth-floating-signout{top:12px;right:12px}}
 
+/* MANAGE QUESTIONS */
+.mq-loading{font-family:var(--mono);font-size:11px;color:var(--slate2);padding:24px 0;letter-spacing:.08em}
+
+.mq-balance-bar{width:100%;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--bg3)}
+.mq-balance-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.mq-balance-label{font-family:var(--mono);font-size:10px;letter-spacing:.08em}
+.mq-balance-status{font-family:var(--pixel);font-size:8px;letter-spacing:.1em}
+.mq-balance-status.ok{color:var(--green)}
+.mq-balance-status.warn{color:var(--gold)}
+.mq-balance-track{width:100%;height:4px;background:var(--bg3);border-radius:2px;display:flex;overflow:hidden;gap:1px}
+.mq-balance-fill-pos{height:100%;background:var(--green);transition:width .3s;border-radius:2px 0 0 2px}
+.mq-balance-fill-neg{height:100%;background:var(--negred);transition:width .3s;border-radius:0 2px 2px 0}
+.mq-balance-warn-text{font-family:var(--mono);font-size:10px;color:var(--gold);margin-top:8px;letter-spacing:.04em;line-height:1.6}
+
+.mq-section{width:100%;margin-bottom:32px}
+.mq-section-title{font-family:var(--mono);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--slate2);margin-bottom:12px}
+.mq-count{color:var(--slate);font-size:8px}
+.mq-group-header{font-family:var(--mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--slate);margin:16px 0 6px;padding-bottom:6px;border-bottom:1px solid var(--bg3)}
+.mq-group-header:first-child{margin-top:0}
+
+.mq-active-row,.mq-lib-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04);gap:12px;
+}
+.mq-active-row:last-child,.mq-lib-row:last-child{border-bottom:none}
+.mq-row-left{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+.mq-row-text{font-family:var(--sans);font-size:14px;color:var(--white);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mq-row-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.mq-pos-dot{font-size:10px;color:var(--green);flex-shrink:0}
+.mq-neg-dot{font-size:10px;color:var(--negred);flex-shrink:0}
+
+.mq-tier-badge{
+  font-family:var(--pixel);font-size:8px;
+  border:1px solid;padding:3px 6px;letter-spacing:.06em;
+}
+.mq-fixed-lock{
+  font-family:var(--mono);font-size:8px;letter-spacing:.12em;
+  color:var(--slate);background:var(--bg3);padding:3px 7px;border-radius:3px;
+}
+
+.mq-tier-picker{display:flex;gap:3px}
+.mq-tier-btn{
+  background:none;border:1px solid var(--bg3);color:var(--slate2);
+  font-family:var(--mono);font-size:9px;letter-spacing:.06em;
+  width:26px;height:26px;cursor:pointer;transition:all .12s;
+  display:flex;align-items:center;justify-content:center;border-radius:3px;
+}
+.mq-tier-btn:hover{border-color:var(--slate2);color:var(--white)}
+.mq-tier-btn.active{font-weight:500}
+
+.mq-remove-btn{
+  background:none;border:none;color:var(--slate);
+  font-size:13px;cursor:pointer;padding:4px 6px;transition:color .12s;line-height:1;
+}
+.mq-remove-btn:hover{color:var(--negred)}
+.mq-add-btn{
+  background:none;border:1px solid var(--bg3);color:var(--slate2);
+  font-family:var(--mono);font-size:9px;letter-spacing:.08em;
+  padding:5px 10px;cursor:pointer;transition:all .12s;border-radius:3px;white-space:nowrap;
+}
+.mq-add-btn:hover{border-color:var(--green);color:var(--green);background:rgba(61,255,110,.05)}
+.mq-add-btn:disabled{opacity:.4;cursor:default}
+
+/* Custom form */
+.mq-custom-form{background:var(--bg2);border:1px solid var(--bg3);padding:16px;border-radius:var(--radius)}
+.mq-field-group{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.mq-field-group:last-child{margin-bottom:0}
+.mq-field-row{display:flex;gap:12px;margin-bottom:12px}
+.mq-label{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--slate2);font-weight:500}
+.mq-input{
+  width:100%;background:var(--bg);border:1px solid var(--bg3);color:var(--white);
+  font-family:var(--mono);font-size:12px;padding:10px 12px;border-radius:4px;outline:none;
+  transition:border-color .12s;
+}
+.mq-input:focus{border-color:rgba(255,184,48,.4)}
+.mq-input::placeholder{color:var(--slate2)}
+.mq-opts-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.mq-opt-input{font-size:11px;padding:8px 8px}
+.mq-segmented{display:flex;border:1px solid var(--bg3);border-radius:4px;overflow:hidden}
+.mq-seg{
+  flex:1;background:none;border:none;color:var(--slate2);
+  font-family:var(--mono);font-size:9px;letter-spacing:.08em;
+  padding:9px 8px;cursor:pointer;transition:all .12s;
+  border-right:1px solid var(--bg3);text-align:center;
+}
+.mq-seg:last-child{border-right:none}
+.mq-seg:hover{color:var(--white);background:var(--bg3)}
+.mq-seg.active{background:var(--bg3);color:var(--gold)}
+.mq-custom-footer{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:12px}
+.mq-err{font-family:var(--mono);font-size:10px;color:var(--negred);flex:1;letter-spacing:.04em;line-height:1.5}
+.mq-btn-add{
+  background:rgba(61,255,110,.08);border:1px solid rgba(61,255,110,.3);color:var(--green);
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  padding:11px 20px;cursor:pointer;border-radius:var(--radius);
+  transition:all .15s;white-space:nowrap;
+}
+.mq-btn-add:hover{background:rgba(61,255,110,.14);box-shadow:0 0 20px rgba(61,255,110,.15)}
+.mq-btn-add:disabled{opacity:.4;cursor:default;box-shadow:none}
+
+@media(max-width:600px){
+  .mq-field-row{flex-direction:column}
+  .mq-opts-row{grid-template-columns:1fr}
+  .mq-row-text{font-size:13px}
+}
+
 </style>
 </head>
 <body>
@@ -441,6 +556,10 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19V10M12 19V5M20 19v-7"/></svg>
       <span>Habits</span>
     </button>
+    <button class="nav-item" id="nav-questions" onclick="showPage('questions')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+      <span>My Questions</span>
+    </button>
   </div>
 </nav>
 
@@ -463,6 +582,11 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
     <div class="page-header">
       <div class="page-header-title">MOMENTUM</div>
       <div class="page-header-right" id="today-date-label"></div>
+    </div>
+
+    <div id="imbalance-banner" class="imbalance-banner" style="display:none">
+      <div class="imbalance-banner-text" id="imbalance-banner-text"></div>
+      <button class="imbalance-banner-dismiss" onclick="dismissImbalanceBanner()">✕</button>
     </div>
 
     <!-- HERO — centered -->
@@ -625,7 +749,16 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
     </div>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
 
+    <button class="why-link-btn" onclick="showPage('questions')">⚙ Manage your questions — add, remove, retier →</button>
     <button class="why-link-btn" onclick="showPage('why')">Why Momentum? — read about the engine →</button>
+    <!-- Imbalance warning banner, shown after migration if set is lopsided -->
+    <div id="imbalance-banner" style="display:none;width:100%;background:rgba(255,184,48,.06);border:1px solid rgba(255,184,48,.22);padding:12px 16px;margin-top:12px;border-radius:var(--radius);align-items:flex-start;gap:12px;flex-direction:column">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+        <span style="font-family:var(--pixel);font-size:8px;color:var(--gold);letter-spacing:.1em">⚠ QUESTION BALANCE</span>
+        <button onclick="dismissImbalanceBanner()" style="background:none;border:none;color:var(--slate2);cursor:pointer;font-size:14px;line-height:1;padding:0">✕</button>
+      </div>
+      <span id="imbalance-banner-text" style="font-family:var(--mono);font-size:10px;color:var(--silver);line-height:1.6;letter-spacing:.03em"></span>
+    </div>
   </div>
 </div>
 
@@ -645,6 +778,17 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
       <div class="legend-item"><div class="legend-dot" style="background:#FFB830"></div>40–59% — work on it</div>
       <div class="legend-item"><div class="legend-dot" style="background:#FF4444"></div>0–39% — needs attention</div>
     </div>
+  </div>
+</div>
+
+<!-- MANAGE QUESTIONS -->
+<div id="page-questions" class="page">
+  <div class="page-wrap">
+    <div class="page-header">
+      <div class="page-header-title">MY QUESTIONS</div>
+      <button class="page-header-back" onclick="showPage('dashboard')">← Back</button>
+    </div>
+    <div id="mq-root"></div>
   </div>
 </div>
 
@@ -706,9 +850,9 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
 <div id="questionnaire" class="overlay">
   <button class="q-close" onclick="closeQuestionnaire()">✕ ESC</button>
   <div class="q-progress-bar"><div class="q-progress-fill" id="q-progress"></div></div>
-  <div class="q-counter" id="q-counter">01 / 15</div>
-  <div class="q-category" id="q-category">SLEEP</div>
-  <div class="q-text" id="q-text">Sleep quality</div>
+  <div class="q-counter" id="q-counter">— / —</div>
+  <div class="q-category" id="q-category">—</div>
+  <div class="q-text" id="q-text">—</div>
   <div class="q-options" id="q-options"></div>
   <div class="q-nav">
     <button class="q-back" id="q-back-btn" onclick="goBack()" disabled>← Back</button>
