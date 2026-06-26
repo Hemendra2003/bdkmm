@@ -221,53 +221,81 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
   z-index:200;align-items:center;justify-content:center;flex-direction:column;padding:32px 24px;
 }
 .overlay.active{display:flex}
-.q-close{
-  position:absolute;top:18px;right:18px;
+
+/* BULK ENTRY — scrollable list with inline segmented buttons */
+.be-overlay{align-items:flex-start!important;justify-content:flex-start!important;padding:0!important;overflow-y:auto}
+.be-scroll{width:100%;max-width:600px;margin:0 auto;padding:60px 20px 120px}
+.be-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--bg3)}
+.be-header-title{font-family:var(--pixel);font-size:11px;color:var(--gold);letter-spacing:.16em;text-shadow:0 0 12px rgba(255,184,48,.3)}
+.be-header-close{background:var(--bg3);border:1px solid var(--bg4);color:var(--slate2);font-family:var(--mono);font-size:9px;letter-spacing:.1em;cursor:pointer;padding:7px 12px;border-radius:4px;transition:color .12s,border-color .12s}
+.be-header-close:hover{color:var(--white);border-color:var(--slate2)}
+
+.be-group-header{font-family:var(--mono);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--slate);margin:24px 0 8px;display:flex;align-items:center;gap:12px}
+.be-group-header::after{content:'';flex:1;height:1px;background:var(--bg3)}
+
+.be-q-row{
+  display:flex;flex-direction:column;gap:6px;
+  background:var(--bg2);border:1px solid var(--bg3);border-radius:var(--radius);
+  padding:12px 14px;margin-bottom:6px;
+  transition:border-color .12s;
+}
+.be-q-row:hover{border-color:var(--bg4)}
+.be-q-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.be-q-text{font-family:var(--sans);font-size:15px;color:var(--white);font-weight:400;line-height:1.4}
+.be-q-badge-row{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.be-q-tier{
+  font-family:var(--pixel);font-size:8px;border:1px solid;padding:2px 5px;letter-spacing:.06em;
+}
+.be-q-core{font-family:var(--mono);font-size:8px;letter-spacing:.12em;color:var(--slate);background:var(--bg3);padding:2px 6px;border-radius:3px}
+
+.be-segmented{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+.be-seg-btn{
   background:var(--bg3);border:1px solid var(--bg4);color:var(--slate2);
-  font-family:var(--mono);font-size:9px;letter-spacing:.1em;
-  cursor:pointer;padding:7px 12px;border-radius:4px;transition:color .12s,border-color .12s;
+  font-family:var(--sans);font-size:12px;font-weight:400;
+  padding:8px 6px;cursor:pointer;border-radius:4px;
+  transition:all .1s;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
-.q-close:hover{color:var(--white);border-color:var(--slate2)}
+.be-seg-btn:hover{border-color:var(--slate);color:var(--white)}
+.be-seg-btn.active{background:none;font-weight:500}
+.be-seg-btn.active.pos{background:rgba(61,255,110,.12);border-color:var(--green);color:var(--green)}
+.be-seg-btn.active.neutral{background:rgba(255,184,48,.1);border-color:var(--gold);color:var(--gold)}
+.be-seg-btn.active.neg{background:rgba(255,48,48,.1);border-color:var(--negred);color:var(--negred)}
+.be-seg-btn.prev-highlight{border-color:#FF69B4!important;background:rgba(255,105,180,.08)!important;color:#FF69B4!important}
 
-/* progress */
-.q-progress-bar{width:100%;max-width:480px;height:2px;background:var(--bg3);margin-bottom:28px;border-radius:2px;overflow:hidden}
-.q-progress-fill{height:100%;background:var(--red);transition:width .2s ease-out;border-radius:2px}
+.be-save-btn-wrap{position:sticky;bottom:0;padding:16px 0;background:var(--bg);margin-top:20px}
+.be-save-btn{width:100%;background:rgba(61,255,110,.08);border:1px solid rgba(61,255,110,.3);color:var(--green);font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:16px 24px;cursor:pointer;border-radius:var(--radius);transition:all .15s;text-align:center}
+.be-save-btn:hover{background:rgba(61,255,110,.14);box-shadow:0 0 20px rgba(61,255,110,.15)}
+.be-save-btn:disabled{opacity:.4;cursor:default;box-shadow:none}
 
-.q-counter{font-family:var(--mono);font-size:9px;color:var(--slate2);letter-spacing:.14em;margin-bottom:6px;text-align:center}
-.q-category{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;text-align:center}
-.q-text{
-  font-family:var(--pixel);font-size:clamp(10px,2.4vw,13px);
-  text-align:center;color:var(--white);max-width:440px;line-height:2;margin-bottom:24px;
-}
-.q-options{display:flex;flex-direction:column;gap:7px;width:100%;max-width:400px}
-.q-option{
-  display:flex;align-items:center;gap:14px;
-  background:var(--bg2);border:1px solid var(--bg3);
-  padding:13px 18px;cursor:pointer;
-  font-family:var(--sans);font-size:16px;font-weight:400;color:var(--white);
-  position:relative;border-radius:var(--radius);
-  transition:border-color .1s,background .1s;
-}
-.q-option:hover{border-color:rgba(214,40,40,.5);background:rgba(214,40,40,.05)}
-.q-option.flash{border-color:var(--gold)!important;background:rgba(255,184,48,.08)!important}
-.q-option.prev-selected{border-color:rgba(255,105,180,.45)!important;background:rgba(255,105,180,.07)!important}
-.q-prev-tag{font-family:var(--mono);font-size:8px;color:#FF69B4;letter-spacing:.1em;margin-left:auto;flex-shrink:0}
-.q-key{
-  font-family:var(--mono);font-size:9px;color:var(--gold);
-  background:rgba(255,184,48,.1);border:1px solid rgba(255,184,48,.3);
-  width:26px;height:26px;display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;border-radius:4px;
-}
-.q-nav{display:flex;align-items:center;gap:10px;margin-top:18px;flex-wrap:wrap;justify-content:space-between;width:100%;max-width:400px}
-.q-back,.q-next,.q-save{
-  background:none;border:1px solid var(--bg3);color:var(--slate2);
-  font-family:var(--mono);font-size:10px;letter-spacing:.1em;
-  padding:8px 18px;cursor:pointer;border-radius:4px;transition:all .12s;
-}
-.q-back:hover,.q-save:hover{border-color:var(--slate2);color:var(--white)}
-.q-back:disabled,.q-next:disabled{opacity:.2;cursor:default}
-.q-next:not(:disabled){border-color:rgba(255,184,48,.45);color:var(--gold)}
-.q-next:not(:disabled):hover{background:rgba(255,184,48,.07)}
+/* BOTTOM SHEET — library drawer */
+.drawer{display:none;position:fixed;z-index:300;left:0;right:0;bottom:0;background:var(--bg2);border-top:1px solid var(--bg3);border-radius:16px 16px 0 0;max-height:85vh;overflow:hidden;flex-direction:column;animation:drawerUp .25s ease-out}
+.drawer.active{display:flex}
+@keyframes drawerUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.drawer-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--bg3);flex-shrink:0}
+.drawer-header-title{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--white)}
+.drawer-close{background:none;border:none;color:var(--slate2);font-size:16px;cursor:pointer;padding:4px;transition:color .12s}
+.drawer-close:hover{color:var(--white)}
+.drawer-search{flex-shrink:0;padding:12px 20px;border-bottom:1px solid var(--bg3)}
+.drawer-search-input{width:100%;background:var(--bg);border:1px solid var(--bg3);color:var(--white);font-family:var(--mono);font-size:12px;padding:10px 14px;border-radius:6px;outline:none;transition:border-color .12s}
+.drawer-search-input:focus{border-color:rgba(255,184,48,.4)}
+.drawer-search-input::placeholder{color:var(--slate2)}
+.drawer-body{overflow-y:auto;flex:1;padding:8px 20px 24px}
+.drawer-cat-header{font-family:var(--mono);font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--slate);margin:16px 0 4px;padding-bottom:4px;border-bottom:1px solid var(--bg3)}
+.drawer-cat-header:first-child{margin-top:8px}
+.drawer-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04);gap:10px}
+.drawer-row:last-child{border-bottom:none}
+.drawer-row-left{display:flex;align-items:center;gap:8px;flex:1;min-width:0}
+.drawer-row-text{font-family:var(--sans);font-size:13px;color:var(--white);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer-row-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.drawer-tier-btn{background:none;border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:9px;letter-spacing:.06em;width:24px;height:24px;cursor:pointer;transition:all .1s;border-radius:3px;display:flex;align-items:center;justify-content:center}
+.drawer-tier-btn:hover{border-color:var(--slate2);color:var(--white)}
+.drawer-tier-btn.active{font-weight:500}
+.drawer-add-btn{background:none;border:1px solid var(--bg3);color:var(--slate2);font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:4px 10px;cursor:pointer;transition:all .12s;border-radius:3px;white-space:nowrap}
+.drawer-add-btn:hover{border-color:var(--green);color:var(--green);background:rgba(61,255,110,.05)}
+.drawer-add-btn:disabled{opacity:.4;cursor:default;background:rgba(61,255,110,.08);border-color:var(--green);color:var(--green)}
+.drawer-empty{font-family:var(--mono);font-size:10px;color:var(--slate2);text-align:center;padding:32px 0;letter-spacing:.08em}
+.drawer-backdrop{display:none;position:fixed;inset:0;z-index:299;background:rgba(0,0,0,.5)}
+.drawer-backdrop.active{display:block}
 
 /* SUMMARY */
 #summary-overlay{position:fixed;overflow-y:auto;align-items:flex-start;justify-content:flex-start;padding:36px 24px 80px;scrollbar-width:none}
@@ -379,7 +407,9 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
   .habit-row{grid-template-columns:1fr 40px 90px;gap:8px}
   .habit-name{font-size:14px}
   .stats-grid{grid-template-columns:repeat(3,1fr)}
-  .q-option{padding:12px 14px;font-size:15px}
+  .be-scroll{padding:60px 12px 100px}
+  .be-q-text{font-size:14px}
+  .be-seg-btn{font-size:11px;padding:7px 4px}
   .sum-hero{gap:8px}.sum-hero-card{padding:16px 10px}
   .compare-grid{gap:6px}.compare-card{padding:10px 6px}.compare-vel{font-size:13px}
   .formula-row{gap:5px}.formula-notes{grid-template-columns:1fr}
@@ -387,7 +417,6 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 }
 @media(prefers-reduced-motion:reduce){
   .rocket-float{animation:none}
-  .q-progress-fill{transition:none}
 }
 
 /* AUTH */
@@ -584,11 +613,6 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
       <div class="page-header-right" id="today-date-label"></div>
     </div>
 
-    <div id="imbalance-banner" class="imbalance-banner" style="display:none">
-      <div class="imbalance-banner-text" id="imbalance-banner-text"></div>
-      <button class="imbalance-banner-dismiss" onclick="dismissImbalanceBanner()">✕</button>
-    </div>
-
     <!-- HERO — centered -->
     <div class="hero-wrap">
       <div class="rocket-float">
@@ -752,12 +776,9 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
     <button class="why-link-btn" onclick="showPage('questions')">⚙ Manage your questions — add, remove, retier →</button>
     <button class="why-link-btn" onclick="showPage('why')">Why Momentum? — read about the engine →</button>
     <!-- Imbalance warning banner, shown after migration if set is lopsided -->
-    <div id="imbalance-banner" style="display:none;width:100%;background:rgba(255,184,48,.06);border:1px solid rgba(255,184,48,.22);padding:12px 16px;margin-top:12px;border-radius:var(--radius);align-items:flex-start;gap:12px;flex-direction:column">
-      <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
-        <span style="font-family:var(--pixel);font-size:8px;color:var(--gold);letter-spacing:.1em">⚠ QUESTION BALANCE</span>
-        <button onclick="dismissImbalanceBanner()" style="background:none;border:none;color:var(--slate2);cursor:pointer;font-size:14px;line-height:1;padding:0">✕</button>
-      </div>
-      <span id="imbalance-banner-text" style="font-family:var(--mono);font-size:10px;color:var(--silver);line-height:1.6;letter-spacing:.03em"></span>
+    <div id="imbalance-banner" class="imbalance-banner" style="display:none;margin-top:12px">
+      <div class="imbalance-banner-text" id="imbalance-banner-text"></div>
+      <button class="imbalance-banner-dismiss" onclick="dismissImbalanceBanner()">✕</button>
     </div>
   </div>
 </div>
@@ -841,26 +862,24 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
     <div class="why-section">
       <div class="why-section-num">03</div>
       <div class="why-section-title">Shadow drag</div>
-      <div class="why-section-body"><strong>60% of yesterday's drag carries forward</strong> as headwind. Fades over 2–3 clean days.</div>
+      <div class="why-section-body"><strong>30% of yesterday's drag carries forward</strong> as headwind. Fades over 2–3 clean days.</div>
     </div>
   </div>
 </div>
 
-<!-- QUESTIONNAIRE OVERLAY -->
-<div id="questionnaire" class="overlay">
-  <button class="q-close" onclick="closeQuestionnaire()">✕ ESC</button>
-  <div class="q-progress-bar"><div class="q-progress-fill" id="q-progress"></div></div>
-  <div class="q-counter" id="q-counter">— / —</div>
-  <div class="q-category" id="q-category">—</div>
-  <div class="q-text" id="q-text">—</div>
-  <div class="q-options" id="q-options"></div>
-  <div class="q-nav">
-    <button class="q-back" id="q-back-btn" onclick="goBack()" disabled>← Back</button>
-    <button class="q-save" onclick="savePartialAndClose()">Save &amp; close</button>
-    <button class="q-next" id="q-next-btn" onclick="goNext()" disabled>Next →</button>
+<!-- BULK ENTRY OVERLAY — scrollable list, inline segmented options -->
+<div id="questionnaire" class="overlay be-overlay">
+  <div class="be-scroll" id="be-scroll">
+    <div class="be-header">
+      <div class="be-header-title">TODAY'S ENTRY</div>
+      <button class="be-header-close" onclick="closeQuestionnaire()">✕ ESC</button>
+    </div>
+    <div id="be-questions"></div>
+    <div class="be-save-btn-wrap">
+      <button class="be-save-btn" id="be-save-btn" onclick="finishQuestionnaire()">🚀 Save &amp; Finish</button>
+    </div>
   </div>
 </div>
-
 
 <!-- LOADING OVERLAY — bridges questionnaire close to summary open -->
 <div id="loading-overlay" class="overlay">
@@ -890,6 +909,21 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
     </div>
     <button class="btn btn-primary-blue" onclick="closeSummaryToHome()" style="margin:24px 0">Back to Dashboard</button>
   </div>
+</div>
+
+<!-- LIBRARY DRAWER BACKDROP -->
+<div id="drawer-backdrop" class="drawer-backdrop" onclick="closeLibraryDrawer()"></div>
+
+<!-- LIBRARY DRAWER — bottom sheet -->
+<div id="library-drawer" class="drawer">
+  <div class="drawer-header">
+    <div class="drawer-header-title">QUESTION LIBRARY</div>
+    <button class="drawer-close" onclick="closeLibraryDrawer()">✕</button>
+  </div>
+  <div class="drawer-search">
+    <input class="drawer-search-input" id="drawer-search" type="text" placeholder="Search questions…" oninput="filterLibraryDrawer()">
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

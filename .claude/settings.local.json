@@ -1,10 +1,22 @@
 {
   "env": {
-    "ANTHROPIC_BASE_URL": "http://localhost:20128/v1",
-    "ANTHROPIC_AUTH_TOKEN": "sk-812fb730e7e03fa2-a04f83-dc36141e",
-    "ANTHROPIC_MODEL": "nvidia/z-ai/glm-5.1",
-    "ANTHROPIC_API_KEY": "sk-812fb730e7e03fa2-a04f83-dc36141e",
-    "ANTHROPIC_SMALL_FAST_MODEL": "nvidia/z-ai/glm-5.1",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "true"
+    "ANTHROPIC_BASE_URL": "https://winterwalls.com/",
+    "ANTHROPIC_AUTH_TOKEN": "sk-ant-api03-e91975c43a08f1a662c8eaa217aac4ea7564fdd61576206fb230ea818f4288e5",
+    "ANTHROPIC_MODEL": "claude-opus-4-8",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
+    "ANTHROPIC_SMALL_FAST_MODEL": "gpt-5.3-codex-maxthink",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "gpt-5.3-codex-maxthink",
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "CLAUDE_CODE_ATTRIBUTION_HEADER": "0"
+  },
+  "permissions": {
+    "deny": [
+      "WebSearch"
+    ],
+    "allow": [
+      "Bash(node --check app.js)",
+      "Bash(echo \"JS syntax: $?\")"
+    ]
   }
 }

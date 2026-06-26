@@ -26,10 +26,11 @@ window.Storage={
     return data;
   },
   async deleteEntries(){
-    await this.requireUserId();
+    const userId=await this.requireUserId();
     const {error}=await window.supabaseClient
       .from('momentum_entries')
       .delete()
+      .eq('user_id',userId)
       .neq('date','0000-00-00');
     if(error) throw error;
     return true;

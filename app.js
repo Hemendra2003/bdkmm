@@ -59,23 +59,85 @@ const FIXED_QUESTIONS=[
 // Stock library users can pick from when building their question set.
 // Default tier is a suggestion only — user can change it at add-time.
 const QUESTION_LIBRARY=[
+  // ── MORNING (8) ──
   {libKey:'wake',       cat:'MORNING',   text:'Wake-up time',             opts:['After 10am','8–10am','Before 8am'],                polarity:'positive', defaultTier:'A'},
   {libKey:'morning',    cat:'MORNING',   text:'Morning feel',             opts:['Rough start','Okay','Sharp & clear'],              polarity:'positive', defaultTier:'B'},
   {libKey:'shower',     cat:'MORNING',   text:'Shower before noon',       opts:['Skipped','Evening','Before noon'],                 polarity:'positive', defaultTier:'B'},
   {libKey:'skincare',   cat:'MORNING',   text:'Skincare + medication',    opts:['Skipped','Partial','Fully done'],                  polarity:'positive', defaultTier:'B'},
+  {libKey:'journal',    cat:'MORNING',   text:'Morning journaling',       opts:['Skipped','Brief','10+ min'],                       polarity:'positive', defaultTier:'B'},
+  {libKey:'cold',       cat:'MORNING',   text:'Cold plunge / shower',     opts:['Skipped','Lukewarm finish','Full cold'],            polarity:'positive', defaultTier:'A'},
+  {libKey:'stretch',    cat:'MORNING',   text:'Morning stretching',       opts:['None','Minimal','Full routine'],                   polarity:'positive', defaultTier:'B'},
+  {libKey:'sunlight',   cat:'MORNING',   text:'Morning sunlight exposure',opts:['None','Indirect / brief','10+ min outdoors'],        polarity:'positive', defaultTier:'B'},
+
+  // ── BODY (9) ──
   {libKey:'gym',        cat:'BODY',      text:'Gym / workout',            opts:['Rest day','Light movement','Full session'],        polarity:'positive', defaultTier:'A'},
   {libKey:'meals',      cat:'BODY',      text:'Heavy meal (bulking)',     opts:['Skipped / under-ate','Light eating','Hit macros'], polarity:'positive', defaultTier:'B'},
   {libKey:'supps',      cat:'BODY',      text:'Creatine + protein',       opts:['Skipped both','One of two','Both done'],           polarity:'positive', defaultTier:'B'},
+  {libKey:'steps',      cat:'BODY',      text:'Daily steps',              opts:['<5k steps','5-10k steps','10k+ steps'],            polarity:'positive', defaultTier:'B'},
+  {libKey:'water',      cat:'BODY',      text:'Water intake',             opts:['<2 glasses','4-6 glasses','8+ glasses'],           polarity:'positive', defaultTier:'B'},
+  {libKey:'sleep_sch',  cat:'BODY',      text:'Consistent sleep schedule',opts:['Went to bed late','Slight delay','On time'],         polarity:'positive', defaultTier:'A'},
+  {libKey:'posture',    cat:'BODY',      text:'Posture awareness',        opts:['Poor / slouching','Occasional check','Maintained'], polarity:'positive', defaultTier:'B'},
+  {libKey:'cardio',     cat:'BODY',      text:'Cardio / conditioning',    opts:['None','Light / short','Full session'],             polarity:'positive', defaultTier:'A'},
+  {libKey:'weights',    cat:'BODY',      text:'Strength training',        opts:['Skipped','Partial','Completed'],                  polarity:'positive', defaultTier:'A'},
+
+  // ── DEEP WORK (8) ──
   {libKey:'work_noon',  cat:'DEEP WORK', text:'Started work before noon', opts:["Didn't start",'After noon','Before noon'],         polarity:'positive', defaultTier:'A'},
   {libKey:'deep_work',  cat:'DEEP WORK', text:'Productive deep work',     opts:['None','Partial session','Full block'],             polarity:'positive', defaultTier:'S'},
+  {libKey:'side_proj',  cat:'DEEP WORK', text:'Side project progress',    opts:['None','Minor progress','Significant'],             polarity:'positive', defaultTier:'B'},
+  {libKey:'learning',   cat:'DEEP WORK', text:'Learning / study session', opts:['None','<30 min','1+ hour'],                        polarity:'positive', defaultTier:'A'},
+  {libKey:'coding',     cat:'DEEP WORK', text:'Coding practice',          opts:['None','<1 hour','1+ hours'],                       polarity:'positive', defaultTier:'B'},
+  {libKey:'writing',    cat:'DEEP WORK', text:'Writing / notes',          opts:['None','Brief','Substantial'],                      polarity:'positive', defaultTier:'B'},
+  {libKey:'planning',   cat:'DEEP WORK', text:'Daily planning',           opts:['None','Rough plan','Detailed plan'],               polarity:'positive', defaultTier:'B'},
+
+  // ── GROWTH (8) ──
   {libKey:'reading',    cat:'GROWTH',    text:'Reading',                  opts:['None','A little','30+ min'],                       polarity:'positive', defaultTier:'B'},
   {libKey:'mind',       cat:'GROWTH',    text:'Mindfulness / stillness',  opts:['None','Brief','Dedicated'],                        polarity:'positive', defaultTier:'B'},
+  {libKey:'gratitude',  cat:'GROWTH',    text:'Gratitude practice',       opts:['None','Thought about it','Wrote it down'],          polarity:'positive', defaultTier:'B'},
+  {libKey:'new_skill',  cat:'GROWTH',    text:'Worked on a new skill',    opts:['None','Little time','Focused effort'],             polarity:'positive', defaultTier:'A'},
+  {libKey:'language',   cat:'GROWTH',    text:'Language learning',        opts:['Skipped','10-20 min','30+ min'],                   polarity:'positive', defaultTier:'B'},
+  {libKey:'meditation', cat:'GROWTH',    text:'Meditation',               opts:['None','<5 min','10+ min'],                         polarity:'positive', defaultTier:'A'},
+  {libKey:'breathwork', cat:'GROWTH',    text:'Breathwork / box breathing',opts:['None','Brief','Full session'],                    polarity:'positive', defaultTier:'B'},
+  {libKey:'social_con', cat:'GROWTH',    text:'Social connection',        opts:['Isolated','Brief chat','Quality time'],            polarity:'positive', defaultTier:'B'},
+
+  // ── FINANCE (5) ──
+  {libKey:'budget',     cat:'FINANCE',   text:'Budget tracking',          opts:['Ignored','Checked once','Logged everything'],      polarity:'positive', defaultTier:'B'},
+  {libKey:'saved',      cat:'FINANCE',   text:'Saved money today',        opts:['Overspent','Broke even','Put money aside'],        polarity:'positive', defaultTier:'B'},
+  {libKey:'earned',     cat:'FINANCE',   text:'Income-producing work',    opts:['None','Some','Productive'],                        polarity:'positive', defaultTier:'A'},
+  {libKey:'invest',     cat:'FINANCE',   text:'Investment review',        opts:['Ignored','Checked briefly','Reviewed properly'],   polarity:'positive', defaultTier:'B'},
+  {libKey:'bills',      cat:'FINANCE',   text:'Bills / admin on time',    opts:['Missed / late','Did some','All done'],             polarity:'positive', defaultTier:'B'},
+
+  // ── SOCIAL (5) ──
+  {libKey:'family',     cat:'SOCIAL',    text:'Called family / loved ones',opts:['No contact','Brief call','Meaningful talk'],       polarity:'positive', defaultTier:'B'},
+  {libKey:'friends',    cat:'SOCIAL',    text:'Spent time with friends',  opts:['None','Quick check-in','Quality time'],            polarity:'positive', defaultTier:'B'},
+  {libKey:'helped',     cat:'SOCIAL',    text:'Helped someone',           opts:['No','Minor favor','Went out of way'],             polarity:'positive', defaultTier:'A'},
+  {libKey:'social_med', cat:'SOCIAL',    text:'Social media consumption', opts:['Excessive hours','Some scroll','Minimal / none'],  polarity:'negative', defaultTier:'A'},
+
+  // ── CREATIVE (5) ──
+  {libKey:'creative',   cat:'CREATIVE',  text:'Creative work',            opts:['None','Minor','Focused session'],                  polarity:'positive', defaultTier:'B'},
+  {libKey:'music',      cat:'CREATIVE',  text:'Music practice',           opts:['Skipped','<15 min','30+ min'],                     polarity:'positive', defaultTier:'B'},
+  {libKey:'art',        cat:'CREATIVE',  text:'Art / drawing / design',   opts:['None','Brief','Focused session'],                  polarity:'positive', defaultTier:'B'},
+  {libKey:'photo',      cat:'CREATIVE',  text:'Photography',              opts:['None','A few shots','Full session'],               polarity:'positive', defaultTier:'B'},
+  {libKey:'cooking',    cat:'CREATIVE',  text:'Cooked a proper meal',     opts:['Ate out / skipped','Quick meal','Home cooked'],    polarity:'positive', defaultTier:'B'},
+
+  // ── KILLERS (12) ──
   {libKey:'doom',       cat:'KILLERS',   text:'Doomscrolling',            opts:['Heavy scrolling','Some scrolling','None at all'],  polarity:'negative', defaultTier:'S'},
   {libKey:'porn',       cat:'KILLERS',   text:'Porn',                     opts:['Heavy use','Slipped once','None at all'],          polarity:'negative', defaultTier:'S'},
   {libKey:'junk_food',  cat:'KILLERS',   text:'Junk food binge',          opts:['Binged','Some junk','Clean eating'],               polarity:'negative', defaultTier:'A'},
   {libKey:'procrast',   cat:'KILLERS',   text:'Procrastination',          opts:['Lost the day','Some delay','Stayed on track'],     polarity:'negative', defaultTier:'A'},
   {libKey:'alcohol',    cat:'KILLERS',   text:'Alcohol',                  opts:['Heavy drinking','1-2 drinks','None'],              polarity:'negative', defaultTier:'A'},
   {libKey:'oversleep',  cat:'KILLERS',   text:'Overslept / wasted morning',opts:['Slept past noon','Slept in a bit','Up on time'],  polarity:'negative', defaultTier:'B'},
+  {libKey:'gaming',     cat:'KILLERS',   text:'Gaming binge',             opts:['Hours lost','Moderate play','None today'],         polarity:'negative', defaultTier:'B'},
+  {libKey:'neg_talk',   cat:'KILLERS',   text:'Negative self-talk',       opts:['All day spirals','Some negativity','Stayed positive'],polarity:'negative', defaultTier:'A'},
+  {libKey:'sugar',      cat:'KILLERS',   text:'Sugar / sweets',           opts:['Ate a lot','A little','None'],                     polarity:'negative', defaultTier:'B'},
+  {libKey:'caffeine_l', cat:'KILLERS',   text:'Caffeine after 4pm',       opts:['Had late coffee','Small amount','None after 4'],    polarity:'negative', defaultTier:'B'},
+  {libKey:'late_screen',cat:'KILLERS',   text:'Late night screen',        opts:['Browsed in bed','Some phone','Off by bedtime'],    polarity:'negative', defaultTier:'B'},
+  {libKey:'complain',   cat:'KILLERS',   text:'Gossip / complaint spiral',opts:['All day','Some venting','Stayed constructive'],    polarity:'negative', defaultTier:'B'},
+
+  // ── ENVIRONMENT (4) ──
+  {libKey:'clean_room', cat:'ENVIRONMENT',text:'Room cleaned / tidy',      opts:['Messy','Semi-tidy','Clean & organised'],           polarity:'positive', defaultTier:'B'},
+  {libKey:'laundry',    cat:'ENVIRONMENT',text:'Laundry done',             opts:['Piling up','Started','Done & folded'],             polarity:'positive', defaultTier:'B'},
+  {libKey:'dishes',     cat:'ENVIRONMENT',text:'Dishes done',             opts:['Stacked in sink','Some done','All clean'],         polarity:'positive', defaultTier:'B'},
+  {libKey:'meal_prep',  cat:'ENVIRONMENT',text:'Meal prep',               opts:['None','Light prep','Full prep done'],              polarity:'positive', defaultTier:'B'},
 ];
 
 const MIN_TOTAL_QUESTIONS=10;
@@ -216,10 +278,7 @@ function recomputeAll(rows){
 }
 
 async function loadCache(){
-  let rows;
-  try{rows=await sbLoadAll();}catch(e){console.warn('Load failed:',e.message);return{};}
-  if(!rows||!rows.length) return{};
-  return recomputeAll(rows);
+  return recomputeAll(await sbLoadAll());
 }
 
 // STATUS LINE
@@ -258,6 +317,11 @@ function showPage(n){
   const navEl=document.getElementById('nav-'+n);
   if(navEl) navEl.classList.add('active');
   window.scrollTo(0,0);
+  if(n==='dashboard'){
+    if(!_dataCache){
+      loadCache().then(cache=>{_dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;renderDashboard(cache);}).catch(()=>{});
+    }
+  }
   if(n==='habits') renderHabitsPage();
   if(n==='questions') renderManageQuestions();
 }
@@ -290,156 +354,193 @@ function toggleDevTools(){
 }
 
 // ══════════════════════════════════
-// QUESTIONNAIRE — open instantly
+// BULK-ENTRY QUESTIONNAIRE — scrollable list with inline segmented buttons
 // ══════════════════════════════════
-let currentQ=0,answers={},savedAnswers={};
-let activeQueue=[];   // always all active-question indices, in order
-let _resumeMode=false; // true = jump to first unanswered on open (begin/resume flow); false = stay at 0 (update flow)
+let answers={},savedAnswers={};
 let _dataCache=null;   // shared in-memory cache, refreshed after every write — avoids refetch glitches
 
-function buildQueue(){return getActiveQuestions().map((_,i)=>i);}
-
-function firstUnansweredIdx(){
+function _renderBulkEntry(){
   const questions=getActiveQuestions();
-  for(let i=0;i<activeQueue.length;i++){
-    if(answers[questions[activeQueue[i]].key]===undefined) return i;
+  const el=document.getElementById('be-questions');
+  if(!el) return;
+  el.innerHTML='';
+
+  const wasSavedBefore=Object.keys(savedAnswers).length>0;
+
+  // ── Group: CORE (fixed questions) ──
+  const fixed=questions.filter(q=>q.is_fixed);
+  if(fixed.length){
+    const h=document.createElement('div');h.className='be-group-header';h.textContent='CORE';el.appendChild(h);
+    fixed.forEach(q=>{el.appendChild(_buildBulkRow(q,wasSavedBefore));});
   }
-  return 0; // all answered — start from the top
+
+  // ── Group: Positive habits ──
+  const pos=questions.filter(q=>!q.is_fixed&&q.polarity==='positive');
+  if(pos.length){
+    const h=document.createElement('div');h.className='be-group-header';h.textContent='POSITIVE HABITS';el.appendChild(h);
+    pos.forEach(q=>{el.appendChild(_buildBulkRow(q,wasSavedBefore));});
+  }
+
+  // ── Group: Negative habits ──
+  const neg=questions.filter(q=>!q.is_fixed&&q.polarity==='negative');
+  if(neg.length){
+    const h=document.createElement('div');h.className='be-group-header';h.textContent='NEGATIVE HABITS';el.appendChild(h);
+    neg.forEach(q=>{el.appendChild(_buildBulkRow(q,wasSavedBefore));});
+  }
+}
+
+function _buildBulkRow(q,wasSavedBefore){
+  const row=document.createElement('div');row.className='be-q-row';row.id='be-row-'+q.key;
+
+  const tierColor=q.tier==='S'?'var(--gold)':q.tier==='A'?'var(--blue)':'var(--slate2)';
+  const polarityDot=q.polarity==='negative'?'▼':'▲';
+  const polarityColor=q.polarity==='negative'?'var(--negred)':'var(--green)';
+
+  const top=document.createElement('div');top.className='be-q-top';
+  top.innerHTML=`
+    <div class="be-q-text"><span style="color:${polarityColor};margin-right:6px">${polarityDot}</span>${q.text}</div>
+    <div class="be-q-badge-row">
+      ${q.is_fixed?'<span class="be-q-core">CORE</span>':''}
+      <span class="be-q-tier" style="color:${tierColor};border-color:${tierColor}">${q.tier}</span>
+    </div>
+  `;
+
+  const seg=document.createElement('div');seg.className='be-segmented';
+  const polarity=answers[q.key]?null:''; // for class toggles below
+
+  const currentVal=answers[q.key];
+  const prevSavedVal=wasSavedBefore?savedAnswers[q.key]:null;
+
+  q.opts.forEach((opt,i)=>{
+    const val=i+1;
+    const btn=document.createElement('button');btn.className='be-seg-btn';
+    const isActive=currentVal===val;
+    const isPrevSaved=prevSavedVal===val&&!isActive;
+
+    // Determine style bucket for this option based on polarity + index
+    let bucket='';
+    if(q.polarity==='positive'){
+      if(i===2) bucket='pos';
+      else if(i===1) bucket='neutral';
+      else bucket='neg';
+    } else {
+      if(i===0) bucket='neg';
+      else if(i===1) bucket='neutral';
+      else bucket='pos';
+    }
+
+    if(isActive) btn.classList.add('active',bucket);
+    if(isPrevSaved) btn.classList.add('prev-highlight');
+
+    btn.textContent=opt+(isPrevSaved?' ◂':'');
+    btn.onclick=()=>_selectBulkAnswer(q.key,val);
+    seg.appendChild(btn);
+  });
+
+  row.appendChild(top);
+  row.appendChild(seg);
+  return row;
+}
+
+function _selectBulkAnswer(qKey,val){
+  answers[qKey]=val;
+  // Refresh just this row's highlight state without rebuilding everything
+  const row=document.getElementById('be-row-'+qKey);
+  if(row){
+    const btns=row.querySelectorAll('.be-seg-btn');
+    const q=getActiveQuestions().find(q=>q.key===qKey);
+    btns.forEach((btn,i)=>{
+      const v=i+1;
+      const isActive=answers[qKey]===v;
+      btn.classList.remove('active','pos','neutral','neg','prev-highlight');
+      if(isActive){
+        let bucket='';
+        if(q.polarity==='positive'){
+          if(i===2) bucket='pos';
+          else if(i===1) bucket='neutral';
+          else bucket='neg';
+        } else {
+          if(i===0) bucket='neg';
+          else if(i===1) bucket='neutral';
+          else bucket='pos';
+        }
+        btn.classList.add('active',bucket);
+      }
+      // Remove "previous" arrow text if present
+      if(!isActive&&btn.textContent.includes('◂')) btn.textContent=btn.textContent.replace(' ◂','');
+    });
+  }
 }
 
 function openLog(){
-  answers={};savedAnswers={};_resumeMode=true;
-  activeQueue=buildQueue();
-
+  answers={};savedAnswers={};
   const applyEntry=(cache)=>{
     const te=cache[todayKey()];
     if(te&&te.answers){
       answers={...te.answers};savedAnswers={...te.answers};
-      currentQ=firstUnansweredIdx();
-    } else {
-      currentQ=0;
     }
   };
-
-  if(_dataCache){
-    applyEntry(_dataCache); // synchronous — correct question shows on first paint, no flash
+  const show=()=>{
+    _renderBulkEntry();
     document.getElementById('questionnaire').classList.add('active');
-    renderQ();
+    // Scroll to first unanswered
+    const questions=getActiveQuestions();
+    for(let i=0;i<questions.length;i++){
+      if(answers[questions[i].key]===undefined){
+        const el=document.getElementById('be-row-'+questions[i].key);
+        if(el){setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'center'}),50);}
+        break;
+      }
+    }
+  };
+  if(_dataCache){
+    applyEntry(_dataCache);
+    show();
   } else {
-    // cache not warmed yet (rare/first load) — fetch before showing anything
     loadCache().then(cache=>{
       _dataCache=cache;
       applyEntry(cache);
-      document.getElementById('questionnaire').classList.add('active');
-      renderQ();
-    }).catch(()=>{
-      currentQ=0;
-      document.getElementById('questionnaire').classList.add('active');
-      renderQ();
-    });
+      show();
+    }).catch(()=>{show();});
   }
 }
 
-// "Update Today's Entry" — full edit mode, shows all 15, highlights prior picks pink
 function openLogFullEdit(){
-  answers={};savedAnswers={};_resumeMode=false;
-  currentQ=0;
-  activeQueue=buildQueue();
-
+  answers={};savedAnswers={};
   const applyEntry=(cache)=>{
     const te=cache[todayKey()];
     if(te&&te.answers){answers={...te.answers};savedAnswers={...te.answers};}
   };
-
+  const show=()=>{
+    _renderBulkEntry();
+    document.getElementById('questionnaire').classList.add('active');
+    document.getElementById('be-scroll').scrollTop=0;
+  };
   if(_dataCache){
     applyEntry(_dataCache);
-    document.getElementById('questionnaire').classList.add('active');
-    renderQ();
+    show();
   } else {
     loadCache().then(cache=>{
       _dataCache=cache;
       applyEntry(cache);
-      document.getElementById('questionnaire').classList.add('active');
-      renderQ();
-    }).catch(()=>{
-      document.getElementById('questionnaire').classList.add('active');
-      renderQ();
-    });
+      show();
+    }).catch(()=>{show();});
   }
 }
 
-function closeQuestionnaire(){clearAdvanceTimer();document.getElementById('questionnaire').classList.remove('active');}
-
-async function savePartialAndClose(){
-  closeQuestionnaire();
-  if(!Object.keys(answers).length) return;
-  try{await sbUpsert({date:todayKey(),answers});}
-  catch(e){alert('Save failed: '+e.message);return;}
-  const cache=await loadCache();
-  _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
-  renderDashboard(cache);
-}
-
-function renderQ(){
-  const questions=getActiveQuestions();
-  const total=activeQueue.length;
-  const qIdx=activeQueue[currentQ];
-  const q=questions[qIdx];
-  document.getElementById('q-progress').style.width=(currentQ/total*100)+'%';
-  document.getElementById('q-counter').textContent=String(currentQ+1).padStart(2,'0')+' / '+total;
-  document.getElementById('q-category').textContent=q.is_fixed?'CORE':(q.tier+'-TIER · '+(q.polarity==='negative'?'AVOID':'HABIT'));
-  document.getElementById('q-text').textContent=q.text;
-  document.getElementById('q-back-btn').disabled=currentQ===0;
-  const nextBtn=document.getElementById('q-next-btn');
-  nextBtn.disabled=false;
-  const isLast=currentQ===total-1;
-  nextBtn.textContent=isLast?(answers[q.key]===undefined?'Skip & Finish':'Finish ✓'):(answers[q.key]===undefined?'Skip →':'Next →');
-  const c=document.getElementById('q-options');c.innerHTML='';
-  const wasSavedBefore=savedAnswers[q.key]!==undefined;
-  q.opts.forEach((opt,i)=>{
-    const btn=document.createElement('button');btn.className='q-option';
-    const isCurrent=answers[q.key]===i+1;
-    const isPrevSaved=wasSavedBefore&&savedAnswers[q.key]===i+1&&!isCurrent;
-    if(isCurrent) btn.classList.add('flash');
-    else if(isPrevSaved) btn.classList.add('prev-selected');
-    btn.innerHTML=`<span class="q-key">${i+1}</span><span>${opt}</span>`+(isPrevSaved?'<span class="q-prev-tag">PREVIOUS</span>':'');
-    btn.onclick=()=>selectAnswer(i);
-    c.appendChild(btn);
-  });
-}
-
-let _advanceTimer=null;
-function clearAdvanceTimer(){if(_advanceTimer){clearTimeout(_advanceTimer);_advanceTimer=null;}}
-
-function selectAnswer(idx){
-  clearAdvanceTimer();
-  const qIdx=activeQueue[currentQ];
-  answers[getActiveQuestions()[qIdx].key]=idx+1;
-  const opts=document.querySelectorAll('.q-option');
-  opts.forEach((o,i)=>{o.classList.toggle('flash',i===idx);o.classList.remove('prev-selected');});
-  document.getElementById('q-next-btn').textContent=currentQ===activeQueue.length-1?'Finish ✓':'Next →';
-  _advanceTimer=setTimeout(()=>{
-    _advanceTimer=null;
-    if(currentQ<activeQueue.length-1){currentQ++;renderQ();}
-    else finishQuestionnaire();
-  },160);
-}
-
-function goBack(){clearAdvanceTimer();if(currentQ>0){currentQ--;renderQ();}}
-function goNext(){
-  clearAdvanceTimer();
-  if(currentQ<activeQueue.length-1){currentQ++;renderQ();}
-  else finishQuestionnaire();
-}
+function closeQuestionnaire(){document.getElementById('questionnaire').classList.remove('active');}
 
 async function finishQuestionnaire(){
   closeQuestionnaire();
+  if(!Object.keys(answers).length) return;
   document.getElementById('loading-overlay').classList.add('active');
   const tk=todayKey();
   const startTime=Date.now();
   try{await sbUpsert({date:tk,answers});}
   catch(e){document.getElementById('loading-overlay').classList.remove('active');alert('Save failed: '+e.message);return;}
-  const cache=await loadCache();
+  let cache;
+  try{cache=await loadCache();}
+  catch(e){document.getElementById('loading-overlay').classList.remove('active');alert('Failed to load data: '+e.message);return;}
   _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
   const elapsed=Date.now()-startTime;
   if(elapsed<180) await new Promise(r=>setTimeout(r,180-elapsed));
@@ -480,7 +581,7 @@ function showSummary(c,cache,tk){
     value:cache[k]?cache[k].computed.finalDv:null,
     isToday:k===tk,
   }));
-  renderLineGraph('sum-week-line-svg',null,sumPoints,{centreZero:true,lineColor:'rgba(255,184,48,.95)',fillColor:'rgba(255,184,48,.22)'});
+  renderLineGraph('sum-week-line-svg',sumPoints,{centreZero:true,lineColor:'rgba(255,184,48,.95)',fillColor:'rgba(255,184,48,.22)'});
 }
 function closeSummaryToHome(){document.getElementById('summary-overlay').classList.remove('active');showPage('dashboard');}
 
@@ -506,7 +607,7 @@ function smoothPath(coords){
   return d;
 }
 
-function renderLineGraph(svgId, tooltipId, points, opts){
+function renderLineGraph(svgId, points, opts){
   const svg=document.getElementById(svgId);
   if(!svg) return;
   const W=svg.parentElement.getBoundingClientRect().width||340;
@@ -625,7 +726,7 @@ function renderWeekLineGraph(cache){
   }));
   const filledWk=points.filter(p=>p.value!==null);
   const wkTrend=filledWk.length>=2?(filledWk[filledWk.length-1].value>filledWk[filledWk.length-2].value?'#3DFF6E':'#FF4444'):null;
-  renderLineGraph('week-line-svg','week-tooltip',points,{centreZero:true,lineColor:'rgba(255,184,48,.95)',fillColor:'rgba(255,184,48,.22)',dotColor:'#FFB830',todayTrendColor:wkTrend||'#FFFFFF'});
+  renderLineGraph('week-line-svg',points,{centreZero:true,lineColor:'rgba(255,184,48,.95)',fillColor:'rgba(255,184,48,.22)',dotColor:'#FFB830',todayTrendColor:wkTrend||'#FFFFFF'});
 }
 
 // MONTH LINE GRAPH — responsive: shows actual logged span, up to 30 days
@@ -656,7 +757,7 @@ function renderMonthLineGraph(cache){
   });
   const filledMo=points.filter(p=>p.value!==null);
   const moTrend=filledMo.length>=2?(filledMo[filledMo.length-1].value>filledMo[filledMo.length-2].value?'#3DFF6E':'#FF4444'):null;
-  renderLineGraph('month-line-svg','month-tooltip',points,{centreZero:false,lineColor:'rgba(91,191,255,.9)',fillColor:'rgba(91,191,255,.2)',dotColor:'#5BBFFF',todayTrendColor:moTrend||'#5BBFFF'});
+  renderLineGraph('month-line-svg',points,{centreZero:false,lineColor:'rgba(91,191,255,.9)',fillColor:'rgba(91,191,255,.2)',dotColor:'#5BBFFF',todayTrendColor:moTrend||'#5BBFFF'});
 }
 
 // DASHBOARD RENDER
@@ -729,9 +830,14 @@ function renderDashboard(cache){
   const allVels=keys.filter(k=>cache[k]&&cache[k].computed).map(k=>cache[k].computed.newVelocity);
   document.getElementById('stat-best').textContent=allVels.length?Math.max(...allVels):'—';
   document.getElementById('stat-days').textContent=keys.length||'0';
-  let streak=0;
-  for(let i=keys.length-1;i>=0;i--){if(cache[keys[i]]&&cache[keys[i]].computed&&cache[keys[i]].computed.finalDv>0)streak++;else break;}
-  document.getElementById('stat-streak').textContent=streak||'0';
+  // Use today's computed streak (consistent with hero badge), fallback to scan
+  const todayComputed=cache[tk]&&cache[tk].computed;
+  if(todayComputed) document.getElementById('stat-streak').textContent=todayComputed.posStreak||'0';
+  else {
+    let streak=0;
+    for(let i=keys.length-1;i>=0;i--){if(cache[keys[i]]&&cache[keys[i]].computed&&cache[keys[i]].computed.finalDv>0)streak++;else break;}
+    document.getElementById('stat-streak').textContent=streak||'0';
+  }
 
   renderWeekLineGraph(cache);
   renderMonthLineGraph(cache);
@@ -743,7 +849,7 @@ function renderStreakBadge(posS,negS){
   if(posS>0){
     numEl.innerHTML='<span class="h-badge-num-row">'+posS+'<span class="badge-emoji">⚡</span></span>';lblEl.textContent='DAY STREAK';
   } else if(negS>0){
-    numEl.innerHTML='<span class="h-badge-num-row">'+negS+'<span class="badge-emoji">⚡</span></span>';lblEl.textContent='DAY DRAG';
+    numEl.innerHTML='<span class="h-badge-num-row">'+negS+'<span class="badge-emoji">⚠️</span></span>';lblEl.textContent='DAY DRAG';
   } else {
     numEl.textContent='—';lblEl.textContent='STREAK';
   }
@@ -766,7 +872,8 @@ function getFilteredKeys(cache,filter){
   return allKeys.filter(k=>k>=cutoff.toISOString().slice(0,10));
 }
 async function renderHabitsPage(){
-  const cache=_habitsCache||(await loadCache());_habitsCache=cache;
+  let cache;
+  try{cache=_habitsCache||(await loadCache());_habitsCache=cache;}catch(e){document.getElementById('habits-list').innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--negred);margin-top:16px;letter-spacing:.08em">Failed to load data.</div>';return;}
   const keys=getFilteredKeys(cache,_habitsFilter);
   if(keys.length===0){document.getElementById('habits-list').innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--slate2);margin-top:16px;letter-spacing:.08em">No entries in this time period.</div>';return;}
   const questions=getActiveQuestions();
@@ -855,7 +962,6 @@ async function testDB(){
 // ══════════════════════════════════
 // MANAGE QUESTIONS PAGE
 // ══════════════════════════════════
-let _mqDirty=false; // true when user has unsaved tier changes in-memory
 
 // Called by showPage('questions') via routing
 async function renderManageQuestions(){
@@ -927,27 +1033,64 @@ function _buildMQPage(){
   }
   el.appendChild(activeSection);
 
-  // ── library browser ──
+  // ── recommendations + browse library ──
+  const libBtnSection=document.createElement('div');
+  libBtnSection.className='mq-section';
+
   const alreadyAdded=new Set(questions.map(q=>q.key));
   const available=QUESTION_LIBRARY.filter(l=>!alreadyAdded.has(l.libKey));
 
-  if(available.length){
-    const libSection=document.createElement('div');
-    libSection.className='mq-section';
-    libSection.innerHTML='<div class="mq-section-title">ADD FROM LIBRARY</div>';
+  // Smart recommendations: suggest what's missing
+  const posCount=questions.filter(q=>q.polarity==='positive').length;
+  const negCount=questions.length-posCount;
+  const missingNeg=questions.length>=10&&negCount<Math.ceil(questions.length*MIN_POLARITY_RATIO);
+  const missingPos=questions.length>=10&&posCount<Math.ceil(questions.length*MIN_POLARITY_RATIO);
 
-    const cats=[...new Set(available.map(l=>l.cat))];
-    cats.forEach(cat=>{
-      const catHeader=document.createElement('div');
-      catHeader.className='mq-group-header';
-      catHeader.textContent=cat;
-      libSection.appendChild(catHeader);
-      available.filter(l=>l.cat===cat).forEach(libQ=>{
-        libSection.appendChild(_buildLibraryRow(libQ));
-      });
-    });
-    el.appendChild(libSection);
+  // Pick up to 5 recommended questions
+  let recs=[];
+  if(missingNeg){
+    recs=available.filter(l=>l.polarity==='negative').slice(0,4);
+  } else if(missingPos){
+    recs=available.filter(l=>l.polarity==='positive').slice(0,4);
   }
+  if(recs.length<3){
+    const rest=available.filter(l=>!recs.includes(l)).slice(0,5-recs.length);
+    recs=[...recs,...rest];
+  }
+  recs=recs.slice(0,5);
+
+  if(recs.length){
+    const recHeader=document.createElement('div');
+    recHeader.className='mq-section-title';
+    recHeader.textContent='RECOMMENDED';
+    libBtnSection.appendChild(recHeader);
+
+    const recRow=document.createElement('div');
+    recRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px';
+    recs.forEach(libQ=>{
+      const pill=document.createElement('button');
+      const tierColor=libQ.defaultTier==='S'?'var(--gold)':libQ.defaultTier==='A'?'var(--blue)':'var(--slate2)';
+      pill.style.cssText=`background:var(--bg2);border:1px solid ${tierColor};color:var(--slate2);font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:6px 12px;cursor:pointer;border-radius:16px;transition:all .12s;white-space:nowrap`;
+      pill.innerHTML=`${libQ.polarity==='negative'?'▼':'▲'} ${libQ.text}`;
+      pill.onmouseover=()=>{pill.style.background='var(--bg3)';pill.style.color='var(--white)';};
+      pill.onmouseout=()=>{pill.style.background='var(--bg2)';pill.style.color='var(--slate2)';};
+      pill.onclick=()=>{_addLibRec(libQ.libKey);pill.style.opacity='.4';pill.disabled=true;};
+      recRow.appendChild(pill);
+    });
+    libBtnSection.appendChild(recRow);
+  }
+
+  // Browse Library button
+  const browseBtn=document.createElement('button');
+  browseBtn.className='btn btn-primary-blue';
+  browseBtn.textContent='📚 Browse Library';
+  browseBtn.style.cssText='font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:13px 24px;cursor:pointer;border-radius:var(--radius);transition:background .15s;text-align:center;width:100%;background:rgba(91,191,255,.08);border:1px solid rgba(91,191,255,.3);color:var(--blue)';
+  browseBtn.onmouseover=()=>{browseBtn.style.background='rgba(91,191,255,.14)';browseBtn.style.boxShadow='0 0 16px rgba(91,191,255,.2)';};
+  browseBtn.onmouseout=()=>{browseBtn.style.background='rgba(91,191,255,.08)';browseBtn.style.boxShadow='none';};
+  browseBtn.onclick=openLibraryDrawer;
+  libBtnSection.appendChild(browseBtn);
+
+  el.appendChild(libBtnSection);
 
   // ── custom question form ──
   const customSection=document.createElement('div');
@@ -1031,72 +1174,122 @@ function _buildActiveRow(q,isFixed){
   return row;
 }
 
-function _buildLibraryRow(libQ){
-  const row=document.createElement('div');
-  row.className='mq-lib-row';
-  row.id='mq-lib-'+libQ.libKey;
-
-  const tierColor=libQ.defaultTier==='S'?'var(--gold)':libQ.defaultTier==='A'?'var(--blue)':'var(--slate2)';
-  const polarityDot=libQ.polarity==='negative'?`<span class="mq-neg-dot">▼</span>`:`<span class="mq-pos-dot">▲</span>`;
-
-  row.innerHTML=`
-    <div class="mq-row-left">
-      ${polarityDot}
-      <div class="mq-row-text">${libQ.text}</div>
-    </div>
-    <div class="mq-row-right">
-      <div class="mq-tier-picker mq-lib-tier-picker" id="mq-ltp-${libQ.libKey}">
-        <button class="mq-tier-btn${libQ.defaultTier==='S'?' active':''}" onclick="mqLibSetTier('${libQ.libKey}','S')">S</button>
-        <button class="mq-tier-btn${libQ.defaultTier==='A'?' active':''}" onclick="mqLibSetTier('${libQ.libKey}','A')">A</button>
-        <button class="mq-tier-btn${libQ.defaultTier==='B'?' active':''}" onclick="mqLibSetTier('${libQ.libKey}','B')">B</button>
-      </div>
-      <button class="mq-add-btn" onclick="mqAddLibraryQuestion('${libQ.libKey}')">+ Add</button>
-    </div>
-  `;
-  return row;
-}
-
-// Track per-library-item tier selection before add
-const _mqLibTierSelection={};
-
-function mqLibSetTier(libKey,tier){
-  _mqLibTierSelection[libKey]=tier;
-  const picker=document.getElementById('mq-ltp-'+libKey);
-  if(!picker) return;
-  picker.querySelectorAll('.mq-tier-btn').forEach(b=>{
-    const t=b.textContent;
-    b.classList.toggle('active',t===tier);
-    b.style.borderColor=t===tier?(tier==='S'?'var(--gold)':tier==='A'?'var(--blue)':'var(--slate2)'):'';
-    b.style.color=b.style.borderColor;
-  });
-}
-
-async function mqAddLibraryQuestion(libKey){
+// ── Recommendation pill quick-add ──
+async function _addLibRec(libKey){
   const libQ=QUESTION_LIBRARY.find(l=>l.libKey===libKey);
   if(!libQ) return;
-  const tier=_mqLibTierSelection[libKey]||libQ.defaultTier;
   const questions=getActiveQuestions();
-  const newQ={
-    key:libKey,
-    text:libQ.text,
-    opts:libQ.opts,
-    polarity:libQ.polarity,
-    tier,
-    is_fixed:false,
-    source:'library',
-    sort_order:questions.length,
-  };
-  const btn=document.querySelector(`#mq-lib-${libKey} .mq-add-btn`);
-  if(btn){btn.disabled=true;btn.textContent='Adding…';}
+  const newQ={key:libKey,text:libQ.text,opts:libQ.opts,polarity:libQ.polarity,tier:libQ.defaultTier,is_fixed:false,source:'library',sort_order:questions.length};
   try{
     await window.Storage.saveQuestion(newQ);
     await loadUserQuestions();
     _buildMQPage();
-    // Invalidate cache so engine uses updated questions on next log
-    _habitsCache=null;
+    _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
+  }catch(e){ alert('Failed to add: '+e.message); }
+}
+
+// ── Library bottom sheet drawer ──
+const _drawerLibTier={};
+
+function openLibraryDrawer(){
+  const backdrop=document.getElementById('drawer-backdrop');
+  const drawer=document.getElementById('library-drawer');
+  if(!drawer) return;
+  backdrop.classList.add('active');
+  drawer.classList.add('active');
+  document.getElementById('drawer-search').value='';
+  _buildLibraryDrawer('');
+  document.body.style.overflow='hidden';
+}
+function closeLibraryDrawer(){
+  const backdrop=document.getElementById('drawer-backdrop');
+  const drawer=document.getElementById('library-drawer');
+  if(backdrop) backdrop.classList.remove('active');
+  if(drawer) drawer.classList.remove('active');
+  document.body.style.overflow='';
+}
+function filterLibraryDrawer(){
+  const query=(document.getElementById('drawer-search').value||'').toLowerCase().trim();
+  _buildLibraryDrawer(query);
+}
+
+function _buildLibraryDrawer(filterText){
+  const el=document.getElementById('drawer-body');
+  if(!el) return;
+  const questions=getActiveQuestions();
+  const alreadyAdded=new Set(questions.map(q=>q.key));
+  const available=QUESTION_LIBRARY.filter(l=>!alreadyAdded.has(l.libKey)&&(!filterText||l.text.toLowerCase().includes(filterText)));
+
+  if(!available.length){
+    el.innerHTML='<div class="drawer-empty">'+(filterText?'No questions match your search.':'All library questions added!')+'</div>';
+    return;
+  }
+
+  el.innerHTML='';
+  const cats=[...new Set(available.map(l=>l.cat))];
+  cats.forEach(cat=>{
+    const items=available.filter(l=>l.cat===cat);
+    if(!items.length) return;
+    const header=document.createElement('div');header.className='drawer-cat-header';header.textContent=cat;el.appendChild(header);
+    items.forEach(libQ=>{
+      const row=document.createElement('div');row.className='drawer-row';
+      const tierColor=libQ.defaultTier==='S'?'var(--gold)':libQ.defaultTier==='A'?'var(--blue)':'var(--slate2)';
+      const polarityDot=libQ.polarity==='negative'?'▼':'▲';
+      const polarityColor=libQ.polarity==='negative'?'var(--negred)':'var(--green)';
+      row.innerHTML=`
+        <div class="drawer-row-left"><span style="color:${polarityColor};font-size:10px">${polarityDot}</span><span class="drawer-row-text">${libQ.text}</span></div>
+        <div class="drawer-row-right">
+          <button class="drawer-tier-btn ${_drawerLibTier[libQ.libKey]==='S'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='S')?'active':''}" style="${_drawerLibTier[libQ.libKey]==='S'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='S')?'border-color:var(--gold);color:var(--gold)':''}" onclick="_drawerSetTier('${libQ.libKey}','S')">S</button>
+          <button class="drawer-tier-btn ${_drawerLibTier[libQ.libKey]==='A'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='A')?'active':''}" style="${_drawerLibTier[libQ.libKey]==='A'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='A')?'border-color:var(--blue);color:var(--blue)':''}" onclick="_drawerSetTier('${libQ.libKey}','A')">A</button>
+          <button class="drawer-tier-btn ${_drawerLibTier[libQ.libKey]==='B'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='B')?'active':''}" style="${_drawerLibTier[libQ.libKey]==='B'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='B')?'border-color:var(--slate2);color:var(--slate2)':''}" onclick="_drawerSetTier('${libQ.libKey}','B')">B</button>
+          <button class="drawer-add-btn" id="dr-add-${libQ.libKey}" onclick="_drawerAdd('${libQ.libKey}')">+ Add</button>
+        </div>
+      `;
+      el.appendChild(row);
+    });
+  });
+}
+
+function _drawerSetTier(libKey,tier){
+  _drawerLibTier[libKey]=tier;
+  // Re-render the row buttons highlight
+  const rows=document.querySelectorAll('#drawer-body .drawer-row');
+  for(const row of rows){
+    const textEl=row.querySelector('.drawer-row-text');
+    if(!textEl) continue;
+    const libQ=QUESTION_LIBRARY.find(l=>textEl.textContent&&l.text===textEl.textContent);
+    if(libQ&&libQ.libKey===libKey){
+      row.querySelectorAll('.drawer-tier-btn').forEach(b=>{
+        const t=b.textContent;
+        const isActive=_drawerLibTier[libKey]===t||(!_drawerLibTier[libKey]&&libQ.defaultTier===t);
+        b.classList.toggle('active',isActive);
+        b.style.borderColor=isActive?(t==='S'?'var(--gold)':t==='A'?'var(--blue)':'var(--slate2)'):'';
+        b.style.color=b.style.borderColor;
+      });
+      break;
+    }
+  }
+}
+
+async function _drawerAdd(libKey){
+  const libQ=QUESTION_LIBRARY.find(l=>l.libKey===libKey);
+  if(!libQ) return;
+  const tier=_drawerLibTier[libKey]||libQ.defaultTier;
+  const questions=getActiveQuestions();
+  const newQ={key:libKey,text:libQ.text,opts:libQ.opts,polarity:libQ.polarity,tier,is_fixed:false,source:'library',sort_order:questions.length};
+  const btn=document.getElementById('dr-add-'+libKey);
+  if(btn){btn.disabled=true;btn.textContent='✓ Added';}
+  try{
+    await window.Storage.saveQuestion(newQ);
+    await loadUserQuestions();
+    // Rebuild drawer to remove added items + refresh MQ page
+    const filterText=(document.getElementById('drawer-search').value||'').toLowerCase().trim();
+    _buildLibraryDrawer(filterText);
+    _buildMQPage();
+    _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
   }catch(e){
     if(btn){btn.disabled=false;btn.textContent='+ Add';}
-    alert('Failed to add question: '+e.message);
+    alert('Failed: '+e.message);
   }
 }
 
@@ -1116,7 +1309,7 @@ async function mqRemoveQuestion(key){
   try{
     await window.Storage.deleteQuestion(key);
     await loadUserQuestions();
-    _habitsCache=null;
+    _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
     _buildMQPage();
   }catch(e){ alert('Failed to remove: '+e.message); }
 }
@@ -1129,10 +1322,9 @@ async function mqChangeTier(key,tier){
   // Optimistically update UI
   window.UserQuestions=questions.map(qq=>qq.key===key?updated:qq);
   _buildMQPage();
-  _habitsCache=null;
-  try{
-    await window.Storage.saveQuestion(updated);
-  }catch(e){
+  _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
+  try{ await window.Storage.saveQuestion(updated); }
+  catch(e){
     // Revert on failure
     await loadUserQuestions();
     _buildMQPage();
@@ -1195,7 +1387,7 @@ async function mqAddCustom(){
   try{
     await window.Storage.saveQuestion(newQ);
     await loadUserQuestions();
-    _habitsCache=null;
+    _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
     // Reset form
     if(textEl) textEl.value='';
     ['mq-opt0','mq-opt1','mq-opt2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -1210,9 +1402,7 @@ async function mqAddCustom(){
 // KEYBOARD
 document.addEventListener('keydown',e=>{
   if(document.getElementById('questionnaire').classList.contains('active')){
-    if(['1','2','3'].includes(e.key)){e.preventDefault();selectAnswer(parseInt(e.key)-1);return;}
-    if(e.key==='Backspace'||e.key==='ArrowLeft'){e.preventDefault();goBack();return;}
-    if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();savePartialAndClose();return;}
+    if(e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();finishQuestionnaire();return;}
     if(e.key==='Escape'){closeQuestionnaire();return;}
     return;
   }
@@ -1220,7 +1410,7 @@ document.addEventListener('keydown',e=>{
     if(e.key==='Enter'){closeSummaryToHome();return;}return;
   }
   if(document.getElementById('page-dashboard').classList.contains('active')){
-    if(e.key==='Enter'){const btn=document.getElementById('open-log-btn');if(!btn.disabled)openLog();}
+    if(e.key==='Enter'){const btn=document.getElementById('open-log-btn');if(!btn.disabled)btn.click();}
   }
 });
 
