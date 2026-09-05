@@ -26,7 +26,14 @@
 async function sbLoadAll(){return window.Storage.loadEntries();}
 async function sbUpsert(row){return window.Storage.saveEntry(row.date,row.answers);}
 async function sbDeleteAll(){return window.Storage.deleteEntries();}
-function todayKey(){return new Date().toISOString().slice(0,10);}
+
+// DEMO DATE OVERRIDE — set to an ISO date string (e.g. '2026-06-27') to pin
+// "today" to that date app-wide, so old seed data renders as recent for a
+// demo. Set back to null for real usage.
+const DEMO_DATE_OVERRIDE='2026-06-27';
+function appNow(){return DEMO_DATE_OVERRIDE?new Date(DEMO_DATE_OVERRIDE+'T12:00:00'):new Date();}
+
+function todayKey(){return appNow().toISOString().slice(0,10);}
 
 // ══════════════════════════════════
 // TIER SYSTEM — replaces hardcoded per-question weight arrays.
@@ -574,7 +581,7 @@ function showSummary(c,cache,tk){
     card.innerHTML=`<div class="compare-day-label">${labels[i]}</div><div class="compare-vel">${cc.newVelocity}</div><div class="compare-dv" style="color:${dvC}">${dvS} km/s</div>`;
     cEl.appendChild(card);
   });
-  const wd=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);wd.push(d.toISOString().slice(0,10));}
+  const wd=[];for(let i=6;i>=0;i--){const d=appNow();d.setDate(d.getDate()-i);wd.push(d.toISOString().slice(0,10));}
   const DN=['SUN','MON','TUE','WED','THU','FRI','SAT'];
   const sumPoints=wd.map(k=>({
     label:DN[new Date(k+'T12:00:00').getDay()],
@@ -716,7 +723,7 @@ function renderWeekLineGraph(cache){
   const tk=todayKey();
   const hasToday=!!(cache[tk]&&cache[tk].computed);
   const span=hasToday?7:8; // pull one extra day back so we still show 7 *logged* days when today is empty
-  const days=[];for(let i=span-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  const days=[];for(let i=span-1;i>=0;i--){const d=appNow();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
   const trimmed=hasToday?days:days.filter(k=>k!==tk).slice(-7);
   const DN=['SUN','MON','TUE','WED','THU','FRI','SAT'];
   const points=trimmed.map(k=>({
@@ -740,7 +747,7 @@ function renderMonthLineGraph(cache){
     const daysSinceEarliest=Math.round((today-earliest)/86400000)+1;
     spanDays=Math.max(1,Math.min(30,daysSinceEarliest));
   }
-  const days=[];for(let i=spanDays-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  const days=[];for(let i=spanDays-1;i>=0;i--){const d=appNow();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
   const hasToday=!!(cache[tk]&&cache[tk].computed);
   let trimmedDays=hasToday?days:days.filter(k=>k!==tk);
   if(trimmedDays.length===0) trimmedDays=days; // fallback: nothing logged yet at all
@@ -764,7 +771,7 @@ function renderMonthLineGraph(cache){
 function renderDashboard(cache){
   const tk=todayKey();
   const dl=document.getElementById('today-date-label');
-  if(dl){const d=new Date();dl.textContent=d.toLocaleDateString('en-US',{month:'short',day:'numeric'}).toUpperCase();}
+  if(dl){const d=appNow();dl.textContent=d.toLocaleDateString('en-US',{month:'short',day:'numeric'}).toUpperCase();}
 
   const keys=Object.keys(cache).sort();
   const te=cache[tk];
@@ -866,9 +873,9 @@ function setHabitsFilter(filter){
 function getFilteredKeys(cache,filter){
   const allKeys=Object.keys(cache).sort();
   if(filter==='all') return allKeys;
-  const now=new Date(),cutoff=new Date();
-  if(filter==='week') cutoff.setDate(now.getDate()-7);
-  else if(filter==='month') cutoff.setMonth(now.getMonth()-1);
+  const nowD=appNow(),cutoff=appNow();
+  if(filter==='week') cutoff.setDate(nowD.getDate()-7);
+  else if(filter==='month') cutoff.setMonth(nowD.getMonth()-1);
   return allKeys.filter(k=>k>=cutoff.toISOString().slice(0,10));
 }
 async function renderHabitsPage(){
