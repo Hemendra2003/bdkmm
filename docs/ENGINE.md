@@ -4,7 +4,7 @@ Author: Oscar · Date: 2026-10-02 · Branch: `docs-engine-b` · Base: `b8fd290`
 Decision: **Founder chose Engine B on 2026-10-02** — repair and document the current thrust/drag engine. Engine A remains documented as a future option (see `docs/ENGINE-DECISION.md` appendix), not implemented.
 Source of truth for *current* behavior: `src/domain/scoring.ts`, `src/domain/history.ts`, and `tests/engine.characterization.test.mjs` (golden tests that lock today's output, including bugs). Contract source: `docs/MASTER-PLAN-1-core.md` §4 (Option B + "Engine gate acceptance").
 
-> **Open sub-decision (founder):** the **missed-day / gap policy** is not yet chosen. Both variants are specified in §4 below and marked **PENDING**. Nothing downstream of the gap rule (decay, grace, synthetic shadow) may be implemented until the founder picks one. Everything else in this document is frozen.
+> **Missed-day / gap policy — DECIDED (founder, 2026-10-02): Variant 1, conservative carry-over.** See §4. Variant 2 (decay + grace) is not adopted and is kept only as a future option. The whole document is now frozen.
 
 Momentum is a self-reported game mechanic, not a measure of wellbeing. Engine B keeps the simulation's character and fixes its correctness, dates, history, and explanation.
 
@@ -96,23 +96,26 @@ Every day's explanation shows, separately: **raw**, **multiplier**, **shadow**, 
 
 ---
 
-## 4. Gap / missed-day policy — **PENDING founder choice**
+## 4. Gap / missed-day policy — **Variant 1 SELECTED** (founder, 2026-10-02)
 
-Both variants share: scheduled off-days, planned rest, reflection, and excuses are **never** silently treated as failed actions; the multiplier reset is separate from the habit-success-streak rules; all adjustments are deterministic, dated, versioned, and replayable through closed dates.
+The founder chose **Variant 1 (conservative carry-over)** via Michael. Jim implemented it as `applyConservativeCarryOver` (commit `b4c333b`): velocity carries unchanged across gaps, multiplier continuity resets once a day closes unscored, an unfinished *today* keeps continuity, no decay. This is the frozen gap rule.
 
-### Variant 1 — Conservative carry-over (plan's recommended default)
+Shared by any gap handling: scheduled off-days, planned rest, reflection, and excuses are **never** silently treated as failed actions; the multiplier reset is separate from the habit-success-streak rules; all adjustments are deterministic, dated, versioned, and replayable through closed dates.
+
+### Variant 1 — Conservative carry-over (SELECTED)
 - An unrecorded / pending / no-action day **carries velocity unchanged**.
 - Multiplier streak continuity **resets only when that local day closes** with no eligible finalized check-in. An unfinished *today* cannot prematurely reset yesterday's continuity.
 - Shadow applies **only on an eligible scored day**, using its calendar predecessors (§3.3); a gap day supplies no drag, so shadow ages to 0.
 - No decay, no grace.
 
-### Variant 2 — Decay + grace (plan's optional attached variant, **adds penalties**)
+### Variant 2 — Decay + grace — **NOT ADOPTED (future option only)**
+Retained for reference; **not implemented**. Would add penalties and needs its own sub-spec before it could ever be chosen:
 - Apply shadow on unlogged days; **decay velocity by 3%** per qualifying missed day.
 - Permit **one** missed-day **positive-streak grace** (a single gap does not break a positive streak).
 - **Retain the negative streak** across gaps.
 - Requires, before implementation: exact qualifying-date set, off-day/rest/no-action behavior, precise order and rounding, zero-floor interaction, grace-reset conditions, and how backfill replaces the synthetic result. Modelled as dated, versioned **system trajectory adjustments**, separate from action scores and check-in status; they cannot fabricate answers, finalize a check-in, or earn a streak.
 
-**Impact on the worked examples and KNOWN-BUG fixes below:** the two "month-long gap" cases (AUDIT-10) resolve identically in *outcome* for a long gap (streak resets, shadow 0) but by different mechanisms. For a **single** missed day the variants differ: Variant 1 resets the positive streak; Variant 2 grants one grace. Examples in §7 are given for **Variant 1**; the Variant-2 delta is noted inline.
+**Impact on the worked examples and KNOWN-BUG fixes below (Variant 1):** a gap resets the positive multiplier streak once the gap day closes, and shadow ages to 0 (no calendar-predecessor drag). The AUDIT-10 month-gap case therefore gives `posStreak = 1` and `shadow = 0`. All §7 examples use Variant 1.
 
 ---
 
@@ -150,7 +153,7 @@ Questions: one Build-S habit `sleep` and one Limit/Avoid-S habit `vice` unless n
 
 **E4 — All-excused / no-action day.** Every due action excused. **No action score**; may still count as a check-in for the check-in streak; velocity unchanged.
 
-**E5 — Backfill a gap day.** A previously-pending day is filled later. Its canonical result is computed from its **own** calendar position with historical definitions, then the **suffix replays** (§8); the explanation states what adjusted and why. Synthetic/decay values (Variant 2 only) are replaced by the real result.
+**E5 — Backfill a gap day.** A previously-pending day is filled later. Its canonical result is computed from its **own** calendar position with historical definitions, then the **suffix replays** (§8); the explanation states what adjusted and why. Under Variant 1 the gap day carried velocity unchanged, so the backfill simply inserts the real result and replays forward.
 
 **E6 — Re-tier / archive after the fact (AUDIT-05 fix).** A day saved while `sleep` was S-tier keeps its **S-tier score forever**. Changing `sleep` to B-tier later does **not** alter that saved day. Requires the immutable question-set revision + engine-version stamp per entry (WP3). Intended: the stored day stays at velocity **108**, not 103.
 
@@ -184,7 +187,7 @@ These tests in `tests/engine.characterization.test.mjs` currently assert the **w
 | out-of-range `999` (AUDIT-11) | `thrust = 8` (clamped to best) | rejected; **thrust 0** | §6 validation |
 | null counts as complete (AUDIT-11) | `partial = false`, thrust 0 | **`partial = true`** (unanswered), No score / pending | §5, §6 |
 | orphan key inflates count (AUDIT-11) | `answeredCount = 2`, `partial = false` | **`answeredCount = 1`, `partial = true`** | §6 (count only due keys) |
-| month-gap 2-day streak (AUDIT-10) | `posStreak = 2` | **`posStreak = 1`** (gap resets continuity) | §3.5 + §4 V1 (V2: one-day grace, long gap still resets) |
+| month-gap 2-day streak (AUDIT-10) | `posStreak = 2` | **`posStreak = 1`** (gap resets continuity) | §3.5 + §4 Variant 1 |
 | shadow survives month gap (AUDIT-10) | `shadow = 2` | **`shadow = 0`** (no calendar predecessor drag) | §3.3 calendar-keyed shadow |
 | re-tier rewrites saved day (AUDIT-05) | `108 → 103` after S→B | **stays 108** (immutable revision) | §7 E6 + WP3 revisions |
 
@@ -197,9 +200,9 @@ Also deliberately changed from `[CURRENT-BEHAVIOR]` (not bugs, but B alters them
 
 ## 10. Gate acceptance checklist (plan §4)
 
-- [ ] Every constant, rounding step, gap rule, finalization interaction, zero-floor outcome, and replay boundary recorded here (this doc) — **gap rule pending founder**.
+- [x] Every constant, rounding step, gap rule, finalization interaction, zero-floor outcome, and replay boundary recorded here (this doc) — **gap rule = Variant 1 (§4)**.
 - [ ] Worked fixtures for first-day, gap, partial, all-excused, backfill, re-tier/archive, shadow-sign-change, and floor (§7; shadow-sign-change fixture to be added with implementation).
 - [ ] UI explanations generated from the same fixture values.
 - [ ] User-understanding test of negative multipliers and shadow before implementation is declared complete.
 - [ ] Legacy snapshot + cutover plan (§8) approved.
-- [ ] Founder picks gap Variant 1 or 2 (§4).
+- [x] Founder picks gap variant (§4) — **Variant 1 selected, 2026-10-02**.
