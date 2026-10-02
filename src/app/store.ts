@@ -62,7 +62,7 @@ const controller = createSessionController({
   },
   async readSession() {
     const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
+    if (error) throw new Error(error.message);
     return data.session as Session | null;
   },
   publish(session) {
@@ -112,8 +112,13 @@ export async function signIn(email: string, password: string): Promise<string | 
 }
 
 export async function signOut(): Promise<void> {
-  const { error } = await supabase.auth.signOut();
-  if (error) setState({ status: 'error', loadError: error.message });
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) setState({ status: 'error', loadError: error.message });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Sign out failed.';
+    setState({ status: 'error', loadError: msg });
+  }
 }
 
 // Start the session controller once on module load (skip if env vars are missing).
