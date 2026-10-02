@@ -2,6 +2,18 @@
 
 All notable changes to MOMENTUM. Each release is one reviewed pull request into `main`.
 
+## [0.2.0] - 2026-10-02 — React app shell
+
+### Added
+
+- New React app at `/app/` (signed-out sign-in screen and a Today view backed by the typed repositories). The existing app at `/` is unchanged.
+- Clear setup error when Supabase settings are missing or malformed, instead of a blank page.
+- Sign-in, session-read and sign-out failures are shown to the user.
+
+### Build & CI
+
+- Vitest + Testing Library component tests (23) run in `npm test` alongside the Node tests.
+
 ## [0.1.0] - 2026-10-02 — Stabilize (WP0 + WP1 + Engine B core)
 
 ### Security

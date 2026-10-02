@@ -12,8 +12,18 @@
     "verbatimModuleSyntax": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "types": ["vite/client"]
+    "allowImportingTsExtensions": true,
+    "types": ["vite/client", "vitest/globals", "node"],
+    "jsx": "react-jsx"
   },
-  "include": ["src/**/*.ts", "src/**/*.js", "app.js", "auth.js", "storage.js"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.js",
+    "app.js",
+    "auth.js",
+    "storage.js",
+    "vite.config.ts"
+  ],
   "exclude": ["node_modules", "dist", "tests"]
 }
