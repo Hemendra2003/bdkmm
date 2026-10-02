@@ -8,6 +8,7 @@ vi.mock('./store.ts', () => ({
   getDayScore: vi.fn(),
   subscribe: () => () => {},
   signOut: vi.fn(),
+  finishRecovery: vi.fn(),
   signIn: vi.fn(),
   saveCheckIn: vi.fn(),
   saveQuestion: vi.fn(),
@@ -18,7 +19,19 @@ const state: AppState = {
   status: 'signed-in',
   userId: 'A',
   todayKey: '2026-10-02',
-  questions: [],
+  questions: [
+    {
+      id: 1,
+      is_fixed: false,
+      key: 'move',
+      text: 'Move',
+      opts: ['Low', 'Mid', 'High'],
+      polarity: 'positive',
+      tier: 'S',
+      sort_order: 0,
+      source: 'custom',
+    },
+  ],
   todayEntry: { date: '2026-10-02', answers: {}, updated_at: null },
   loadError: null,
   lastScored: null,
@@ -31,6 +44,7 @@ const state: AppState = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  window.localStorage.clear();
   window.history.replaceState(null, '', '/app/#today');
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
   vi.mocked(getState).mockReturnValue(state);
@@ -67,5 +81,31 @@ it('hashchange and Back-style navigation have the same heading/title behavior', 
   window.history.replaceState(null, '', '/app/#today');
   fireEvent(window, new HashChangeEvent('hashchange'));
   await waitFor(() => expect(screen.getByRole('heading', { name: 'Today' })).toHaveFocus());
+  expect(document.title).toBe('Today · MOMENTUM');
+});
+
+it('recovery mode takes priority over loading and normal navigation', () => {
+  vi.mocked(getState).mockReturnValue({
+    ...state,
+    status: 'loading',
+    userId: null,
+    recoveryMode: true,
+  });
+  render(<App />);
+  expect(screen.getByRole('heading', { name: 'Choose a new password' })).toBeVisible();
+  expect(screen.getByText('Checking your recovery link…')).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'Today' })).not.toBeInTheDocument();
+  expect(document.title).toBe('Reset password · MOMENTUM');
+});
+it('an empty routine opens optional setup and skip returns to Today even without storage', () => {
+  vi.mocked(getState).mockReturnValue({ ...state, questions: [] });
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('Unavailable');
+  });
+  render(<App />);
+  expect(screen.getByRole('heading', { name: 'Choose your routine' })).toBeVisible();
+  expect(document.title).toBe('Choose routine · MOMENTUM');
+  fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+  expect(screen.getByRole('heading', { name: 'Today' })).toBeVisible();
   expect(document.title).toBe('Today · MOMENTUM');
 });

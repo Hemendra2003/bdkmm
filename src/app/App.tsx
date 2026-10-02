@@ -3,12 +3,16 @@ import {
   getState,
   subscribe,
   signOut,
+  finishRecovery,
   saveCheckIn,
   saveQuestion,
   removeQuestion,
   type AppState,
 } from './store.ts';
 import { SignIn } from './screens/SignIn.tsx';
+import { ResetPassword } from './screens/ResetPassword.tsx';
+import { Setup } from './screens/Setup.tsx';
+import { setupSkipped } from './auth/setup.ts';
 import { Today } from './screens/Today.tsx';
 import { CheckIn } from './screens/CheckIn.tsx';
 import { Habits } from './screens/Habits.tsx';
@@ -181,6 +185,13 @@ function focusRoute() {
 export function App() {
   const [state, setState] = useState<AppState>(getState);
   const [route, setRoute] = useState<Route>(parseRoute);
+  const [setupDismissedFor, setSetupDismissedFor] = useState<string | null>(null);
+  const showSetup =
+    state.status === 'signed-in' &&
+    !!state.userId &&
+    state.questions.length === 0 &&
+    setupDismissedFor !== state.userId &&
+    !setupSkipped(state.userId);
 
   useEffect(() => subscribe(setState), []);
 
@@ -192,9 +203,15 @@ export function App() {
 
   useEffect(() => {
     document.title =
-      (state.status === 'signed-out' ? 'Sign in' : routeTitles[route]) + ' · MOMENTUM';
+      (state.recoveryMode
+        ? 'Reset password'
+        : showSetup
+          ? 'Choose routine'
+          : state.status === 'signed-out'
+            ? 'Sign in'
+            : routeTitles[route]) + ' · MOMENTUM';
     if (state.userId && state.status !== 'loading') focusRoute();
-  }, [route, state.status, state.userId]);
+  }, [route, state.status, state.userId, state.recoveryMode, showSetup]);
 
   function navigate(r: Route) {
     window.location.hash = r;
@@ -202,12 +219,41 @@ export function App() {
     if (r === route) focusRoute();
   }
 
+  if (state.recoveryMode) {
+    return (
+      <ResetPassword
+        key={state.userId ?? 'recovery'}
+        state={state}
+        onComplete={() => {
+          finishRecovery();
+          navigate('today');
+        }}
+      />
+    );
+  }
   if (state.status === 'loading') return <LoadingScreen />;
   if (state.status === 'signed-out') return <SignIn />;
 
   // Supabase config error — no session, no shell
   if (state.status === 'error' && !state.userId) {
     return <ConfigErrorScreen message={state.loadError ?? 'App not configured.'} />;
+  }
+
+  if (showSetup) {
+    return (
+      <Setup
+        key={state.userId}
+        onComplete={(saved) => {
+          if (saved) {
+            window.location.hash = 'checkin';
+            window.location.reload();
+          } else {
+            setSetupDismissedFor(state.userId);
+            navigate('today');
+          }
+        }}
+      />
+    );
   }
 
   return <Shell state={state} route={route} onNavigate={navigate} />;
