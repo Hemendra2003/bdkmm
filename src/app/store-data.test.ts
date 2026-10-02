@@ -21,6 +21,7 @@ const entry = (date: string, answers: Record<string, number | null>, tier = 'S')
 });
 beforeEach(() => {
   vi.resetModules();
+  window.history.replaceState(null, '', '/app/');
   vi.useFakeTimers();
   vi.setSystemTime(new Date('2026-10-02T12:00:00'));
 });
@@ -111,6 +112,7 @@ async function harness(rows = [entry('2026-10-01', { sleep: 3 })], questions = [
   expect(store.getState().status).toBe('signed-in');
   return {
     store,
+    recover: () => receive('PASSWORD_RECOVERY', { user: { id: owner } }),
     calls,
     setError: (error: Error | null) => {
       writeError = error;
@@ -332,4 +334,39 @@ it('late save error from A cannot overwrite B error or loading state', async () 
     loadError: null,
     lastScored: null,
   });
+});
+
+it('PASSWORD_RECOVERY uses the existing subscription and resets on account change', async () => {
+  const h = await harness();
+  expect(h.store.getState().recoveryMode).toBe(false);
+  h.recover();
+  expect(h.store.getState()).toMatchObject({
+    recoveryMode: true,
+    recoveryReady: true,
+    userId: 'A',
+  });
+  const context = h.store.getAuthContext();
+  h.switchOwner('B');
+  await vi.runAllTimersAsync();
+  expect(h.store.getState()).toMatchObject({
+    recoveryMode: false,
+    recoveryReady: false,
+    userId: 'B',
+  });
+  expect(h.store.isAuthContextCurrent(context)).toBe(false);
+});
+
+it('a persisted recovery redirect resumes its authenticated session and finish clears its URL', async () => {
+  window.history.replaceState(null, '', '/app/?flow=recovery');
+  const h = await harness();
+  expect(h.store.getState()).toMatchObject({ recoveryMode: true, recoveryReady: true });
+  h.store.finishRecovery();
+  expect(h.store.getState()).toMatchObject({ recoveryMode: false, recoveryReady: false });
+  expect(window.location.search).toBe('');
+});
+
+it('expired callback never enables password changes on an old signed-in session', async () => {
+  window.history.replaceState(null, '', '/app/?flow=recovery#error=access_denied');
+  const h = await harness();
+  expect(h.store.getState()).toMatchObject({ recoveryMode: true, recoveryReady: false });
 });
