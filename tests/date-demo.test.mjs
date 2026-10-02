@@ -143,3 +143,34 @@ test('a pre-demo migration cannot resume production writes after mode changes',a
   resolve({legacy_migrated:false});await migration;
   assert.equal(h.writes.length,0);
 });
+
+
+test('dashboard read failure shows an error and retry without rendering an empty history',async()=>{
+  const h=harness();
+  h.run('window.scrollTo=()=>{};_dataCache=null;renderDashboard=cache=>{window.renderedCache=cache;};loadCache=async()=>{throw new Error("offline");};');
+  h.run("showPage('dashboard')");
+  await new Promise(resolve=>setImmediate(resolve));
+  const status=h.document.getElementById('dashboard-load-status');
+  assert.match(status.textContent,/Could not load/);
+  assert.equal(status.style.display,'block');
+  assert.equal(h.run('_dataCache'),null);
+  assert.equal(h.context.window.renderedCache,undefined);
+  const retry=status.children.at(-1);
+  assert.equal(retry.textContent,'Retry');
+  h.run('loadCache=async()=>({"2026-09-05":{answers:{habit:3}}});');
+  retry.onclick();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(status.style.display,'none');
+  assert.equal(h.context.window.renderedCache['2026-09-05'].answers.habit,3);
+  assert.equal(h.run('_dataCache["2026-09-05"].answers.habit'),3);
+});
+
+test('late dashboard failure from a prior account cannot display its retry status',async()=>{
+  const h=harness();
+  h.run('loadCache=()=>new Promise((resolve,reject)=>{window.rejectDashboard=reject;});');
+  const pending=h.run('loadDashboard()');
+  h.setAccount('B');h.run('updateSessionAccount("B");');
+  h.context.window.rejectDashboard(new Error('stale'));
+  await pending;
+  assert.equal(h.document.getElementById('dashboard-load-status').style.display,'none');
+});

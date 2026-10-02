@@ -179,6 +179,9 @@ Writes and mutation responses stay strict: numeric answers only, valid enums,
 batch inputs are checked before requesting a mutation. No schema changes or
 scoring/golden-rule changes are made.
 Production data inventory is still recommended once Supabase access exists.
+Dashboard route loads now surface failures with a visible status and Retry button
+instead of silently swallowing errors or rendering an empty history. Boot failures
+use the same recovery action. Late route results are guarded by request/context.
 
 `storage.js` is now only a generated repository bundle plus a classic adapter.
 The custom browser global is `window.MomentumData`, preserving the old method
