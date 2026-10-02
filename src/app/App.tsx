@@ -142,7 +142,9 @@ function Shell({ state, route, onNavigate }: ShellProps) {
         {route === 'habits' && (
           <Habits questions={state.questions} onSave={saveQuestion} onRemove={removeQuestion} />
         )}
-        {route === 'progress' && <Progress />}
+        {route === 'progress' && (
+          <Progress historyCache={state.historyCache} todayKey={state.todayKey} />
+        )}
       </div>
       <BottomNav activeTab={activeTab} onNavigate={(t) => onNavigate(t)} />
     </div>

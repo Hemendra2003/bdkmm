@@ -15,6 +15,7 @@ export interface AppState {
   lastScored: { date: string; velocity: number } | null;
   weekCheckIns: number;
   todayResult: HistoryEntry | null;
+  historyCache: HistoryCache;
 }
 
 type Listener = (state: AppState) => void;
@@ -29,6 +30,7 @@ const initialState: AppState = {
   lastScored: null,
   weekCheckIns: 0,
   todayResult: null,
+  historyCache: {},
 };
 
 function findLastScored(history: HistoryCache): { date: string; velocity: number } | null {
@@ -101,6 +103,7 @@ const controller = createSessionController({
         lastScored: null,
         weekCheckIns: 0,
         todayResult: null,
+        historyCache: {},
       });
     }
   },
@@ -116,6 +119,7 @@ const controller = createSessionController({
       lastScored: null,
       weekCheckIns: 0,
       todayResult: null,
+      historyCache: {},
     });
     try {
       const todayKey = localDateKey(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -139,6 +143,7 @@ const controller = createSessionController({
         lastScored,
         weekCheckIns,
         todayResult,
+        historyCache: history,
       });
     } catch (err) {
       if (!controller.isCurrent(context)) return;
@@ -179,7 +184,7 @@ export async function saveEntry(answers: import('../data/repositories.ts').Answe
   const lastScored = findLastScored(history);
   const weekCheckIns = countWeekCheckIns(allEntries, todayKey);
   const todayResult = history[todayKey] ?? null;
-  setState({ todayEntry: entry, lastScored, weekCheckIns, todayResult });
+  setState({ todayEntry: entry, lastScored, weekCheckIns, todayResult, historyCache: history });
 }
 
 export async function signIn(email: string, password: string): Promise<string | null> {
