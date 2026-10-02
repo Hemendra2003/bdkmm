@@ -110,6 +110,95 @@ function runSuite() {
       assert.equal(s.error, null, `A insert settings: ${s.error && s.error.message}`);
     });
 
+    // WP2.5: run after migration 0002; never executed by offline unit gates.
+    await t.test('entry revisions are stamped, immutable and owner-isolated', async () => {
+      const date = '2026-06-18';
+      const revision = [
+        { key: QUESTION.key, text: QUESTION.text, polarity: 'positive', tier: 'S' },
+      ];
+      const inserted = await clientA
+        .from('momentum_entries')
+        .insert({
+          user_id: A.userId,
+          date,
+          answers: { [QUESTION.key]: 3 },
+          question_set_revision: revision,
+          engine_version: 'b-1',
+        })
+        .select('question_set_revision,engine_version')
+        .single();
+      assert.equal(inserted.error, null);
+      assert.deepEqual(inserted.data.question_set_revision, revision);
+      assert.equal(inserted.data.engine_version, 'b-1');
+      const changed = await clientA
+        .from('momentum_entries')
+        .update({
+          answers: { [QUESTION.key]: 2 },
+          question_set_revision: [{ ...revision[0], tier: 'B' }],
+          engine_version: 'b-2',
+        })
+        .eq('user_id', A.userId)
+        .eq('date', date)
+        .select('answers,question_set_revision,engine_version')
+        .single();
+      assert.equal(changed.error, null);
+      assert.deepEqual(changed.data.question_set_revision, revision);
+      assert.equal(changed.data.engine_version, 'b-1');
+      assert.deepEqual(changed.data.answers, { [QUESTION.key]: 2 });
+      const upserted = await clientA
+        .from('momentum_entries')
+        .upsert(
+          {
+            user_id: A.userId,
+            date,
+            answers: { [QUESTION.key]: 3 },
+            question_set_revision: [{ ...revision[0], tier: 'B' }],
+            engine_version: 'b-1',
+          },
+          { onConflict: 'user_id,date' },
+        )
+        .select('question_set_revision,engine_version')
+        .single();
+      assert.equal(upserted.error, null);
+      assert.deepEqual(upserted.data.question_set_revision, revision);
+      assert.equal(upserted.data.engine_version, 'b-1');
+      const other = await clientB
+        .from('momentum_entries')
+        .update({ question_set_revision: [] })
+        .eq('user_id', A.userId)
+        .eq('date', date)
+        .select('date');
+      if (!other.error) assert.deepEqual(other.data, []);
+      const after = await clientA
+        .from('momentum_entries')
+        .select('question_set_revision')
+        .eq('user_id', A.userId)
+        .eq('date', date)
+        .single();
+      assert.equal(after.error, null);
+      assert.deepEqual(after.data.question_set_revision, revision);
+      const fallback = await clientA
+        .from('momentum_entries')
+        .insert({
+          user_id: A.userId,
+          date: '2026-06-19',
+          answers: { [QUESTION.key]: 3 },
+        })
+        .select('question_set_revision,engine_version')
+        .single();
+      assert.equal(fallback.error, null);
+      assert.deepEqual(fallback.data.question_set_revision, revision);
+      assert.equal(fallback.data.engine_version, 'b-1');
+      const invalid = await clientA.from('momentum_entries').insert({
+        user_id: A.userId,
+        date: '2026-06-20',
+        answers: {},
+        question_set_revision: revision,
+        engine_version: 'b-2',
+      });
+      assert.ok(invalid.error, 'Unknown engines must be rejected on new entries');
+    });
+
     // ---- B must not be able to READ A's rows ----
     await t.test("B cannot SELECT A's rows (all three tables return nothing)", async () => {
       for (const table of ['momentum_entries', 'user_questions', 'user_settings']) {

@@ -188,15 +188,23 @@ test('[FIXED-IN-B-1: AUDIT-11] recomputeAll: null/orphan answers cannot satisfy 
   assert.equal(orphan.partial, true); // Legacy: false (orphan completed day).
 });
 
-test('[KNOWN-BUG: AUDIT-05] recomputeAll: retiering rewrites an already-saved day (108→103)', () => {
-  const rows = [{ date: '2026-06-01', answers: { k: 3 } }];
+test('[FIXED-IN-B-1: AUDIT-05] recomputeAll: revision preserves saved S-tier score (108)', () => {
+  // Legacy after re-tier: 103. ENGINE §7 E6 now freezes the saved definition.
+  const rows = [
+    {
+      date: '2026-06-01',
+      answers: { k: 3 },
+      question_set_revision: [q('k', 'positive', 'S')],
+      engine_version: 'b-1',
+    },
+  ];
   assert.equal(
     recomputeAll([q('k', 'positive', 'S')], rows)['2026-06-01'].computed.newVelocity,
     108,
   );
   assert.equal(
     recomputeAll([q('k', 'positive', 'B')], rows)['2026-06-01'].computed.newVelocity,
-    103,
+    108,
   );
 });
 
