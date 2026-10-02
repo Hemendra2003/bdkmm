@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src tests",
     "format:check": "prettier --check src tests",
-    "test": "node --test"
+    "test": "node --test",
+    "test:integration": "node --test tests/integration/*.test.mjs"
   },
   "engines": {
     "node": ">=22.12.0"
