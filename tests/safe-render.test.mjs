@@ -78,7 +78,7 @@ function harness() {
     },
   };
   const context = vm.createContext({
-    window: {},
+    window: { Auth: { getUserId: () => 'fixture-user', getGeneration: () => 0 } },
     document,
     console,
     Date,
