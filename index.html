@@ -549,9 +549,40 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
   .mq-row-text{font-size:13px}
 }
 
+/* DEMO MODE BANNER */
+#demo-banner{
+  position:fixed;top:0;left:0;right:0;z-index:500;
+  background:rgba(255,184,48,.10);
+  border-bottom:1px solid rgba(255,184,48,.35);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  padding:8px 20px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+  color:var(--gold);
+  align-items:center;gap:12px;justify-content:center;
+  display:none;
+}
+#demo-banner.active{display:flex}
+#demo-banner-text{flex:1;text-align:center;text-transform:uppercase}
+#demo-exit-btn{
+  background:none;border:1px solid rgba(255,184,48,.4);color:var(--gold);
+  font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  padding:5px 10px;cursor:pointer;border-radius:4px;
+  transition:background .15s,border-color .15s;white-space:nowrap;flex-shrink:0;
+}
+#demo-exit-btn:hover{background:rgba(255,184,48,.12);border-color:var(--gold)}
+#demo-exit-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+body.demo-active .page{padding-top:38px}
+body.demo-active .overlay{padding-top:38px}
+
 </style>
 </head>
 <body>
+<!-- Demo mode banner: shown whenever MomentumDemo is active.
+     role=status announces changes without interrupting screen-reader flow. -->
+<div id="demo-banner" role="status" aria-live="polite" aria-atomic="true">
+  <span id="demo-banner-text">Demo — <span id="demo-banner-date"></span> · Read-only, nothing is saved</span>
+  <button id="demo-exit-btn" onclick="exitDemoMode()">Exit demo</button>
+</div>
 <canvas id="starfield-bg"></canvas>
 <canvas id="starfield-fg"></canvas>
 
@@ -763,15 +794,12 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
       </button>
       <div class="dev-tools-body" id="dev-body">
         <div class="dev-row">
-          <button class="dev-btn danger" onclick="devReset()">↺ Reset DB</button>
           <button class="dev-btn" onclick="devExport()">↑ Export</button>
-          <button class="dev-btn" onclick="devImport()">↓ Import</button>
           <button class="dev-btn" onclick="testDB()">⬡ DB Status</button>
         </div>
         <div class="db-status" id="db-status"></div>
       </div>
     </div>
-    <input type="file" id="import-file" accept=".json" style="display:none" onchange="handleImport(event)">
 
     <button class="why-link-btn" onclick="showPage('questions')">⚙ Manage your questions — add, remove, retier →</button>
     <button class="why-link-btn" onclick="showPage('why')">Why Momentum? — read about the engine →</button>
@@ -930,5 +958,46 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
 <script src="./auth.js"></script>
 <script src="./storage.js"></script>
 <script src="./app.js"></script>
+<script>
+/* Demo mode UI — listens to MomentumDemo contract from app.js.
+   Call MomentumDemo.setDate('YYYY-MM-DD') to activate,
+   MomentumDemo.clear() to exit.                              */
+(function(){
+  function exitDemoMode(){
+    if(window.MomentumDemo) window.MomentumDemo.clear();
+  }
+  window.exitDemoMode=exitDemoMode;
+
+  function applyDemoState(state){
+    var active=!!(state&&state.active);
+    var banner=document.getElementById('demo-banner');
+    var dateEl=document.getElementById('demo-banner-date');
+    var devTools=document.querySelector('.dev-tools');
+    var saveBtn=document.getElementById('be-save-btn');
+
+    // Banner visibility and content
+    banner.classList.toggle('active',active);
+    if(dateEl) dateEl.textContent=active?(state.date||''):'';
+
+    // Body class drives padding-top via CSS
+    document.body.classList.toggle('demo-active',active);
+
+    // Dev drawer: only visible in demo mode (per contract)
+    if(devTools) devTools.style.display=active?'':'none';
+
+    // Save button: disabled and labelled in demo mode
+    if(saveBtn){
+      saveBtn.disabled=active;
+      saveBtn.title=active?'Read-only — nothing is saved in demo mode':'';
+    }
+  }
+
+  // Set initial state (MomentumDemo is defined in app.js which loads before this)
+  applyDemoState(window.MomentumDemo?window.MomentumDemo.getState():{active:false});
+
+  // Track runtime changes
+  window.addEventListener('momentum-demo-change',function(e){applyDemoState(e.detail);});
+})();
+</script>
 </body>
 </html>
