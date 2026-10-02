@@ -154,7 +154,7 @@ Questions: one Build-S habit `sleep` and one Limit/Avoid-S habit `vice` unless n
 
 **E6 — Re-tier / archive after the fact (AUDIT-05 fix).** A day saved while `sleep` was S-tier keeps its **S-tier score forever**. Changing `sleep` to B-tier later does **not** alter that saved day. Requires the immutable question-set revision + engine-version stamp per entry (WP3). Intended: the stored day stays at velocity **108**, not 103.
 
-**E7 — Zero floor, single application.** prevV 5, raw −10, mult 1, rawChange −10, shadow 0, intendedChange −10, velocity `max(0, 5−10)` = **0**, actualChange −5. Because actualChange ≠ 0 it is negative → negStreak increments. But if prevV were already 0: velocity 0, actualChange 0 → **no streak change, not shown as a loss** (§3.5).
+**E7 — Zero floor, single application.** One Limit/Avoid-S "lower" day (`vice=1`), prevV 5, priorNeg 0. raw −10; negative multiplier at priorNeg 0 = `min(3.5, 1 + (0+1)^1.4 × 0.15)` = **1.15** (per §3.2); rawChange = round(−10 × 1.15) = round(−11.5) = **−12** (half-away-from-zero); shadow 0; intendedChange −12; velocity `max(0, 5−12)` = **0**; actualChange −5. Because actualChange ≠ 0 it is negative → negStreak increments. But if prevV were already 0: velocity 0, actualChange 0 → **no streak change, not shown as a loss** (§3.5). (This example isolates the single-floor behavior; the multiplier follows the frozen §3.2 formula, so there is no `mult = 1` case for a negative day — the minimum negative multiplier is 1.15.)
 
 ---
 
