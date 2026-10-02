@@ -1,7 +1,7 @@
 # MOMENTUM — Design System
 
 **Owner:** Pam · **Branch:** `wp1-7-design-system` · **Date:** 2026-10-02  
-**Status:** WP1.7 foundation — tokens, inventory, icons. App wiring is a later ticket.
+**Status:** WP1.7 foundation subset — tokens, component-state inventory, pixel icons. This document covers what can be determined from token values and existing CSS classes. Component consolidation, rendered contrast verification, and app wiring are later tickets.
 
 ---
 
@@ -38,45 +38,45 @@ Extracted verbatim from `index.html :root`. No values were changed.
 
 ---
 
-## 3. Contrast — actual measured results
+## 3. Contrast — computed from token values
 
-Relative luminance computed via WCAG 2.2 formula. Ratio = (L\_lighter + 0.05) / (L\_darker + 0.05).  
-Targets: **4.5:1** AA normal text · **3:1** AA large text (18pt+ or 14pt bold) · **7:1** AAA.
+Ratios computed with the exact WCAG 2.2 sRGB formula (linearise each channel, apply `0.2126 R + 0.7152 G + 0.0722 B`, then `(L_lighter + 0.05) / (L_darker + 0.05)`). Ratios are rounded to 2 decimal places. These are token-to-token calculations; rendered compliance requires additional checks once tokens are wired into the app (later ticket).
 
-### Passing pairs
+Targets: **4.5:1** AA normal text · **3:1** AA large text (≥18pt / 14pt bold) · **7:1** AAA.
 
-| Foreground | Background | Ratio | AA | AAA |
+### Full matrix — foreground tokens on background tokens
+
+| Foreground | `#05060D` bg-base | `#0D0F1A` bg-raised | `#181A28` bg-overlay | `#1F2133` bg-inset |
 |---|---|---|---|---|
-| `#F0F0F8` (primary) | `#05060D` (bg-base) | **17.8:1** | ✅ | ✅ |
-| `#F0F0F8` (primary) | `#0D0F1A` (bg-raised) | **15.8:1** | ✅ | ✅ |
-| `#F0F0F8` (primary) | `#181A28` (bg-overlay) | **13.6:1** | ✅ | ✅ |
-| `#B8B8D0` (secondary) | `#05060D` (bg-base) | **10.8:1** | ✅ | ✅ |
-| `#B8B8D0` (secondary) | `#181A28` (bg-overlay) | **8.3:1** | ✅ | ✅ |
-| `#9090B0` (muted) | `#05060D` (bg-base) | **7.1:1** | ✅ | ✅ |
-| `#9090B0` (muted) | `#181A28` (bg-overlay) | **5.5:1** | ✅ | ❌ |
-| `#FFB830` (gold) | `#05060D` (bg-base) | **12.0:1** | ✅ | ✅ |
-| `#FFB830` (gold) | `#181A28` (bg-overlay) | **9.2:1** | ✅ | ✅ |
-| `#FFB830` (gold) | `#1F2133` (bg-inset) | **8.7:1** | ✅ | ✅ |
-| `#3DFF6E` (green) | `#05060D` (bg-base) | **15.1:1** | ✅ | ✅ |
-| `#3DFF6E` (green) | `#181A28` (bg-overlay) | **11.6:1** | ✅ | ✅ |
-| `#5BBFFF` (blue) | `#05060D` (bg-base) | **10.3:1** | ✅ | ✅ |
-| `#5BBFFF` (blue) | `#181A28` (bg-overlay) | **7.9:1** | ✅ | ✅ |
-| `#FF5555` (red-ui) | `#05060D` (bg-base) | **6.7:1** | ✅ | ❌ |
-| `#FF5555` (red-ui) | `#181A28` (bg-overlay) | **5.1:1** | ✅ | ❌ |
-| `#FF3030` (negred) | `#05060D` (bg-base) | **5.6:1** | ✅ | ❌ |
+| `#F0F0F8` primary | **17.84:1** ✅✅ | **16.84:1** ✅✅ | **15.22:1** ✅✅ | **14.00:1** ✅✅ |
+| `#B8B8D0` secondary | **10.41:1** ✅✅ | **9.82:1** ✅✅ | **8.88:1** ✅✅ | **8.16:1** ✅✅ |
+| `#9090B0` muted | **6.55:1** ✅✅ | **6.18:1** ✅✅ | **5.59:1** ✅✅ | **5.14:1** ✅❌ |
+| `#505068` disabled ⚠ | **2.59:1** ❌❌ | **2.44:1** ❌❌ | **2.21:1** ❌❌ | **2.03:1** ❌❌ |
+| `#FFB830` gold | **11.70:1** ✅✅ | **11.04:1** ✅✅ | **9.98:1** ✅✅ | **9.18:1** ✅✅ |
+| `#FFE066` gold-light | **15.51:1** ✅✅ | **14.64:1** ✅✅ | **13.23:1** ✅✅ | **12.17:1** ✅✅ |
+| `#3DFF6E` green | **15.15:1** ✅✅ | **14.29:1** ✅✅ | **12.92:1** ✅✅ | **11.88:1** ✅✅ |
+| `#5BBFFF` blue | **9.96:1** ✅✅ | **9.40:1** ✅✅ | **8.50:1** ✅✅ | **7.81:1** ✅✅ |
+| `#D62828` red ⚠ | **4.04:1** ❌✅ | **3.81:1** ❌✅ | **3.45:1** ❌✅ | **3.17:1** ❌✅ |
+| `#FF5555` red-ui | **6.44:1** ✅❌ | **6.07:1** ✅❌ | **5.49:1** ✅❌ | **5.05:1** ✅❌ |
+| `#FF3030` negred | **5.51:1** ✅❌ | **5.20:1** ✅❌ | **4.70:1** ✅❌ | **4.32:1** ❌✅ |
 
-### Failing pairs
+Column key: first ✅/❌ = AA normal text (4.5:1) · second = AAA (7:1). Large-text AA (3:1) passes for every row except `#505068`.
 
-| Foreground | Background | Ratio | Fails | Current usage | Remediation |
+### Failing pairs — action required at implementation
+
+| Foreground | Background | Ratio | Fails | Current CSS usage | Remediation |
 |---|---|---|---|---|---|
-| `#505068` (disabled) | `#05060D` (bg-base) | **2.9:1** | AA normal, AA large | `.stat-cell-sub`, `.habit-entries` labels, `.dev-btn`, `.mq-fixed-lock` | Decorative only. Use `--color-text-muted` (#9090B0) for any informational content. |
-| `#505068` (disabled) | `#0D0F1A` (bg-raised) | **2.6:1** | AA normal, AA large | `.habit-cat-header`, `.drawer-cat-header` | Same: informational labels must use muted (#9090B0) or muted-secondary (#B8B8D0). |
-| `#505068` (disabled) | `#181A28` (bg-overlay) | **2.2:1** | AA normal, AA large | Border-matching text in several patterns | Never use for text on this surface. |
-| `#D62828` (red) | `#05060D` (bg-base) | **4.1:1** | AA normal text | `.page-header-title`, `.why-section-num` | Safe for large/display text (≥18pt) and artwork. For normal body, use `#FF5555` instead. |
-| `#D62828` (red) | `#0D0F1A` (bg-raised) | **3.7:1** | AA normal text | — | Same: use `#FF5555` or keep to display sizes. |
-| `#FF3030` (negred) | `#181A28` (bg-overlay) | **4.3:1** | AA normal text | `.fnote.neg` border text, segmented button active-neg | Upgrade to `#FF5555` on bg-overlay surfaces for body text. |
+| `#505068` (disabled) | `#05060D` (bg-base) | **2.59:1** | AA normal, AA large | `.stat-cell-sub`, `.habit-entries`, `.dev-btn`, `.mq-fixed-lock` | Decorative only. Use `--color-text-muted` (#9090B0, ≥5.14:1) for any informational text. |
+| `#505068` (disabled) | `#0D0F1A` (bg-raised) | **2.44:1** | AA normal, AA large | `.habit-cat-header`, `.drawer-cat-header` | Same: use muted (#9090B0) or secondary (#B8B8D0). |
+| `#505068` (disabled) | `#181A28` (bg-overlay) | **2.21:1** | AA normal, AA large | Border-matching text in several patterns | Never use for text on this surface. |
+| `#505068` (disabled) | `#1F2133` (bg-inset) | **2.03:1** | AA normal, AA large | — | Never use for text on this surface. |
+| `#D62828` (red) | `#05060D` (bg-base) | **4.04:1** | AA normal text | `.page-header-title`, `.why-section-num` | Safe for large/display text (≥18pt) and artwork. For normal body, use `#FF5555`. |
+| `#D62828` (red) | `#0D0F1A` (bg-raised) | **3.81:1** | AA normal text | — | Same: use `#FF5555` or keep to display sizes. |
+| `#D62828` (red) | `#181A28` (bg-overlay) | **3.45:1** | AA normal text | — | Same. |
+| `#D62828` (red) | `#1F2133` (bg-inset) | **3.17:1** | AA normal text | — | Same. |
+| `#FF3030` (negred) | `#1F2133` (bg-inset) | **4.32:1** | AA normal text | — | Use `#FF5555` for normal-size text on bg-inset. Large text (≥18pt) passes at 3.17:1. |
 
-> **Summary:** Two actionable failures. (1) `--color-text-disabled` (#505068) never passes WCAG AA for text; reserve it for ornamental/decorative use only. (2) Brand red (#D62828) fails normal text on dark backgrounds; use `--color-red-ui` (#FF5555) for UI error text.
+> **Summary:** Two colour tokens have actionable failures. (1) `--color-text-disabled` (#505068) fails WCAG AA on every surface — reserve for ornamental/decorative elements only; never for informational text. (2) `--color-red` (#D62828) fails normal-text AA on all surfaces — use `--color-red-ui` (#FF5555) for any UI error or status text. `--color-negred` (#FF3030) passes 4.5:1 on bg-base, bg-raised, and bg-overlay; it fails only on bg-inset for normal-size text.
 
 ---
 
@@ -320,16 +320,16 @@ Touch targets: wrap in an element with `min-width: var(--touch-min); min-height:
 
 **Token:** `--focus-ring-color: var(--color-gold)` (`#FFB830`) / `--focus-ring-width: 2px` / `--focus-ring-offset: 3px`
 
-Gold (#FFB830) against all four background surfaces:
+Gold (#FFB830) against all four background surfaces (computed from token values):
 
-| Surface | BG | Ratio | AA large |
-|---|---|---|---|
-| bg-base | `#05060D` | 12.0:1 | ✅ |
-| bg-raised | `#0D0F1A` | 10.6:1 | ✅ |
-| bg-overlay | `#181A28` | 9.2:1 | ✅ |
-| bg-inset | `#1F2133` | 8.7:1 | ✅ |
+| Surface | BG | Ratio | AA normal (4.5:1) | AA large (3:1) |
+|---|---|---|---|---|
+| bg-base | `#05060D` | **11.70:1** | ✅ | ✅ |
+| bg-raised | `#0D0F1A` | **11.04:1** | ✅ | ✅ |
+| bg-overlay | `#181A28` | **9.98:1** | ✅ | ✅ |
+| bg-inset | `#1F2133` | **9.18:1** | ✅ | ✅ |
 
-The focus ring passes WCAG 2.2 §2.4.11 (Focus Appearance) on every defined surface.
+The focus ring passes WCAG 2.2 SC 2.4.13 (Focus Appearance) on every defined surface.
 
 Usage pattern:
 ```css
@@ -391,7 +391,7 @@ Apply `.focus-gold` to buttons, nav items, inputs, segmented controls, filter pi
 | Pixel SVG set: rocket/bolt/warning/settings/library/back/close/check/plus/chart | ✅ `src/icons/*.svg` |
 | Gold focus ring with contrast + offset | ✅ §7 above; `.focus-gold` utility |
 
-**Contrast failures to carry forward to implementation:**
-1. `--color-text-disabled` (#505068): never use for informational text; decorative/ornamental only.
-2. `--color-red` (#D62828): fails 4.5:1 for normal body text; use `--color-red-ui` (#FF5555) instead.
-3. `--color-negred` (#FF3030) on bg-overlay (#181A28): 4.3:1 — fails normal text; use `--color-red-ui` for body copy on this surface.
+**Contrast failures to carry forward to implementation (from §3):**
+1. `--color-text-disabled` (#505068): fails AA on every surface (2.03–2.59:1); decorative/ornamental only.
+2. `--color-red` (#D62828): fails normal-text AA on all surfaces (3.17–4.04:1); use `--color-red-ui` (#FF5555) for UI error text.
+3. `--color-negred` (#FF3030) on `--surface-elevated` / bg-inset (#1F2133): 4.32:1 — fails normal text AA; use `--color-red-ui` for normal-size text on that surface. Passes on bg-base, bg-raised, and bg-overlay.
