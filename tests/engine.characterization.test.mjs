@@ -202,25 +202,25 @@ test('[CURRENT-BEHAVIOR] runEngine: negative-streak multiplier amplifies a bad d
   );
 });
 
-test('[KNOWN-BUG: AUDIT-11] runEngine: non-numeric answer is coerced to the WORST option (idx 0)', () => {
+test('[FIXED-IN-B-1: AUDIT-11] runEngine: non-numeric answer is rejected rather than scored', () => {
   const e = loadEngine();
   e.setQuestions([pos('sleep')]);
   // parseInt("garbage") -> NaN -> ||1 -> 1 -> idx 0 ("bad"). S-positive bad = -5 -> drag 5.
-  assert.equal(e.run('runEngine({sleep:"garbage"},100,0,0).drag'), 5);
+  assert.equal(e.run('runEngine({sleep:"garbage"},100,0,0).drag'), 0); // Legacy: 5.
 });
 
-test('[KNOWN-BUG: AUDIT-11] runEngine: answer "0" is treated as "1" (falsy ||1), not rejected', () => {
+test('[FIXED-IN-B-1: AUDIT-11] runEngine: answer "0" is rejected rather than scored', () => {
   const e = loadEngine();
   e.setQuestions([pos('sleep')]);
   // "0" -> parseInt 0 -> 0||1 -> 1 -> idx 0 ("bad") rather than an invalid/unanswered state.
-  assert.equal(e.run('runEngine({sleep:"0"},100,0,0).drag'), 5);
+  assert.equal(e.run('runEngine({sleep:"0"},100,0,0).drag'), 0); // Legacy: 5.
 });
 
-test('[KNOWN-BUG: AUDIT-11] runEngine: out-of-range answer is silently clamped to the BEST option', () => {
+test('[FIXED-IN-B-1: AUDIT-11] runEngine: out-of-range answer is rejected rather than clamped', () => {
   const e = loadEngine();
   e.setQuestions([pos('sleep')]);
   // 999 -> idx 998 -> clamped to 2 ("good") instead of being flagged invalid.
-  assert.equal(e.run('runEngine({sleep:999},100,0,0).thrust'), 8);
+  assert.equal(e.run('runEngine({sleep:999},100,0,0).thrust'), 0); // Legacy: 8.
 });
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -287,7 +287,7 @@ test('[KNOWN-BUG: AUDIT-10] recomputeAll: a month-long gap still yields a 2-day 
   );
 });
 
-test('[KNOWN-BUG: AUDIT-10] recomputeAll: shadow drag survives a month-long gap', () => {
+test('[FIXED-IN-B-1: AUDIT-10] recomputeAll: calendar shadow ages out across a month gap', () => {
   const e = loadEngine();
   e.setQuestions([pos('sleep')]);
   // Old drag is not aged out by elapsed calendar time.
@@ -295,19 +295,19 @@ test('[KNOWN-BUG: AUDIT-10] recomputeAll: shadow drag survives a month-long gap'
     e.run(
       "recomputeAll([{date:'2026-05-01',answers:{sleep:1}},{date:'2026-06-01',answers:{sleep:3}}])['2026-06-01'].computed.shadow",
     ),
-    2,
+    0, // Legacy: 2 (most-recent row shadow).
   );
 });
 
-test('[KNOWN-BUG: AUDIT-11] recomputeAll: a null answer counts toward completion (partial=false) but scores nothing', () => {
+test('[FIXED-IN-B-1: AUDIT-11] recomputeAll: a null answer leaves completion pending', () => {
   const e = loadEngine();
   e.setQuestions([pos('sleep')]);
   const c = e.run("recomputeAll([{date:'2026-06-01',answers:{sleep:null}}])['2026-06-01']");
-  assert.equal(c.partial, false); // null !== undefined, so it is counted as answered
+  assert.equal(c.partial, true); // Legacy: false (null counted as answered).
   assert.equal(c.computed.thrust, 0); // ...yet runEngine skips it, so it adds no score
 });
 
-test('[KNOWN-BUG: AUDIT-11] recomputeAll: an orphan (removed-question) key inflates the completion count', () => {
+test('[FIXED-IN-B-1: AUDIT-11] recomputeAll: an orphan key cannot inflate the completion count', () => {
   const e = loadEngine();
   e.setQuestions([pos('sleep'), pos('mood')]);
   // Only 1 of 2 active questions answered, but a stale "removed_habit" key makes
@@ -315,8 +315,8 @@ test('[KNOWN-BUG: AUDIT-11] recomputeAll: an orphan (removed-question) key infla
   const c = e.run(
     "recomputeAll([{date:'2026-06-01',answers:{sleep:3,removed_habit:3}}])['2026-06-01']",
   );
-  assert.equal(c.answeredCount, 2);
-  assert.equal(c.partial, false);
+  assert.equal(c.answeredCount, 1); // Legacy: 2 (orphan counted).
+  assert.equal(c.partial, true); // Legacy: false (orphan completed day).
 });
 
 test('[KNOWN-BUG: AUDIT-05] recomputeAll: retiering a question retroactively rewrites an already-saved day', () => {

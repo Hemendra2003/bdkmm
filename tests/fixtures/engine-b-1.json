@@ -1,0 +1,132 @@
+{
+  "engineVersion": "b-1",
+  "cases": [
+    {
+      "id": "E1",
+      "description": "First Build-S full day",
+      "questions": [{ "key": "sleep", "text": "Sleep", "polarity": "positive", "tier": "S" }],
+      "answers": { "sleep": 3 },
+      "previousVelocity": 100,
+      "priorPositive": 0,
+      "priorNegative": 0,
+      "expected": {
+        "thrust": 8,
+        "drag": 0,
+        "rawDv": 8,
+        "mult": 1,
+        "rawChange": 8,
+        "shadow": 0,
+        "intendedChange": 8,
+        "actualChange": 8,
+        "newVelocity": 108,
+        "posStreak": 1,
+        "negStreak": 0,
+        "eligible": true
+      }
+    },
+    {
+      "id": "E2",
+      "description": "Prior negative streak amplification",
+      "questions": [{ "key": "vice", "text": "Vice", "polarity": "negative", "tier": "S" }],
+      "answers": { "vice": 1 },
+      "previousVelocity": 100,
+      "priorPositive": 0,
+      "priorNegative": 3,
+      "expected": {
+        "rawDv": -10,
+        "mult": 2.04,
+        "rawChange": -20,
+        "shadow": 0,
+        "intendedChange": -20,
+        "actualChange": -20,
+        "newVelocity": 80,
+        "negStreak": 4,
+        "eligible": true
+      }
+    },
+    {
+      "id": "E3",
+      "description": "One of three due actions, no published score",
+      "questions": [
+        { "key": "a", "text": "A", "polarity": "positive", "tier": "S" },
+        { "key": "b", "text": "B", "polarity": "positive", "tier": "S" },
+        { "key": "c", "text": "C", "polarity": "positive", "tier": "S" }
+      ],
+      "answers": { "a": 3 },
+      "previousVelocity": 108,
+      "priorPositive": 1,
+      "priorNegative": 0,
+      "expected": {
+        "eligible": false,
+        "status": "pending",
+        "partial": true,
+        "answeredCount": 1,
+        "rawChange": 0,
+        "shadow": 0,
+        "intendedChange": 0,
+        "actualChange": 0,
+        "newVelocity": 108,
+        "posStreak": 1,
+        "negStreak": 0
+      }
+    },
+    {
+      "id": "E4",
+      "description": "All excused, no action score",
+      "questions": [
+        { "key": "sleep", "text": "Sleep", "polarity": "positive", "tier": "S" },
+        { "key": "vice", "text": "Vice", "polarity": "negative", "tier": "S" }
+      ],
+      "answers": {},
+      "options": { "excusedKeys": ["sleep", "vice"] },
+      "previousVelocity": 108,
+      "priorPositive": 1,
+      "priorNegative": 0,
+      "expected": {
+        "eligible": false,
+        "status": "no-action",
+        "partial": false,
+        "answeredCount": 0,
+        "excusedCount": 2,
+        "rawChange": 0,
+        "actualChange": 0,
+        "newVelocity": 108,
+        "posStreak": 1,
+        "negStreak": 0
+      }
+    },
+    {
+      "id": "negative-half-tie",
+      "description": "ENGINE section2, legacy rawChange -8 becomes -9",
+      "questions": [{ "key": "sleep", "text": "Sleep", "polarity": "positive", "tier": "S" }],
+      "answers": { "sleep": 1 },
+      "previousVelocity": 100,
+      "priorPositive": 0,
+      "priorNegative": 2,
+      "expected": {
+        "rawDv": -5,
+        "mult": 1.7,
+        "rawChange": -9,
+        "actualChange": -9,
+        "newVelocity": 91,
+        "negStreak": 3
+      }
+    }
+  ],
+  "trajectoryCases": [
+    {
+      "id": "E7",
+      "previousVelocity": 5,
+      "rawChange": -10,
+      "shadow": 0,
+      "expected": { "newVelocity": 0, "intendedChange": -10, "actualChange": -5 }
+    },
+    {
+      "id": "E7-at-zero",
+      "previousVelocity": 0,
+      "rawChange": -10,
+      "shadow": 0,
+      "expected": { "newVelocity": 0, "intendedChange": -10, "actualChange": 0 }
+    }
+  ]
+}

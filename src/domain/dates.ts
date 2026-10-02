@@ -67,3 +67,19 @@ export function dateKeyOffset(date: Date, days: number, timeZone: string): strin
   const shifted = utcCalendar(Number(value.year), Number(value.month), Number(value.day) + days);
   return `${String(shifted.getUTCFullYear()).padStart(4, '0')}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
 }
+
+// Calendar arithmetic on an already-resolved local key is independent of an
+// instant/timezone and stays correct over leap days and DST boundaries.
+export function calendarKeyOffset(key: string, days: number): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || !Number.isInteger(days))
+    throw new Error('Invalid calendar key/offset.');
+  const date = new Date(key + 'T12:00:00Z');
+  if (
+    !Number.isFinite(date.getTime()) ||
+    `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}` !==
+      key
+  )
+    throw new Error('Invalid calendar key.');
+  date.setUTCDate(date.getUTCDate() + days);
+  return `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}

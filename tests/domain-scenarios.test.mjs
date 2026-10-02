@@ -10,16 +10,16 @@
 //     captures the WRONG output on purpose. Fixing the bug should fail the test,
 //     at which point it is updated deliberately.
 //
-// Loading: scoring/validation/dates are self-contained and imported directly as
+// Loading: validation/dates are self-contained and imported directly as
 // .ts (Node 24 strips types). history.ts uses an extensionless internal import
-// (`./scoring`) that Node's native resolver does not follow, so history is loaded
+// that Node's native resolver does not follow, so both are loaded
 // through the same generated bundle the app ships — i.e. the real transpiled
 // history.ts. No new dependencies; runs under `npm test` (node --test).
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
-import { scoreForAnswer, runEngine, TIER_WEIGHTS } from '../src/domain/scoring.ts';
+// Scoring now imports shared validation/rounding; execute its shipped bundle.
 import {
   validateQuestionText,
   checkBalance,
@@ -34,6 +34,9 @@ import { buildLegacyBundle } from '../src/domain/build-legacy.mjs';
 // history via the generated bundle (see header note).
 const MomentumDomain = vm.runInNewContext(buildLegacyBundle() + '\nMomentumDomain;');
 const recomputeAll = MomentumDomain.recomputeAll;
+const scoreForAnswer = MomentumDomain.scoreForAnswer;
+const TIER_WEIGHTS = MomentumDomain.TIER_WEIGHTS;
+const runEngine = (...args) => JSON.parse(JSON.stringify(MomentumDomain.runEngine(...args)));
 
 const q = (key, polarity, tier) => ({ key, text: key, polarity, tier });
 
@@ -100,11 +103,12 @@ test('[CURRENT-BEHAVIOR] runEngine: null/undefined answers are skipped; thrust/d
   assert.equal(runEngine(qs, {}, 100, 0, 0).rawDv, 0);
 });
 
-test('[KNOWN-BUG: AUDIT-11] runEngine: non-numeric→worst option, "0"→"1", out-of-range→best', () => {
+// ENGINE.md §6 validation; each legacy expectation is documented below.
+test('[FIXED-IN-B-1: AUDIT-11] runEngine: invalid answers contribute nothing', () => {
   const qs = [q('k', 'positive', 'S')];
-  assert.equal(runEngine(qs, { k: 'garbage' }, 100, 0, 0).drag, 5); // NaN||1 → idx0 (bad)
-  assert.equal(runEngine(qs, { k: '0' }, 100, 0, 0).drag, 5); // 0||1 → idx0 (bad)
-  assert.equal(runEngine(qs, { k: 999 }, 100, 0, 0).thrust, 8); // clamp → idx2 (good)
+  assert.equal(runEngine(qs, { k: 'garbage' }, 100, 0, 0).drag, 0); // Legacy: 5 (NaN||1 → worst).
+  assert.equal(runEngine(qs, { k: '0' }, 100, 0, 0).drag, 0); // Legacy: 5 (0||1 → worst).
+  assert.equal(runEngine(qs, { k: 999 }, 100, 0, 0).thrust, 0); // Legacy: 8 (clamped to best).
 });
 
 // ───────────────────────────── recomputeAll (history) ─────────────────────────────
@@ -149,7 +153,7 @@ test('[CURRENT-BEHAVIOR] recomputeAll: a genuinely incomplete day is marked part
   assert.equal(c.answeredCount, 1);
 });
 
-test('[KNOWN-BUG: AUDIT-10] recomputeAll: a month gap still yields a 2-day streak and keeps shadow', () => {
+test('[KNOWN-BUG: AUDIT-10 gap] [FIXED-IN-B-1 shadow] recomputeAll: legacy gap streak, calendar shadow', () => {
   const streak = recomputeAll(
     [q('k', 'positive', 'S')],
     [
@@ -165,22 +169,23 @@ test('[KNOWN-BUG: AUDIT-10] recomputeAll: a month gap still yields a 2-day strea
       { date: '2026-06-01', answers: { k: 3 } },
     ],
   )['2026-06-01'].computed.shadow;
-  assert.equal(shadow, 2);
+  assert.equal(shadow, 0); // FIXED-IN-B-1: ENGINE.md §3.3 calendar shadow; legacy 2. Gap streak above remains pending WP2.4.
 });
 
-test('[KNOWN-BUG: AUDIT-11] recomputeAll: null answer counts as complete; orphan key inflates count', () => {
+// ENGINE.md §§5–6: only resolved currently-due keys count.
+test('[FIXED-IN-B-1: AUDIT-11] recomputeAll: null/orphan answers cannot satisfy completion', () => {
   const nullDay = recomputeAll(
     [q('k', 'positive', 'S')],
     [{ date: '2026-06-01', answers: { k: null } }],
   )['2026-06-01'];
-  assert.equal(nullDay.partial, false); // null !== undefined → counted
+  assert.equal(nullDay.partial, true); // Legacy: false (null counted).
   assert.equal(nullDay.computed.thrust, 0); // ...but scores nothing
   const orphan = recomputeAll(
     [q('a', 'positive', 'S'), q('b', 'positive', 'S')],
     [{ date: '2026-06-01', answers: { a: 3, removed: 3 } }],
   )['2026-06-01'];
-  assert.equal(orphan.answeredCount, 2);
-  assert.equal(orphan.partial, false);
+  assert.equal(orphan.answeredCount, 1); // Legacy: 2 (orphan counted).
+  assert.equal(orphan.partial, true); // Legacy: false (orphan completed day).
 });
 
 test('[KNOWN-BUG: AUDIT-05] recomputeAll: retiering rewrites an already-saved day (108→103)', () => {

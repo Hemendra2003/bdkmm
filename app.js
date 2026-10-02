@@ -28,6 +28,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.localDateKey = localDateKey;
 exports.calendarDate = calendarDate;
 exports.dateKeyOffset = dateKeyOffset;
+exports.calendarKeyOffset = calendarKeyOffset;
 // Every conversion takes an instant/calendar key and an explicit IANA timezone.
 // The caller owns the clock and the choice of device/profile timezone.
 function formatter(timeZone) {
@@ -84,71 +85,33 @@ function dateKeyOffset(date, days, timeZone) {
     const shifted = utcCalendar(Number(value.year), Number(value.month), Number(value.day) + days);
     return `${String(shifted.getUTCFullYear()).padStart(4, '0')}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
 }
+// Calendar arithmetic on an already-resolved local key is independent of an
+// instant/timezone and stays correct over leap days and DST boundaries.
+function calendarKeyOffset(key, days) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || !Number.isInteger(days))
+        throw new Error('Invalid calendar key/offset.');
+    const date = new Date(key + 'T12:00:00Z');
+    if (!Number.isFinite(date.getTime()) ||
+        `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}` !==
+            key)
+        throw new Error('Invalid calendar key.');
+    date.setUTCDate(date.getUTCDate() + days);
+    return `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
 
 },
-"./scoring":function(exports,require){
+"./rounding":function(exports,require){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.STRENGTH_LABEL = exports.TIER_WEIGHTS = void 0;
-exports.scoreForAnswer = scoreForAnswer;
-exports.runEngine = runEngine;
-exports.TIER_WEIGHTS = {
-    positive: {
-        S: { bad: -5, neutral: 0, good: 8 },
-        A: { bad: -3, neutral: 0, good: 5 },
-        B: { bad: -1.5, neutral: 0, good: 3 },
-    },
-    negative: {
-        S: { bad: -10, neutral: -4, good: 0 },
-        A: { bad: -6, neutral: -2, good: 0 },
-        B: { bad: -3, neutral: -1, good: 0 },
-    },
-};
-// strengthIndex 0/1/2 -> 'bad'/'neutral'/'good' lookup key
-exports.STRENGTH_LABEL = ['bad', 'neutral', 'good'];
-function scoreForAnswer(question, strengthIndex) {
-    const idx = Math.max(0, Math.min(2, strengthIndex));
-    const table = exports.TIER_WEIGHTS[question.polarity] || exports.TIER_WEIGHTS.positive;
-    const tierRow = table[question.tier] || table.B;
-    return tierRow[exports.STRENGTH_LABEL[idx]];
-}
-function runEngine(questions, answers, prevV, posS, negS) {
-    let thrust = 0, drag = 0;
-    const thrustItems = [], dragItems = [];
-    questions.forEach((q) => {
-        if (answers[q.key] === undefined || answers[q.key] === null)
-            return;
-        const idx = (parseInt(answers[q.key]) || 1) - 1;
-        const score = scoreForAnswer(q, idx);
-        if (score > 0) {
-            thrust += score;
-            thrustItems.push({ name: q.text, score });
-        }
-        else if (score < 0) {
-            drag += Math.abs(score);
-            dragItems.push({ name: q.text, score });
-        }
-    });
-    const rawDv = thrust - drag;
-    let mult = 1.0;
-    if (rawDv > 0)
-        mult = Math.min(2.2, 1 + (Math.log(posS + 1) / Math.log(1.8)) * 0.25);
-    else if (rawDv < 0)
-        mult = Math.min(3.5, 1 + Math.pow(negS + 1, 1.4) * 0.15);
-    mult = Math.round(mult * 100) / 100;
-    const finalDv = Math.round(rawDv * mult);
-    return {
-        thrust,
-        drag,
-        rawDv,
-        mult,
-        finalDv,
-        newVelocity: Math.max(0, prevV + finalDv),
-        posStreak: finalDv > 0 ? posS + 1 : 0,
-        negStreak: finalDv < 0 ? negS + 1 : 0,
-        thrustItems,
-        dragItems,
-    };
+exports.ENGINE_VERSION = void 0;
+exports.roundHalfAwayFromZero = roundHalfAwayFromZero;
+exports.ENGINE_VERSION = 'b-1';
+// Version b-1: negative half-ties round away from zero, unlike Math.round.
+function roundHalfAwayFromZero(value) {
+    if (!Number.isFinite(value))
+        throw new Error('Cannot round a non-finite engine value.');
+    const rounded = Math.floor(Math.abs(value) + 0.5);
+    return value < 0 && rounded !== 0 ? -rounded : rounded;
 }
 
 },
@@ -159,6 +122,8 @@ exports.OPTION_TEXT_LIMIT = exports.QUESTION_TEXT_LIMIT = exports.MIN_POLARITY_R
 exports.validateQuestionText = validateQuestionText;
 exports.checkBalance = checkBalance;
 exports.parseDraft = parseDraft;
+exports.isValidAnswer = isValidAnswer;
+exports.assessEligibility = assessEligibility;
 exports.MIN_TOTAL_QUESTIONS = 10;
 exports.MIN_POLARITY_RATIO = 0.3;
 exports.QUESTION_TEXT_LIMIT = 80;
@@ -218,52 +183,190 @@ function parseDraft(raw, userId, date) {
         !draft.answers ||
         typeof draft.answers !== 'object' ||
         Array.isArray(draft.answers) ||
-        Object.entries(draft.answers).some(([key, val]) => key.length > 128 || ![1, 2, 3].includes(val)))
+        Object.entries(draft.answers).some(([key, val]) => key.length > 128 || !isValidAnswer(val)))
         throw new Error('Invalid draft');
     return draft.answers;
+}
+function isValidAnswer(value) {
+    return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 3;
+}
+function assessEligibility(questions, answers, options = {}) {
+    const due = new Set(options.dueKeys ?? questions.map((q) => q.key));
+    const excused = new Set(options.excusedKeys ?? []);
+    const keys = [...new Set(questions.map((q) => q.key))].filter((key) => due.has(key));
+    let answeredCount = 0, excusedCount = 0;
+    const states = keys.map((key) => {
+        if (excused.has(key)) {
+            excusedCount++;
+            return [key, 'excused'];
+        }
+        const value = Object.hasOwn(answers, key) ? answers[key] : undefined;
+        if (isValidAnswer(value)) {
+            answeredCount++;
+            return [key, 'answered'];
+        }
+        return [key, value === null || value === undefined ? 'unanswered' : 'invalid'];
+    });
+    const partial = answeredCount + excusedCount < keys.length;
+    const eligible = options.finalized !== false && !partial && answeredCount > 0;
+    const status = options.finalized === false ? 'draft' : partial ? 'pending' : eligible ? 'scored' : 'no-action';
+    return {
+        eligible,
+        partial,
+        answeredCount,
+        excusedCount,
+        dueCount: keys.length,
+        status,
+        answerStates: Object.fromEntries(states),
+    };
+}
+
+},
+"./scoring":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.STRENGTH_LABEL = exports.TIER_WEIGHTS = void 0;
+exports.scoreForAnswer = scoreForAnswer;
+exports.applyVelocityChange = applyVelocityChange;
+exports.runEngine = runEngine;
+// Engine B core; immutable historical definitions and the gap policy remain
+// separate contracts. All state, due actions and finalization are explicit.
+const validation_1 = require("./validation");
+const rounding_1 = require("./rounding");
+exports.TIER_WEIGHTS = {
+    positive: {
+        S: { bad: -5, neutral: 0, good: 8 },
+        A: { bad: -3, neutral: 0, good: 5 },
+        B: { bad: -1.5, neutral: 0, good: 3 },
+    },
+    negative: {
+        S: { bad: -10, neutral: -4, good: 0 },
+        A: { bad: -6, neutral: -2, good: 0 },
+        B: { bad: -3, neutral: -1, good: 0 },
+    },
+};
+// strengthIndex 0/1/2 -> 'bad'/'neutral'/'good' lookup key
+exports.STRENGTH_LABEL = ['bad', 'neutral', 'good'];
+function scoreForAnswer(question, strengthIndex) {
+    const idx = Math.max(0, Math.min(2, strengthIndex));
+    const table = Object.hasOwn(exports.TIER_WEIGHTS, question.polarity)
+        ? exports.TIER_WEIGHTS[question.polarity]
+        : exports.TIER_WEIGHTS.positive;
+    const tierRow = Object.hasOwn(table, question.tier) ? table[question.tier] : table.B;
+    return tierRow[exports.STRENGTH_LABEL[idx]];
+}
+// The only trajectory floor: runEngine and history both use this finish step.
+function applyVelocityChange(prevV, rawChange, shadow) {
+    const intendedChange = rawChange - shadow;
+    const newVelocity = Math.max(0, prevV + intendedChange);
+    return { intendedChange, newVelocity, actualChange: newVelocity - prevV };
+}
+function runEngine(questions, answers, prevV, posS, negS, options = {}) {
+    const eligibility = (0, validation_1.assessEligibility)(questions, answers, options);
+    let thrust = 0, drag = 0;
+    const thrustItems = [], dragItems = [];
+    const counted = new Set();
+    questions.forEach((q) => {
+        if (eligibility.answerStates[q.key] !== 'answered' || counted.has(q.key))
+            return;
+        counted.add(q.key);
+        const score = scoreForAnswer(q, answers[q.key] - 1);
+        if (score > 0) {
+            thrust += score;
+            thrustItems.push({ name: q.text, score });
+        }
+        else if (score < 0) {
+            drag += Math.abs(score);
+            dragItems.push({ name: q.text, score });
+        }
+    });
+    // Valid partial answers retain candidate item totals for preview only. They
+    // publish no change, shadow, score or streak until eligibility is satisfied.
+    const rawDv = thrust - drag;
+    let mult = 1;
+    if (eligibility.eligible && rawDv > 0)
+        mult = Math.min(2.2, 1 + (Math.log(posS + 1) / Math.log(1.8)) * 0.25);
+    else if (eligibility.eligible && rawDv < 0)
+        mult = Math.min(3.5, 1 + Math.pow(negS + 1, 1.4) * 0.15);
+    mult = (0, rounding_1.roundHalfAwayFromZero)(mult * 100) / 100;
+    const rawChange = eligibility.eligible ? (0, rounding_1.roundHalfAwayFromZero)(rawDv * mult) : 0;
+    const shadow = eligibility.eligible ? (0, rounding_1.roundHalfAwayFromZero)(options.shadow ?? 0) : 0;
+    const change = eligibility.eligible
+        ? applyVelocityChange(prevV, rawChange, shadow)
+        : { intendedChange: 0, newVelocity: prevV, actualChange: 0 };
+    const posStreak = eligibility.eligible ? (change.actualChange > 0 ? posS + 1 : 0) : posS;
+    const negStreak = eligibility.eligible ? (change.actualChange < 0 ? negS + 1 : 0) : negS;
+    return {
+        ...eligibility,
+        engineVersion: rounding_1.ENGINE_VERSION,
+        thrust,
+        drag,
+        rawDv,
+        mult,
+        rawChange,
+        shadow,
+        ...change,
+        // Existing UI reads finalDv: it must display actual velocity gained/lost.
+        finalDv: change.actualChange,
+        posStreak,
+        negStreak,
+        thrustItems,
+        dragItems,
+    };
 }
 
 },
 "./history":function(exports,require){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.retainLegacyGapContinuityPendingPolicy = retainLegacyGapContinuityPendingPolicy;
 exports.recomputeAll = recomputeAll;
 const scoring_1 = require("./scoring");
-// Sorting, prior-row shadow, null/orphan completion counts and historical
-// re-tiering intentionally retain the golden characterization behavior.
+const dates_1 = require("./dates");
+const rounding_1 = require("./rounding");
+function retainLegacyGapContinuityPendingPolicy(state) {
+    return { ...state };
+}
 function recomputeAll(questions, rows) {
     const sorted = [...rows].sort((a, b) => (a.date < b.date ? -1 : 1));
     const cache = {};
     let prevV = 100, posS = 0, negS = 0;
+    let previousDate = null;
     sorted.forEach((row) => {
         if (!row.answers)
-            return;
-        const answers = row.answers;
-        const c = (0, scoring_1.runEngine)(questions, answers, prevV, posS, negS);
-        const pd = Object.keys(cache).sort();
-        let shadow = 0;
-        if (pd.length >= 1)
-            shadow += (cache[pd[pd.length - 1]].computed.drag || 0) * 0.6;
-        if (pd.length >= 2)
-            shadow += (cache[pd[pd.length - 2]].computed.drag || 0) * 0.4 * 0.6;
-        const sp = Math.round(shadow * 0.5);
-        c.newVelocity = Math.max(0, c.newVelocity - sp);
-        c.finalDv -= sp;
-        c.shadow = sp;
-        c.posStreak = c.finalDv > 0 ? posS + 1 : 0;
-        c.negStreak = c.finalDv < 0 ? negS + 1 : 0;
+            return; // Preserve legacy absent-answer-row handling.
+        const prior = retainLegacyGapContinuityPendingPolicy({
+            velocity: prevV,
+            posS,
+            negS,
+            previousDate,
+            currentDate: row.date,
+        });
+        const yesterday = cache[(0, dates_1.calendarKeyOffset)(row.date, -1)]?.computed;
+        const twoDaysAgo = cache[(0, dates_1.calendarKeyOffset)(row.date, -2)]?.computed;
+        const shadow = (0, rounding_1.roundHalfAwayFromZero)(0.3 * (yesterday?.eligible ? yesterday.drag : 0) +
+            0.12 * (twoDaysAgo?.eligible ? twoDaysAgo.drag : 0));
+        const c = (0, scoring_1.runEngine)(questions, row.answers, prior.velocity, prior.posS, prior.negS, {
+            ...row,
+            shadow,
+        });
+        previousDate = row.date;
         prevV = c.newVelocity;
         posS = c.posStreak;
         negS = c.negStreak;
-        const ac = Object.keys(answers).filter((k) => answers[k] !== undefined).length;
-        cache[row.date] = { answers, computed: c, partial: ac < questions.length, answeredCount: ac };
+        cache[row.date] = {
+            answers: row.answers,
+            computed: c,
+            partial: c.partial,
+            answeredCount: c.answeredCount,
+        };
     });
     return cache;
 }
 
 }};
 const cache={};function load(name){if(cache[name])return cache[name];const exports={};cache[name]=exports;modules[name](exports,load);return exports;}
-return Object.assign({},load('./dates'),load('./scoring'),load('./validation'),load('./history'));
+return Object.assign({},load('./dates'),load('./rounding'),load('./validation'),load('./scoring'),load('./history'));
 })();
 // END GENERATED DOMAIN BUNDLE
 // Plain text is escaped only at HTML text sinks, never before persistence.
