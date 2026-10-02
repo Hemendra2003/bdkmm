@@ -287,9 +287,9 @@ test('all graph/summary/filter calendar keys use local helpers without UTC slice
   assert.equal(week.length, 7);
   assert.equal(week.at(-1).isToday, true);
   assert.equal(week.at(-1).value, 1);
-  h.context.cache = { '2026-08-28': {}, '2026-08-29': {}, '2026-09-05': {} };
+  h.context.cache = { '2026-08-29': {}, '2026-08-30': {}, '2026-09-05': {}, '2026-09-06': {} };
   assert.deepEqual(Array.from(h.run("getFilteredKeys(cache,'week')")), [
-    '2026-08-29',
+    '2026-08-30',
     '2026-09-05',
   ]);
 });
@@ -340,4 +340,49 @@ test('late dashboard failure from a prior account cannot display its retry statu
   h.context.window.rejectDashboard(new Error('stale'));
   await pending;
   assert.equal(h.document.getElementById('dashboard-load-status').style.display, 'none');
+});
+
+// Explicit expected boundaries cover leap years, year rollover and DST days.
+for (const [today, weekStart, monthStart, outsideWeek, outsideMonth] of [
+  ['2026-01-01', '2025-12-26', '2025-12-03', '2025-12-25', '2025-12-02'],
+  ['2028-03-01', '2028-02-24', '2028-02-01', '2028-02-23', '2028-01-31'],
+  ['2026-03-10', '2026-03-04', '2026-02-09', '2026-03-03', '2026-02-08'],
+  ['2026-11-03', '2026-10-28', '2026-10-05', '2026-10-27', '2026-10-04'],
+]) {
+  test(`week/month filters have inclusive calendar bounds on ${today}`, () => {
+    const h = harness(today + 'T00:01:00');
+    const keys = [today, '2099-01-01', outsideMonth, weekStart, outsideWeek, monthStart];
+    h.context.cache = Object.fromEntries(keys.map((key) => [key, {}]));
+    const expectedWeek = [weekStart, today];
+    const expectedMonth = [monthStart, outsideWeek, weekStart, today].sort();
+    for (const time of ['00:01:00', '23:59:00']) {
+      h.setClock(today + 'T' + time);
+      assert.deepEqual(Array.from(h.run("getFilteredKeys(cache,'week')")), expectedWeek);
+      assert.deepEqual(Array.from(h.run("getFilteredKeys(cache,'month')")), expectedMonth);
+    }
+    assert.deepEqual(Array.from(h.run("getFilteredKeys(cache,'all')")), [...keys].sort());
+    assert.deepEqual(Object.keys(h.context.cache), keys);
+  });
+}
+
+test('calendar filters follow the demo clock and move their bounds after midnight', async () => {
+  const h = harness('2026-09-05T23:59:00');
+  h.context.cache = { '2026-08-30': {}, '2026-08-31': {}, '2026-09-05': {}, '2026-09-06': {} };
+  assert.deepEqual(Array.from(h.run("getFilteredKeys(cache,'week')")), [
+    '2026-08-30',
+    '2026-08-31',
+    '2026-09-05',
+  ]);
+  h.setClock('2026-09-06T00:01:00');
+  assert.deepEqual(Array.from(h.run("getFilteredKeys(cache,'week')")), [
+    '2026-08-31',
+    '2026-09-05',
+    '2026-09-06',
+  ]);
+  await h.run("setDemoDate('2026-09-05')");
+  assert.deepEqual(Array.from(h.run("getFilteredKeys(cache,'week')")), [
+    '2026-08-30',
+    '2026-08-31',
+    '2026-09-05',
+  ]);
 });
