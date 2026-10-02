@@ -1,0 +1,8 @@
+<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">
+  <!-- three ascending bars (left tallest) -->
+  <rect x="1" y="2"  width="4" height="12"/>
+  <rect x="6" y="6"  width="4" height="8"/>
+  <rect x="11" y="10" width="4" height="4"/>
+  <!-- baseline -->
+  <rect x="0" y="14" width="16" height="2"/>
+</svg>

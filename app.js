@@ -20,41 +20,482 @@
 })();
 
 // STORAGE ADAPTERS
+// BEGIN GENERATED DOMAIN BUNDLE — node src/domain/build-legacy.mjs
+const MomentumDomain=(()=>{
+const modules={"./dates":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.localDateKey = localDateKey;
+exports.calendarDate = calendarDate;
+exports.dateKeyOffset = dateKeyOffset;
+exports.calendarKeyOffset = calendarKeyOffset;
+// Every conversion takes an instant/calendar key and an explicit IANA timezone.
+// The caller owns the clock and the choice of device/profile timezone.
+function formatter(timeZone) {
+    return new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        calendar: 'gregory',
+        numberingSystem: 'latn',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23',
+    });
+}
+function parts(date, timeZone) {
+    return Object.fromEntries(formatter(timeZone)
+        .formatToParts(date)
+        .map((part) => [part.type, part.value]));
+}
+function localDateKey(date, timeZone) {
+    // Preserve the legacy invalid-date behavior used by demo input validation.
+    if (!Number.isFinite(date.getTime()))
+        return '0NaN-NaN-NaN';
+    const value = parts(date, timeZone);
+    return `${value.year.padStart(4, '0')}-${value.month}-${value.day}`;
+}
+function utcCalendar(year, month, day, hour = 12, minute = 0, second = 0) {
+    const date = new Date(0);
+    date.setUTCFullYear(year, month - 1, day);
+    date.setUTCHours(hour, minute, second, 0);
+    return date;
+}
+function calendarDate(key, timeZone) {
+    const desired = new Date(key + 'T12:00:00Z');
+    if (!Number.isFinite(desired.getTime()))
+        return desired;
+    let instant = desired.getTime();
+    // Translate local noon to an instant using the zone's actual offset, including
+    // DST. Noon avoids the usual missing/duplicated midnight transition hours.
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const value = parts(new Date(instant), timeZone);
+        const wall = utcCalendar(Number(value.year), Number(value.month), Number(value.day), Number(value.hour), Number(value.minute), Number(value.second)).getTime();
+        const correction = desired.getTime() - wall;
+        instant += correction;
+        if (correction === 0)
+            break;
+    }
+    return new Date(instant);
+}
+function dateKeyOffset(date, days, timeZone) {
+    const value = parts(date, timeZone);
+    const shifted = utcCalendar(Number(value.year), Number(value.month), Number(value.day) + days);
+    return `${String(shifted.getUTCFullYear()).padStart(4, '0')}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
+}
+// Calendar arithmetic on an already-resolved local key is independent of an
+// instant/timezone and stays correct over leap days and DST boundaries.
+function calendarKeyOffset(key, days) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key) || !Number.isInteger(days))
+        throw new Error('Invalid calendar key/offset.');
+    const date = new Date(key + 'T12:00:00Z');
+    if (!Number.isFinite(date.getTime()) ||
+        `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}` !==
+            key)
+        throw new Error('Invalid calendar key.');
+    date.setUTCDate(date.getUTCDate() + days);
+    return `${String(date.getUTCFullYear()).padStart(4, '0')}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+}
+
+},
+"./rounding":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ENGINE_VERSION = void 0;
+exports.roundHalfAwayFromZero = roundHalfAwayFromZero;
+exports.ENGINE_VERSION = 'b-1';
+// Version b-1: negative half-ties round away from zero, unlike Math.round.
+function roundHalfAwayFromZero(value) {
+    if (!Number.isFinite(value))
+        throw new Error('Cannot round a non-finite engine value.');
+    const rounded = Math.floor(Math.abs(value) + 0.5);
+    return value < 0 && rounded !== 0 ? -rounded : rounded;
+}
+
+},
+"./validation":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.OPTION_TEXT_LIMIT = exports.QUESTION_TEXT_LIMIT = exports.MIN_POLARITY_RATIO = exports.MIN_TOTAL_QUESTIONS = void 0;
+exports.validateQuestionText = validateQuestionText;
+exports.checkBalance = checkBalance;
+exports.parseDraft = parseDraft;
+exports.isValidAnswer = isValidAnswer;
+exports.assessEligibility = assessEligibility;
+exports.MIN_TOTAL_QUESTIONS = 10;
+exports.MIN_POLARITY_RATIO = 0.3;
+exports.QUESTION_TEXT_LIMIT = 80;
+exports.OPTION_TEXT_LIMIT = 80;
+function validateQuestionText(q) {
+    if (typeof q.text !== 'string' || !q.text.trim() || q.text.length > exports.QUESTION_TEXT_LIMIT)
+        throw new Error('Question text must be 1–80 characters.');
+    if (!Array.isArray(q.opts) ||
+        q.opts.length !== 3 ||
+        q.opts.some((opt) => typeof opt !== 'string' || !opt.trim() || opt.length > exports.OPTION_TEXT_LIMIT))
+        throw new Error('Each of the three option labels must be 1–80 characters.');
+}
+function checkBalance(questions) {
+    const total = questions.length;
+    if (total === 0)
+        return { ok: false, reason: 'No questions.' };
+    const posCount = questions.filter((q) => q.polarity === 'positive').length;
+    const negCount = total - posCount;
+    const posRatio = posCount / total, negRatio = negCount / total;
+    if (total < exports.MIN_TOTAL_QUESTIONS)
+        return {
+            ok: false,
+            reason: `Need at least ${exports.MIN_TOTAL_QUESTIONS} questions (have ${total}).`,
+            posCount,
+            negCount,
+            total,
+        };
+    if (posRatio < exports.MIN_POLARITY_RATIO)
+        return {
+            ok: false,
+            reason: `Too few positive-habit questions (need \u226530%, have ${Math.round(posRatio * 100)}%).`,
+            posCount,
+            negCount,
+            total,
+        };
+    if (negRatio < exports.MIN_POLARITY_RATIO)
+        return {
+            ok: false,
+            reason: `Too few negative-habit questions (need \u226530%, have ${Math.round(negRatio * 100)}%).`,
+            posCount,
+            negCount,
+            total,
+        };
+    return { ok: true, posCount, negCount, total };
+}
+// Storage access and error presentation remain in the app adapter.
+function parseDraft(raw, userId, date) {
+    if (!raw)
+        return {};
+    if (raw.length > 1000000)
+        throw new Error('Oversized draft');
+    const draft = JSON.parse(raw);
+    if (!draft ||
+        draft.version !== 1 ||
+        draft.userId !== userId ||
+        draft.date !== date ||
+        !draft.answers ||
+        typeof draft.answers !== 'object' ||
+        Array.isArray(draft.answers) ||
+        Object.entries(draft.answers).some(([key, val]) => key.length > 128 || !isValidAnswer(val)))
+        throw new Error('Invalid draft');
+    return draft.answers;
+}
+function isValidAnswer(value) {
+    return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 3;
+}
+function assessEligibility(questions, answers, options = {}) {
+    const due = new Set(options.dueKeys ?? questions.map((q) => q.key));
+    const excused = new Set(options.excusedKeys ?? []);
+    const keys = [...new Set(questions.map((q) => q.key))].filter((key) => due.has(key));
+    let answeredCount = 0, excusedCount = 0;
+    const states = keys.map((key) => {
+        if (excused.has(key)) {
+            excusedCount++;
+            return [key, 'excused'];
+        }
+        const value = Object.hasOwn(answers, key) ? answers[key] : undefined;
+        if (isValidAnswer(value)) {
+            answeredCount++;
+            return [key, 'answered'];
+        }
+        return [key, value === null || value === undefined ? 'unanswered' : 'invalid'];
+    });
+    const partial = answeredCount + excusedCount < keys.length;
+    const eligible = options.finalized !== false && !partial && answeredCount > 0;
+    const status = options.finalized === false ? 'draft' : partial ? 'pending' : eligible ? 'scored' : 'no-action';
+    return {
+        eligible,
+        partial,
+        answeredCount,
+        excusedCount,
+        dueCount: keys.length,
+        status,
+        answerStates: Object.fromEntries(states),
+    };
+}
+
+},
+"./scoring":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.STRENGTH_LABEL = exports.TIER_WEIGHTS = void 0;
+exports.scoreForAnswer = scoreForAnswer;
+exports.applyVelocityChange = applyVelocityChange;
+exports.runEngine = runEngine;
+// Engine B core; immutable historical definitions and the gap policy remain
+// separate contracts. All state, due actions and finalization are explicit.
+const validation_1 = require("./validation");
+const rounding_1 = require("./rounding");
+exports.TIER_WEIGHTS = {
+    positive: {
+        S: { bad: -5, neutral: 0, good: 8 },
+        A: { bad: -3, neutral: 0, good: 5 },
+        B: { bad: -1.5, neutral: 0, good: 3 },
+    },
+    negative: {
+        S: { bad: -10, neutral: -4, good: 0 },
+        A: { bad: -6, neutral: -2, good: 0 },
+        B: { bad: -3, neutral: -1, good: 0 },
+    },
+};
+// strengthIndex 0/1/2 -> 'bad'/'neutral'/'good' lookup key
+exports.STRENGTH_LABEL = ['bad', 'neutral', 'good'];
+function scoreForAnswer(question, strengthIndex) {
+    const idx = Math.max(0, Math.min(2, strengthIndex));
+    const table = Object.hasOwn(exports.TIER_WEIGHTS, question.polarity)
+        ? exports.TIER_WEIGHTS[question.polarity]
+        : exports.TIER_WEIGHTS.positive;
+    const tierRow = Object.hasOwn(table, question.tier) ? table[question.tier] : table.B;
+    return tierRow[exports.STRENGTH_LABEL[idx]];
+}
+// The only trajectory floor: runEngine and history both use this finish step.
+function applyVelocityChange(prevV, rawChange, shadow) {
+    const intendedChange = rawChange - shadow;
+    const newVelocity = Math.max(0, prevV + intendedChange);
+    return { intendedChange, newVelocity, actualChange: newVelocity - prevV };
+}
+function runEngine(questions, answers, prevV, posS, negS, options = {}) {
+    const eligibility = (0, validation_1.assessEligibility)(questions, answers, options);
+    let thrust = 0, drag = 0;
+    const thrustItems = [], dragItems = [];
+    const counted = new Set();
+    questions.forEach((q) => {
+        if (eligibility.answerStates[q.key] !== 'answered' || counted.has(q.key))
+            return;
+        counted.add(q.key);
+        const score = scoreForAnswer(q, answers[q.key] - 1);
+        if (score > 0) {
+            thrust += score;
+            thrustItems.push({ name: q.text, score });
+        }
+        else if (score < 0) {
+            drag += Math.abs(score);
+            dragItems.push({ name: q.text, score });
+        }
+    });
+    // Valid partial answers retain candidate item totals for preview only. They
+    // publish no change, shadow, score or streak until eligibility is satisfied.
+    const rawDv = thrust - drag;
+    let mult = 1;
+    if (eligibility.eligible && rawDv > 0)
+        mult = Math.min(2.2, 1 + (Math.log(posS + 1) / Math.log(1.8)) * 0.25);
+    else if (eligibility.eligible && rawDv < 0)
+        mult = Math.min(3.5, 1 + Math.pow(negS + 1, 1.4) * 0.15);
+    mult = (0, rounding_1.roundHalfAwayFromZero)(mult * 100) / 100;
+    const rawChange = eligibility.eligible ? (0, rounding_1.roundHalfAwayFromZero)(rawDv * mult) : 0;
+    const shadow = eligibility.eligible ? (0, rounding_1.roundHalfAwayFromZero)(options.shadow ?? 0) : 0;
+    const change = eligibility.eligible
+        ? applyVelocityChange(prevV, rawChange, shadow)
+        : { intendedChange: 0, newVelocity: prevV, actualChange: 0 };
+    const posStreak = eligibility.eligible ? (change.actualChange > 0 ? posS + 1 : 0) : posS;
+    const negStreak = eligibility.eligible ? (change.actualChange < 0 ? negS + 1 : 0) : negS;
+    return {
+        ...eligibility,
+        engineVersion: rounding_1.ENGINE_VERSION,
+        thrust,
+        drag,
+        rawDv,
+        mult,
+        rawChange,
+        shadow,
+        ...change,
+        // Existing UI reads finalDv: it must display actual velocity gained/lost.
+        finalDv: change.actualChange,
+        posStreak,
+        negStreak,
+        thrustItems,
+        dragItems,
+    };
+}
+
+},
+"./history":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.applyConservativeCarryOver = applyConservativeCarryOver;
+exports.recomputeAll = recomputeAll;
+const scoring_1 = require("./scoring");
+const dates_1 = require("./dates");
+const rounding_1 = require("./rounding");
+const validation_1 = require("./validation");
+function applyConservativeCarryOver(state) {
+    const closedGap = state.previousDate !== null && (0, dates_1.calendarKeyOffset)(state.previousDate, 1) < state.currentDate;
+    const closedUnscoredDay = !state.eligible && (!state.todayKey || state.currentDate < state.todayKey);
+    return {
+        ...state,
+        posS: closedGap || closedUnscoredDay ? 0 : state.posS,
+        negS: closedGap || closedUnscoredDay ? 0 : state.negS,
+    };
+}
+function recomputeAll(questions, rows, options = {}) {
+    const sorted = [...rows].sort((a, b) => (a.date < b.date ? -1 : 1));
+    const cache = {};
+    let prevV = 100, posS = 0, negS = 0;
+    let previousDate = null;
+    sorted.forEach((row) => {
+        if (!row.answers)
+            return; // Preserve legacy absent-answer-row handling.
+        const prior = applyConservativeCarryOver({
+            velocity: prevV,
+            posS,
+            negS,
+            previousDate,
+            currentDate: row.date,
+            eligible: (0, validation_1.assessEligibility)(questions, row.answers, row).eligible,
+            todayKey: options.todayKey,
+        });
+        const yesterday = cache[(0, dates_1.calendarKeyOffset)(row.date, -1)]?.computed;
+        const twoDaysAgo = cache[(0, dates_1.calendarKeyOffset)(row.date, -2)]?.computed;
+        const shadow = (0, rounding_1.roundHalfAwayFromZero)(0.3 * (yesterday?.eligible ? yesterday.drag : 0) +
+            0.12 * (twoDaysAgo?.eligible ? twoDaysAgo.drag : 0));
+        const c = (0, scoring_1.runEngine)(questions, row.answers, prior.velocity, prior.posS, prior.negS, {
+            ...row,
+            shadow,
+        });
+        previousDate = row.date;
+        prevV = c.newVelocity;
+        posS = c.posStreak;
+        negS = c.negStreak;
+        cache[row.date] = {
+            answers: row.answers,
+            computed: c,
+            partial: c.partial,
+            answeredCount: c.answeredCount,
+        };
+    });
+    return cache;
+}
+
+}};
+const cache={};function load(name){if(cache[name])return cache[name];const exports={};cache[name]=exports;modules[name](exports,load);return exports;}
+return Object.assign({},load('./dates'),load('./rounding'),load('./validation'),load('./scoring'),load('./history'));
+})();
+// END GENERATED DOMAIN BUNDLE
+// Plain text is escaped only at HTML text sinks, never before persistence.
+// User keys must stay out of inline JavaScript, even when HTML-escaped.
+function escapeHTML(value){
+  return String(value == null ? '' : value).replace(/[&<>"']/g,ch=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[ch]);
+}
+const {QUESTION_TEXT_LIMIT,OPTION_TEXT_LIMIT,validateQuestionText,checkBalance,
+  MIN_TOTAL_QUESTIONS,MIN_POLARITY_RATIO,TIER_WEIGHTS,scoreForAnswer}=MomentumDomain;
+async function saveValidatedQuestion(q){
+  validateQuestionText(q);
+  return writableStore().saveQuestion(q);
+}
+
 // These wrappers preserve the original app call-sites while routing all data
 // through storage.js. Later, storage.js can become local-first without touching
 // the dashboard/questionnaire engine.
-async function sbLoadAll(){return window.Storage.loadEntries();}
-async function sbUpsert(row){return window.Storage.saveEntry(row.date,row.answers);}
-async function sbDeleteAll(){return window.Storage.deleteEntries();}
+async function sbLoadAll(){return window.MomentumData.loadEntries();}
+// A successful owner/date-specific repository read confirms editor absence.
+async function sbLoadEntry(date){return window.MomentumData.loadEntry(date);}
+async function sbUpsert(row,revision){return writableStore(revision).saveEntry(row.date,row.answers);}
+async function sbDeleteAll(){throw new Error('Destructive developer tools are disabled.');}
 
-// DEMO DATE OVERRIDE — set to an ISO date string (e.g. '2026-06-27') to pin
-// "today" to that date app-wide, so old seed data renders as recent for a
-// demo. Set back to null for real usage.
-const DEMO_DATE_OVERRIDE='2026-06-27';
-function appNow(){return DEMO_DATE_OVERRIDE?new Date(DEMO_DATE_OVERRIDE+'T12:00:00'):new Date();}
-
-function todayKey(){return appNow().toISOString().slice(0,10);}
+// Device-local calendar policy. Calendar keys are never UTC instants.
+// Legacy adapters supply the device timezone; pure modules never infer it.
+function deviceTimeZone(){return Intl.DateTimeFormat().resolvedOptions().timeZone;}
+function localDateKey(date){return MomentumDomain.localDateKey(date,deviceTimeZone());}
+function calendarDate(key){return MomentumDomain.calendarDate(key,deviceTimeZone());}
+function dateKeyOffset(date,days){return MomentumDomain.dateKeyOffset(date,days,deviceTimeZone());}
+let _demoDate=null,_demoAccount=null,_sessionAccount=null,_appContextRevision=0;
+function isDemoMode(){return _demoDate!==null;}
+function appNow(){return isDemoMode()?calendarDate(_demoDate):new Date();}
+function todayKey(){return localDateKey(appNow());}
+function writableStore(expectedRevision=_appContextRevision){
+  if(isDemoMode()) throw new Error('Demo mode is read-only. No account data was changed.');
+  if(expectedRevision!==_appContextRevision) throw new Error('Account or demo mode changed. Reopen the form.');
+  return window.MomentumData;
+}
+function captureAppContext(){
+  return {generation:typeof window.Auth.getGeneration==='function'?window.Auth.getGeneration():0,
+    revision:_appContextRevision,account:window.Auth.getUserId()};
+}
+function appContextIsCurrent(context){
+  const now=captureAppContext();
+  return context.generation===now.generation&&context.revision===now.revision&&context.account===now.account;
+}
+function assertAppContext(context){
+  if(!appContextIsCurrent(context))throw new Error('Session or demo context changed.');
+}
+function clearAccountUI(){
+  ['be-questions','habits-list','mq-root','drawer-body','sh-compare','week-line-svg','month-line-svg','sum-week-line-svg'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.innerHTML='';
+  });
+  ['velocity-display','status-line','stat-best','stat-days','stat-streak','mult-text','delta-badge-num',
+   'sh-thrust','sh-drag','sh-vel','sh-dv','sh-mult','sh-streak-text','streak-badge-num','streak-badge-label'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.textContent='—';
+  });
+  ['logged-note','db-status','be-entry-status','sh-streak-icon','auth-message'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
+  ['drawer-search','mq-cust-text','mq-opt0','mq-opt1','mq-opt2','auth-email','auth-password'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['empty-state','imbalance-banner','delta-badge','badge-sep-1'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  const logButton=document.getElementById('open-log-btn');
+  if(logButton){logButton.textContent='Loading your data…';logButton.disabled=true;logButton.onclick=null;}
+  updateFlameScale(100);
+  Object.keys(_drawerLibTier).forEach(key=>delete _drawerLibTier[key]);
+  _mqCustPolarity='positive';_mqCustTier='A';_habitsFilter='all';
+  _dashboardLoadRequest++;
+  clearDashboardLoadError();
+}
+function resetDateContext(){
+  _appContextRevision++;
+  invalidateEntry();
+  answers={};savedAnswers={};_entryDate=null;_entryContext=null;
+  _dataCache=null;_habitsCache=null;_lastRenderedCache={};window.UserQuestions=null;
+  ['questionnaire','summary-overlay','library-drawer','drawer-backdrop','loading-overlay'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.classList.remove('active');
+  });
+  if(document.body)document.body.style.overflow='';
+  const body=document.getElementById('dev-body'),toggle=document.getElementById('dev-toggle');
+  if(body)body.classList.remove('open');if(toggle)toggle.classList.remove('open');
+  notifyEntryState();
+}
+function demoState(){return {active:isDemoMode(),date:_demoDate,readOnly:isDemoMode()};}
+function notifyDemoState(){
+  if(typeof window.dispatchEvent==='function'&&typeof CustomEvent==='function')
+    window.dispatchEvent(new CustomEvent('momentum-demo-change',{detail:demoState()}));
+}
+async function setDemoDate(date){
+  const account=window.Auth.getUserId();
+  if(date!==null){
+    if(!account)throw new Error('Sign in before opting into demo mode.');
+    if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||localDateKey(calendarDate(date))!==date)
+      throw new Error('Demo date must be a real YYYY-MM-DD calendar date.');
+  }
+  _demoDate=date;_demoAccount=date===null?null:account;
+  resetDateContext();notifyDemoState();
+  if(account)await bootMomentum();
+  return demoState();
+}
+function updateSessionAccount(account){
+  if(account!==_sessionAccount||(_demoAccount&&account!==_demoAccount)){
+    if(_sessionAccount)clearAccountDrafts(_sessionAccount);
+    _sessionAccount=account;_demoDate=null;_demoAccount=null;
+    resetDateContext();clearAccountUI();notifyDemoState();
+    if(typeof window.MomentumData.resetReadDiagnostics==='function')window.MomentumData.resetReadDiagnostics();
+    document.body.classList.add('app-auth-locked');
+    if(!account&&window.AuthUI)window.AuthUI.show();
+  }
+}
+// Explicit runtime opt-in only: MomentumDemo.setDate('2026-06-27').
+// No URL/localStorage preference; reload, logout and account switch clear it.
+// Pam consumes getState() / momentum-demo-change for the visible demo label.
+window.MomentumDemo={setDate:setDemoDate,clear:()=>setDemoDate(null),getState:demoState};
 
 // ══════════════════════════════════
 // TIER SYSTEM — replaces hardcoded per-question weight arrays.
 // Every question now stores polarity + tier; the actual score for a given
 // answer is looked up here, not hand-specified per question.
 // ══════════════════════════════════
-const TIER_WEIGHTS={
-  positive:{ S:{bad:-5,   neutral:0, good:8}, A:{bad:-3,   neutral:0, good:5}, B:{bad:-1.5, neutral:0, good:3} },
-  negative:{ S:{bad:-10,  neutral:-4,good:0}, A:{bad:-6,   neutral:-2,good:0}, B:{bad:-3,   neutral:-1,good:0} },
-};
-
-// strengthIndex 0/1/2 -> 'bad'/'neutral'/'good' lookup key
-const STRENGTH_LABEL=['bad','neutral','good'];
-
-function scoreForAnswer(question,strengthIndex){
-  const idx=Math.max(0,Math.min(2,strengthIndex));
-  const table=TIER_WEIGHTS[question.polarity]||TIER_WEIGHTS.positive;
-  const tierRow=table[question.tier]||table.B;
-  return tierRow[STRENGTH_LABEL[idx]];
-}
-
 // The 3 mandatory questions every user has — fixed S-tier, stable keys so
 // migrated/legacy data needs no remapping.
 const FIXED_QUESTIONS=[
@@ -147,25 +588,11 @@ const QUESTION_LIBRARY=[
   {libKey:'meal_prep',  cat:'ENVIRONMENT',text:'Meal prep',               opts:['None','Light prep','Full prep done'],              polarity:'positive', defaultTier:'B'},
 ];
 
-const MIN_TOTAL_QUESTIONS=10;
-const MIN_POLARITY_RATIO=0.3; // each polarity must be >=30% of the active set
 
 // Default placeholder option labels shown when a user writes a custom
 // question and hasn't customised the option text yet.
 const CUSTOM_OPT_PLACEHOLDERS_POSITIVE=['Didn\'t do it','Did it partially','Did it fully'];
 const CUSTOM_OPT_PLACEHOLDERS_NEGATIVE=['Did it heavily','Did it a little','Avoided it'];
-
-function checkBalance(questions){
-  const total=questions.length;
-  if(total===0) return{ok:false,reason:'No questions.'};
-  const posCount=questions.filter(q=>q.polarity==='positive').length;
-  const negCount=total-posCount;
-  const posRatio=posCount/total,negRatio=negCount/total;
-  if(total<MIN_TOTAL_QUESTIONS) return{ok:false,reason:`Need at least ${MIN_TOTAL_QUESTIONS} questions (have ${total}).`,posCount,negCount,total};
-  if(posRatio<MIN_POLARITY_RATIO) return{ok:false,reason:`Too few positive-habit questions (need \u226530%, have ${Math.round(posRatio*100)}%).`,posCount,negCount,total};
-  if(negRatio<MIN_POLARITY_RATIO) return{ok:false,reason:`Too few negative-habit questions (need \u226530%, have ${Math.round(negRatio*100)}%).`,posCount,negCount,total};
-  return{ok:true,posCount,negCount,total};
-}
 
 // ══════════════════════════════════
 // ONE-TIME LEGACY MIGRATION
@@ -196,24 +623,28 @@ const LEGACY_MIGRATION_MAP=[
 // Runs once per user, only if they have zero rows in user_questions yet.
 // Returns {migrated:boolean, balanceWarning:string|null}
 async function runLegacyMigrationIfNeeded(){
+  if(isDemoMode())return {migrated:false,balanceWarning:null};
+  const revision=_appContextRevision,context=captureAppContext();
   let settings;
-  try{settings=await window.Storage.getSettings();}catch(e){console.warn('Settings check failed:',e.message);return{migrated:false,balanceWarning:null};}
+  try{settings=await window.MomentumData.getSettings();assertAppContext(context);}catch(e){if(!appContextIsCurrent(context))return{migrated:false,balanceWarning:null};console.warn('Settings check failed:',e.message);return{migrated:false,balanceWarning:null};}
   if(settings.legacy_migrated) return{migrated:false,balanceWarning:null};
 
   let existing;
-  try{existing=await window.Storage.loadQuestions();}catch(e){console.warn('Question check failed:',e.message);return{migrated:false,balanceWarning:null};}
+  try{existing=await window.MomentumData.loadQuestions();assertAppContext(context);}catch(e){if(!appContextIsCurrent(context))return{migrated:false,balanceWarning:null};console.warn('Question check failed:',e.message);return{migrated:false,balanceWarning:null};}
   if(existing&&existing.length>0){
     // Already has questions (new user who built their own set, or partial
     // migration retry) — just mark migrated and move on, don't overwrite.
-    try{await window.Storage.markLegacyMigrated();}catch(e){}
+    try{await writableStore(revision).markLegacyMigrated();assertAppContext(context);}catch(e){}
     return{migrated:false,balanceWarning:null};
   }
 
   const rows=LEGACY_MIGRATION_MAP.map(q=>({...q,source:'library'}));
   try{
-    await window.Storage.saveQuestions(rows);
-    await window.Storage.markLegacyMigrated();
+    rows.forEach(validateQuestionText);
+    await writableStore(revision).saveQuestions(rows);assertAppContext(context);
+    await writableStore(revision).markLegacyMigrated();assertAppContext(context);
   }catch(e){
+    if(!appContextIsCurrent(context))return{migrated:false,balanceWarning:null};
     console.error('Legacy migration failed:',e.message);
     return{migrated:false,balanceWarning:null};
   }
@@ -231,7 +662,9 @@ async function runLegacyMigrationIfNeeded(){
 window.UserQuestions=null; // array of {key,text,opts,polarity,tier,is_fixed,...}
 
 async function loadUserQuestions(){
-  const rows=await window.Storage.loadQuestions();
+  const context=captureAppContext();
+  const rows=await window.MomentumData.loadQuestions();
+  assertAppContext(context);
   window.UserQuestions=rows;
   return rows;
 }
@@ -242,50 +675,15 @@ function getActiveQuestions(){
 
 // ENGINE
 function runEngine(answers,prevV,posS,negS){
-  const questions=getActiveQuestions();
-  let thrust=0,drag=0,thrustItems=[],dragItems=[];
-  questions.forEach(q=>{
-    if(answers[q.key]===undefined||answers[q.key]===null) return;
-    const idx=(parseInt(answers[q.key])||1)-1;
-    const score=scoreForAnswer(q,idx);
-    if(score>0){thrust+=score;thrustItems.push({name:q.text,score});}
-    else if(score<0){drag+=Math.abs(score);dragItems.push({name:q.text,score});}
-  });
-  const rawDv=thrust-drag;
-  let mult=1.0;
-  if(rawDv>0) mult=Math.min(2.2,1+Math.log(posS+1)/Math.log(1.8)*0.25);
-  else if(rawDv<0) mult=Math.min(3.5,1+Math.pow(negS+1,1.4)*0.15);
-  mult=Math.round(mult*100)/100;
-  const finalDv=Math.round(rawDv*mult);
-  return{thrust,drag,rawDv,mult,finalDv,
-    newVelocity:Math.max(0,prevV+finalDv),
-    posStreak:finalDv>0?posS+1:0,negStreak:finalDv<0?negS+1:0,
-    thrustItems,dragItems};
+  return MomentumDomain.runEngine(getActiveQuestions(),answers,prevV,posS,negS);
 }
-
-function recomputeAll(rows){
-  const questions=getActiveQuestions();
-  const sorted=[...rows].sort((a,b)=>a.date<b.date?-1:1);
-  const cache={};let prevV=100,posS=0,negS=0;
-  sorted.forEach(row=>{
-    if(!row.answers) return;
-    const c=runEngine(row.answers,prevV,posS,negS);
-    const pd=Object.keys(cache).sort();
-    let shadow=0;
-    if(pd.length>=1) shadow+=(cache[pd[pd.length-1]].computed.drag||0)*0.6;
-    if(pd.length>=2) shadow+=(cache[pd[pd.length-2]].computed.drag||0)*0.4*0.6;
-    const sp=Math.round(shadow*0.5);
-    c.newVelocity=Math.max(0,c.newVelocity-sp);c.finalDv-=sp;c.shadow=sp;
-    c.posStreak=c.finalDv>0?posS+1:0;c.negStreak=c.finalDv<0?negS+1:0;
-    prevV=c.newVelocity;posS=c.posStreak;negS=c.negStreak;
-    const ac=Object.keys(row.answers).filter(k=>row.answers[k]!==undefined).length;
-    cache[row.date]={answers:row.answers,computed:c,partial:ac<questions.length,answeredCount:ac};
-  });
-  return cache;
-}
+function recomputeAll(rows){return MomentumDomain.recomputeAll(getActiveQuestions(),rows,{todayKey:todayKey()});}
 
 async function loadCache(){
-  return recomputeAll(await sbLoadAll());
+  const context=captureAppContext();
+  const rows=await sbLoadAll();
+  assertAppContext(context);
+  return recomputeAll(rows);
 }
 
 // STATUS LINE
@@ -326,11 +724,46 @@ function showPage(n){
   window.scrollTo(0,0);
   if(n==='dashboard'){
     if(!_dataCache){
-      loadCache().then(cache=>{_dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;renderDashboard(cache);}).catch(()=>{});
+      loadDashboard();
     }
   }
   if(n==='habits') renderHabitsPage();
   if(n==='questions') renderManageQuestions();
+}
+
+// A failed read is not an empty history. Keep a visible recovery action.
+let _dashboardLoadRequest=0;
+function clearDashboardLoadError(){
+  const status=document.getElementById('dashboard-load-status');
+  if(status){status.textContent='';status.style.display='none';}
+}
+function showDashboardLoadError(retry){
+  let status=document.getElementById('dashboard-load-status');
+  if(!status){
+    status=document.createElement('div');status.id='dashboard-load-status';
+    status.setAttribute('role','alert');
+    const page=document.getElementById('page-dashboard');
+    page.insertBefore(status,page.firstChild);
+  }
+  status.style.display='block';
+  status.textContent='Could not load your Momentum data. Your saved data has not been cleared. ';
+  const button=document.createElement('button');
+  button.type='button';button.textContent='Retry';
+  button.onclick=()=>{button.disabled=true;retry();};
+  status.appendChild(button);
+}
+async function loadDashboard(){
+  const request=++_dashboardLoadRequest,context=captureAppContext();
+  clearDashboardLoadError();showDashboardSkeleton();
+  try{
+    const cache=await loadCache();
+    if(request!==_dashboardLoadRequest||!appContextIsCurrent(context))return;
+    _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
+    hideDashboardSkeleton();renderDashboard(cache);
+  }catch{
+    if(request!==_dashboardLoadRequest||!appContextIsCurrent(context))return;
+    hideDashboardSkeleton();showDashboardLoadError(()=>loadDashboard());
+  }
 }
 
 // DEV TOGGLE
@@ -354,6 +787,7 @@ function dismissImbalanceBanner(){
 }
 
 function toggleDevTools(){
+  if(!isDemoMode())return;
   const body=document.getElementById('dev-body');
   const toggle=document.getElementById('dev-toggle');
   body.classList.toggle('open');
@@ -364,6 +798,65 @@ function toggleDevTools(){
 // BULK-ENTRY QUESTIONNAIRE — scrollable list with inline segmented buttons
 // ══════════════════════════════════
 let answers={},savedAnswers={};
+let _entryDate=null,_entryContext=null,_entryAccount=null,_entryRequest=0;
+let _entryStatus='idle',_entryError='',_draftError='';
+const DRAFT_PREFIX='momentum:draft:v1:';
+function draftKey(userId,date){return DRAFT_PREFIX+encodeURIComponent(userId)+':'+date;}
+function clearAccountDrafts(userId){
+  try{
+    const storage=window.localStorage,prefix=DRAFT_PREFIX+encodeURIComponent(userId)+':';
+    if(!storage)return;
+    const keys=[];
+    for(let i=0;i<storage.length;i++){const key=storage.key(i);if(key&&key.startsWith(prefix))keys.push(key);}
+    keys.forEach(key=>storage.removeItem(key));
+  }catch(e){/* Account/date checks still prevent cross-account restoration. */}
+}
+let _entryGeneration=0;
+function entryIsCurrent(request=_entryRequest){
+  return request===_entryRequest&&_entryGeneration===captureAppContext().generation&&_entryContext===_appContextRevision&&
+    _entryAccount===window.Auth.getUserId();
+}
+function entryState(){
+  return {status:_entryStatus,date:_entryDate,error:_entryError,draftError:_draftError,
+    canSave:entryIsCurrent()&&!isDemoMode()&&['ready','save-error'].includes(_entryStatus)};
+}
+function notifyEntryState(){
+  const state=entryState(),button=document.getElementById('be-save-btn');
+  if(button)button.disabled=!state.canSave;
+  const status=document.getElementById('be-entry-status');
+  if(status)status.textContent=state.error||state.draftError;
+  if(typeof window.dispatchEvent==='function'&&typeof CustomEvent==='function')
+    window.dispatchEvent(new CustomEvent('momentum-entry-change',{detail:state}));
+}
+function setEntryStatus(status,error=''){
+  _entryStatus=status;_entryError=error;notifyEntryState();
+}
+function invalidateEntry(){
+  _entryRequest++;_entryAccount=null;_entryStatus='idle';_entryError='';_draftError='';
+}
+function readDraft(userId,date){
+  try{
+    const raw=window.localStorage&&window.localStorage.getItem(draftKey(userId,date));
+    return MomentumDomain.parseDraft(raw,userId,date);
+  }catch(e){_draftError='The saved draft could not be restored. Your saved entry is still available.';return {};}
+}
+function persistDraft(){
+  if(!entryIsCurrent()||isDemoMode())return;
+  try{
+    if(!window.localStorage)throw new Error('Unavailable');
+    window.localStorage.setItem(draftKey(_entryAccount,_entryDate),JSON.stringify({
+      version:1,userId:_entryAccount,date:_entryDate,answers,updatedAt:Date.now()
+    }));
+    _draftError='';
+  }catch(e){_draftError='This device could not keep a draft. Keep the editor open until your entry saves.';}
+  notifyEntryState();
+}
+function removeDraft(userId,date){
+  try{if(window.localStorage)window.localStorage.removeItem(draftKey(userId,date));_draftError='';}
+  catch(e){_draftError='Entry saved, but this device could not remove its old draft.';}
+}
+// Pam can render be-entry-status and listen to momentum-entry-change.
+window.MomentumEntry={getState:entryState,retryLoad:()=>openDailyEntry(false,_entryDate||todayKey())};
 let _dataCache=null;   // shared in-memory cache, refreshed after every write — avoids refetch glitches
 
 function _renderBulkEntry(){
@@ -405,10 +898,10 @@ function _buildBulkRow(q,wasSavedBefore){
 
   const top=document.createElement('div');top.className='be-q-top';
   top.innerHTML=`
-    <div class="be-q-text"><span style="color:${polarityColor};margin-right:6px">${polarityDot}</span>${q.text}</div>
+    <div class="be-q-text"><span style="color:${polarityColor};margin-right:6px">${polarityDot}</span>${escapeHTML(q.text)}</div>
     <div class="be-q-badge-row">
       ${q.is_fixed?'<span class="be-q-core">CORE</span>':''}
-      <span class="be-q-tier" style="color:${tierColor};border-color:${tierColor}">${q.tier}</span>
+      <span class="be-q-tier" style="color:${tierColor};border-color:${tierColor}">${escapeHTML(q.tier)}</span>
     </div>
   `;
 
@@ -450,7 +943,9 @@ function _buildBulkRow(q,wasSavedBefore){
 }
 
 function _selectBulkAnswer(qKey,val){
-  answers[qKey]=val;
+  if(!entryIsCurrent()||!['ready','save-error'].includes(_entryStatus)||![1,2,3].includes(val))return;
+  answers={...answers,[qKey]:val};
+  _entryError='';persistDraft();
   // Refresh just this row's highlight state without rebuilding everything
   const row=document.getElementById('be-row-'+qKey);
   if(row){
@@ -479,81 +974,80 @@ function _selectBulkAnswer(qKey,val){
   }
 }
 
-function openLog(){
-  answers={};savedAnswers={};
-  const applyEntry=(cache)=>{
-    const te=cache[todayKey()];
-    if(te&&te.answers){
-      answers={...te.answers};savedAnswers={...te.answers};
-    }
-  };
-  const show=()=>{
-    _renderBulkEntry();
-    document.getElementById('questionnaire').classList.add('active');
-    // Scroll to first unanswered
-    const questions=getActiveQuestions();
-    for(let i=0;i<questions.length;i++){
-      if(answers[questions[i].key]===undefined){
-        const el=document.getElementById('be-row-'+questions[i].key);
-        if(el){setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'center'}),50);}
-        break;
-      }
-    }
-  };
-  if(_dataCache){
-    applyEntry(_dataCache);
-    show();
-  } else {
-    loadCache().then(cache=>{
-      _dataCache=cache;
-      applyEntry(cache);
-      show();
-    }).catch(()=>{show();});
+function openLog(){return openDailyEntry(false);}
+function openLogFullEdit(){return openDailyEntry(true);}
+async function openDailyEntry(fullEdit,targetDate=todayKey()){
+  if(_entryStatus==='saving')return false;
+  const userId=window.Auth.getUserId();
+  if(!userId){alert('Sign in before opening an entry.');return false;}
+  const request=++_entryRequest;
+  _entryAccount=userId;_entryDate=targetDate;_entryContext=_appContextRevision;_entryGeneration=captureAppContext().generation;
+  answers={};savedAnswers={};_draftError='';
+  document.getElementById('questionnaire').classList.remove('active');
+  setEntryStatus('loading');
+  let entry;
+  try{
+    entry=await sbLoadEntry(targetDate,userId);
+    if(entry&&(entry.date!==targetDate||!entry.answers||typeof entry.answers!=='object'||Array.isArray(entry.answers)))
+      throw new Error('Invalid saved entry');
+  }catch(e){
+    if(!entryIsCurrent(request))return false;
+    setEntryStatus('load-error','Could not load this day. Retry loading before editing or saving.');
+    alert(_entryError);return false;
   }
-}
-
-function openLogFullEdit(){
-  answers={};savedAnswers={};
-  const applyEntry=(cache)=>{
-    const te=cache[todayKey()];
-    if(te&&te.answers){answers={...te.answers};savedAnswers={...te.answers};}
-  };
-  const show=()=>{
-    _renderBulkEntry();
-    document.getElementById('questionnaire').classList.add('active');
-    document.getElementById('be-scroll').scrollTop=0;
-  };
-  if(_dataCache){
-    applyEntry(_dataCache);
-    show();
-  } else {
-    loadCache().then(cache=>{
-      _dataCache=cache;
-      applyEntry(cache);
-      show();
-    }).catch(()=>{show();});
+  if(!entryIsCurrent(request))return false;
+  savedAnswers=entry?{...entry.answers}:{};
+  answers={...savedAnswers,...(isDemoMode()?{}:readDraft(userId,targetDate))};
+  setEntryStatus('ready');_renderBulkEntry();
+  document.getElementById('questionnaire').classList.add('active');
+  if(fullEdit)document.getElementById('be-scroll').scrollTop=0;
+  else{
+    const first=getActiveQuestions().find(q=>answers[q.key]===undefined);
+    const row=first&&document.getElementById('be-row-'+first.key);
+    if(row)setTimeout(()=>{if(entryIsCurrent(request))row.scrollIntoView({behavior:'smooth',block:'center'});},50);
   }
+  return true;
 }
-
-function closeQuestionnaire(){document.getElementById('questionnaire').classList.remove('active');}
-
+function closeQuestionnaire(){
+  // Do not discard or close an in-flight save; a failed write must remain editable.
+  if(_entryStatus==='saving')return;
+  document.getElementById('questionnaire').classList.remove('active');
+}
 async function finishQuestionnaire(){
-  closeQuestionnaire();
-  if(!Object.keys(answers).length) return;
+  if(!entryState().canSave){
+    if(_entryStatus!=='saving')alert(isDemoMode()?'Demo mode is read-only.':'Load this day before saving.');
+    return false;
+  }
+  if(!Object.keys(answers).length)return false;
+  const request=_entryRequest,userId=_entryAccount,tk=_entryDate,revision=_entryContext;
+  const snapshot={...answers};
+  setEntryStatus('saving');
   document.getElementById('loading-overlay').classList.add('active');
-  const tk=todayKey();
-  const startTime=Date.now();
-  try{await sbUpsert({date:tk,answers});}
-  catch(e){document.getElementById('loading-overlay').classList.remove('active');alert('Save failed: '+e.message);return;}
+  try{await sbUpsert({date:tk,answers:snapshot},revision);}
+  catch(e){
+    if(!entryIsCurrent(request))return false;
+    document.getElementById('loading-overlay').classList.remove('active');
+    setEntryStatus('save-error','Could not save your entry. Your answers are still here; retry Save & Finish.');
+    alert(_entryError);return false;
+  }
+  if(!entryIsCurrent(request))return true;
+  removeDraft(userId,tk);
+  savedAnswers=snapshot;
+  setEntryStatus('saved');closeQuestionnaire();
   let cache;
   try{cache=await loadCache();}
-  catch(e){document.getElementById('loading-overlay').classList.remove('active');alert('Failed to load data: '+e.message);return;}
+  catch(e){
+    if(!entryIsCurrent(request))return true;
+    document.getElementById('loading-overlay').classList.remove('active');
+    _dataCache=null;_habitsCache=null;_lastRenderedCache={};
+    setEntryStatus('refresh-error','Entry saved, but the dashboard could not refresh. Reopen the day to reload it.');
+    alert(_entryError);return true;
+  }
+  if(!entryIsCurrent(request))return true;
   _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
-  const elapsed=Date.now()-startTime;
-  if(elapsed<180) await new Promise(r=>setTimeout(r,180-elapsed));
   document.getElementById('loading-overlay').classList.remove('active');
-  if(cache[tk]) showSummary(cache[tk].computed,cache,tk);
-  renderDashboard(cache);
+  if(cache[tk])showSummary(cache[tk].computed,cache,tk);
+  renderDashboard(cache);return true;
 }
 
 // SUMMARY
@@ -578,13 +1072,13 @@ function showSummary(c,cache,tk){
     const cc=cache[k].computed,it=k===tk;
     const dv2=cc.finalDv,dvS=(dv2>=0?'+':'')+dv2,dvC=dv2>=0?'var(--green)':'var(--negred)';
     const card=document.createElement('div');card.className='compare-card'+(it?' today-card':'');
-    card.innerHTML=`<div class="compare-day-label">${labels[i]}</div><div class="compare-vel">${cc.newVelocity}</div><div class="compare-dv" style="color:${dvC}">${dvS} km/s</div>`;
+    card.innerHTML=`<div class="compare-day-label">${labels[i]}</div><div class="compare-vel">${escapeHTML(cc.newVelocity)}</div><div class="compare-dv" style="color:${dvC}">${escapeHTML(dvS)} km/s</div>`;
     cEl.appendChild(card);
   });
-  const wd=[];for(let i=6;i>=0;i--){const d=appNow();d.setDate(d.getDate()-i);wd.push(d.toISOString().slice(0,10));}
+  const wd=[];for(let i=6;i>=0;i--){wd.push(dateKeyOffset(appNow(),-i));}
   const DN=['SUN','MON','TUE','WED','THU','FRI','SAT'];
   const sumPoints=wd.map(k=>({
-    label:DN[new Date(k+'T12:00:00').getDay()],
+    label:DN[calendarDate(k).getDay()],
     value:cache[k]?cache[k].computed.finalDv:null,
     isToday:k===tk,
   }));
@@ -723,11 +1217,11 @@ function renderWeekLineGraph(cache){
   const tk=todayKey();
   const hasToday=!!(cache[tk]&&cache[tk].computed);
   const span=hasToday?7:8; // pull one extra day back so we still show 7 *logged* days when today is empty
-  const days=[];for(let i=span-1;i>=0;i--){const d=appNow();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  const days=[];for(let i=span-1;i>=0;i--){days.push(dateKeyOffset(appNow(),-i));}
   const trimmed=hasToday?days:days.filter(k=>k!==tk).slice(-7);
   const DN=['SUN','MON','TUE','WED','THU','FRI','SAT'];
   const points=trimmed.map(k=>({
-    label:DN[new Date(k+'T12:00:00').getDay()],
+    label:DN[calendarDate(k).getDay()],
     value:(cache[k]&&cache[k].computed)?cache[k].computed.finalDv:null,
     isToday:k===tk,
   }));
@@ -742,18 +1236,18 @@ function renderMonthLineGraph(cache){
   const tk=todayKey();
   let spanDays=30;
   if(allKeys.length>0){
-    const earliest=new Date(allKeys[0]+'T12:00:00');
-    const today=new Date(tk+'T12:00:00');
+    const earliest=calendarDate(allKeys[0]);
+    const today=calendarDate(tk);
     const daysSinceEarliest=Math.round((today-earliest)/86400000)+1;
     spanDays=Math.max(1,Math.min(30,daysSinceEarliest));
   }
-  const days=[];for(let i=spanDays-1;i>=0;i--){const d=appNow();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  const days=[];for(let i=spanDays-1;i>=0;i--){days.push(dateKeyOffset(appNow(),-i));}
   const hasToday=!!(cache[tk]&&cache[tk].computed);
   let trimmedDays=hasToday?days:days.filter(k=>k!==tk);
   if(trimmedDays.length===0) trimmedDays=days; // fallback: nothing logged yet at all
   const labelEvery=trimmedDays.length<=7?1:trimmedDays.length<=14?2:5;
   const points=trimmedDays.map((k,i)=>{
-    const d=new Date(k+'T12:00:00');
+    const d=calendarDate(k);
     const dayNum=d.getDate();
     const showLabel=i===0||i===trimmedDays.length-1||i%labelEvery===0||k===tk;
     return{
@@ -873,14 +1367,14 @@ function setHabitsFilter(filter){
 function getFilteredKeys(cache,filter){
   const allKeys=Object.keys(cache).sort();
   if(filter==='all') return allKeys;
-  const nowD=appNow(),cutoff=appNow();
-  if(filter==='week') cutoff.setDate(nowD.getDate()-7);
-  else if(filter==='month') cutoff.setMonth(nowD.getMonth()-1);
-  return allKeys.filter(k=>k>=cutoff.toISOString().slice(0,10));
+  const today=todayKey();
+  const cutoff=MomentumDomain.calendarKeyOffset(today,filter==='week'?-6:filter==='month'?-29:0);
+  return allKeys.filter(k=>k>=cutoff&&k<=today);
 }
 async function renderHabitsPage(){
+  const context=captureAppContext();
   let cache;
-  try{cache=_habitsCache||(await loadCache());_habitsCache=cache;}catch(e){document.getElementById('habits-list').innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--negred);margin-top:16px;letter-spacing:.08em">Failed to load data.</div>';return;}
+  try{cache=_habitsCache||(await loadCache());assertAppContext(context);_habitsCache=cache;}catch(e){if(!appContextIsCurrent(context))return;document.getElementById('habits-list').innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--negred);margin-top:16px;letter-spacing:.08em">Failed to load data.</div>';return;}
   const keys=getFilteredKeys(cache,_habitsFilter);
   if(keys.length===0){document.getElementById('habits-list').innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--slate2);margin-top:16px;letter-spacing:.08em">No entries in this time period.</div>';return;}
   const questions=getActiveQuestions();
@@ -913,57 +1407,41 @@ async function renderHabitsPage(){
       const s=stats[q.key];
       if(s.pct===null){
         const row=document.createElement('div');row.className='habit-row';
-        row.innerHTML=`<div><div class="habit-name">${q.text}</div><div class="habit-name-sub">NOT YET LOGGED</div></div><div></div><div class="habit-bar-wrap" style="opacity:.3"><div class="habit-bar-fill mid" style="width:0%"></div></div>`;
+        row.innerHTML=`<div><div class="habit-name">${escapeHTML(q.text)}</div><div class="habit-name-sub">NOT YET LOGGED</div></div><div></div><div class="habit-bar-wrap" style="opacity:.3"><div class="habit-bar-fill mid" style="width:0%"></div></div>`;
         listEl.appendChild(row);return;
       }
       const bucket=s.pct>=80?'great':s.pct>=60?'good':s.pct>=40?'mid':'bad';
       const row=document.createElement('div');row.className='habit-row';
-      row.innerHTML=`<div><div class="habit-name">${q.text}</div><div class="habit-name-sub">${q.tier}-TIER · AVG ${s.avg>0?'+':''}${s.avg}</div></div><div><div class="habit-score-num ${bucket}">${s.pct}</div><div class="habit-entries">/ 100</div></div><div><div class="habit-bar-wrap"><div class="habit-bar-fill ${bucket}" style="width:${s.pct}%"></div></div></div>`;
+      row.innerHTML=`<div><div class="habit-name">${escapeHTML(q.text)}</div><div class="habit-name-sub">${escapeHTML(q.tier)}-TIER · AVG ${s.avg>0?'+':''}${s.avg}</div></div><div><div class="habit-score-num ${bucket}">${s.pct}</div><div class="habit-entries">/ 100</div></div><div><div class="habit-bar-wrap"><div class="habit-bar-fill ${bucket}" style="width:${s.pct}%"></div></div></div>`;
       listEl.appendChild(row);
     });
   });
 }
 
 // DEV TOOLS
-async function devReset(){
-  if(!confirm('Reset ALL your Momentum data?'))return;
-  try{await sbDeleteAll();}
-  catch(e){alert('Reset failed: '+e.message);return;}
-  const cache={};
-  _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
-  renderDashboard(cache);
-}
+async function devReset(){alert('Destructive developer tools are disabled.');}
 function devExport(){
+  const context=captureAppContext();
   sbLoadAll().then(rows=>{
+    if(!appContextIsCurrent(context))return;
     const b=new Blob([JSON.stringify(rows,null,2)],{type:'application/json'});
     const a=document.createElement('a');
     a.href=URL.createObjectURL(b);
     a.download='momentum_'+todayKey()+'.json';
     a.click();
-  }).catch(e=>alert('Export failed: '+e.message));
+  }).catch(e=>{if(appContextIsCurrent(context))alert('Export failed: '+e.message);});
 }
-function devImport(){document.getElementById('import-file').click();}
+function devImport(){alert('Developer import is disabled.');}
 async function handleImport(e){
-  const file=e.target.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=async ev=>{try{
-    const obj=JSON.parse(ev.target.result);let rows=[];
-    if(Array.isArray(obj))rows=obj;
-    else if(obj.entries)rows=Object.entries(obj.entries).map(([date,v])=>({date,answers:v.answers||{}}));
-    else rows=Object.entries(obj).map(([date,v])=>({date,answers:v.answers||v}));
-    await window.Storage.importEntries(rows);
-    const cache=await loadCache();
-    _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
-    renderDashboard(cache);
-    alert('Imported '+rows.length+' entries.');
-  }catch(err){alert('Import failed: '+err.message);}};
-  r.readAsText(file);e.target.value='';
+  if(e&&e.target)e.target.value='';
+  alert('Developer import is disabled.');
 }
 async function testDB(){
+  const context=captureAppContext();
   const el=document.getElementById('db-status');el.textContent='Testing...';el.style.color='var(--slate2)';
-  try{const rows=await sbLoadAll();el.textContent='Connected — '+rows.length+' row(s)';el.style.color='var(--green)';}
-  catch(e){el.textContent='Failed: '+e.message.slice(0,80);el.style.color='var(--negred)';}
-  setTimeout(()=>{el.textContent='';},6000);
+  try{const rows=await sbLoadAll();assertAppContext(context);el.textContent='Connected — '+rows.length+' row(s)';el.style.color='var(--green)';}
+  catch(e){if(!appContextIsCurrent(context))return;el.textContent='Failed: '+e.message.slice(0,80);el.style.color='var(--negred)';}
+  setTimeout(()=>{if(appContextIsCurrent(context))el.textContent='';},6000);
 }
 
 // ══════════════════════════════════
@@ -972,10 +1450,11 @@ async function testDB(){
 
 // Called by showPage('questions') via routing
 async function renderManageQuestions(){
+  const context=captureAppContext();
   const el=document.getElementById('mq-root');
   if(!el) return;
   el.innerHTML='<div class="mq-loading">Loading questions…</div>';
-  try{ await loadUserQuestions(); }catch(e){ el.innerHTML='<div class="mq-loading" style="color:var(--negred)">Failed to load questions.</div>'; return; }
+  try{ await loadUserQuestions();assertAppContext(context); }catch(e){if(!appContextIsCurrent(context))return; el.innerHTML='<div class="mq-loading" style="color:var(--negred)">Failed to load questions.</div>'; return; }
   _buildMQPage();
 }
 
@@ -1008,7 +1487,7 @@ function _buildMQPage(){
       <div class="mq-balance-fill-pos" style="width:${posPct}%"></div>
       <div class="mq-balance-fill-neg" style="width:${negPct}%"></div>
     </div>
-    ${!balOk?`<div class="mq-balance-warn-text">${bal.reason}</div>`:''}
+    ${!balOk?`<div class="mq-balance-warn-text">${escapeHTML(bal.reason)}</div>`:''}
   `;
   el.appendChild(balDiv);
 
@@ -1078,7 +1557,7 @@ function _buildMQPage(){
       const pill=document.createElement('button');
       const tierColor=libQ.defaultTier==='S'?'var(--gold)':libQ.defaultTier==='A'?'var(--blue)':'var(--slate2)';
       pill.style.cssText=`background:var(--bg2);border:1px solid ${tierColor};color:var(--slate2);font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:6px 12px;cursor:pointer;border-radius:16px;transition:all .12s;white-space:nowrap`;
-      pill.innerHTML=`${libQ.polarity==='negative'?'▼':'▲'} ${libQ.text}`;
+      pill.textContent=`${libQ.polarity==='negative'?'▼':'▲'} ${libQ.text}`;
       pill.onmouseover=()=>{pill.style.background='var(--bg3)';pill.style.color='var(--white)';};
       pill.onmouseout=()=>{pill.style.background='var(--bg2)';pill.style.color='var(--slate2)';};
       pill.onclick=()=>{_addLibRec(libQ.libKey);pill.style.opacity='.4';pill.disabled=true;};
@@ -1129,9 +1608,9 @@ function _buildMQPage(){
       <div class="mq-field-group">
         <label class="mq-label">Option labels <span style="color:var(--slate2);font-weight:400">(worst → best)</span></label>
         <div class="mq-opts-row">
-          <input class="mq-input mq-opt-input" id="mq-opt0" placeholder="Didn't do it">
-          <input class="mq-input mq-opt-input" id="mq-opt1" placeholder="Did it partially">
-          <input class="mq-input mq-opt-input" id="mq-opt2" placeholder="Did it fully">
+          <input class="mq-input mq-opt-input" maxlength="80" id="mq-opt0" placeholder="Didn't do it">
+          <input class="mq-input mq-opt-input" maxlength="80" id="mq-opt1" placeholder="Did it partially">
+          <input class="mq-input mq-opt-input" maxlength="80" id="mq-opt2" placeholder="Did it fully">
         </div>
       </div>
       <div class="mq-custom-footer">
@@ -1155,10 +1634,10 @@ function _buildActiveRow(q,isFixed){
     row.innerHTML=`
       <div class="mq-row-left">
         ${polarityDot}
-        <div class="mq-row-text">${q.text}</div>
+        <div class="mq-row-text">${escapeHTML(q.text)}</div>
       </div>
       <div class="mq-row-right">
-        <span class="mq-tier-badge" style="color:${tierColor};border-color:${tierColor}">${q.tier}</span>
+        <span class="mq-tier-badge" style="color:${tierColor};border-color:${tierColor}">${escapeHTML(q.tier)}</span>
         <span class="mq-fixed-lock">CORE</span>
       </div>
     `;
@@ -1166,33 +1645,40 @@ function _buildActiveRow(q,isFixed){
     row.innerHTML=`
       <div class="mq-row-left">
         ${polarityDot}
-        <div class="mq-row-text">${q.text}</div>
+        <div class="mq-row-text">${escapeHTML(q.text)}</div>
       </div>
       <div class="mq-row-right">
         <div class="mq-tier-picker">
-          <button class="mq-tier-btn${q.tier==='S'?' active':''}" data-tier="S" style="${q.tier==='S'?'border-color:var(--gold);color:var(--gold)':''}" onclick="mqChangeTier('${q.key}','S')">S</button>
-          <button class="mq-tier-btn${q.tier==='A'?' active':''}" data-tier="A" style="${q.tier==='A'?'border-color:var(--blue);color:var(--blue)':''}" onclick="mqChangeTier('${q.key}','A')">A</button>
-          <button class="mq-tier-btn${q.tier==='B'?' active':''}" data-tier="B" style="${q.tier==='B'?'border-color:var(--slate2);color:var(--slate2)':''}" onclick="mqChangeTier('${q.key}','B')">B</button>
+          <button class="mq-tier-btn${q.tier==='S'?' active':''}" data-tier="S" style="${q.tier==='S'?'border-color:var(--gold);color:var(--gold)':''}">S</button>
+          <button class="mq-tier-btn${q.tier==='A'?' active':''}" data-tier="A" style="${q.tier==='A'?'border-color:var(--blue);color:var(--blue)':''}">A</button>
+          <button class="mq-tier-btn${q.tier==='B'?' active':''}" data-tier="B" style="${q.tier==='B'?'border-color:var(--slate2);color:var(--slate2)':''}">B</button>
         </div>
-        <button class="mq-remove-btn" onclick="mqRemoveQuestion('${q.key}')">✕</button>
+        <button class="mq-remove-btn">✕</button>
       </div>
     `;
+  }
+  if(!isFixed){
+    row.querySelectorAll('.mq-tier-btn').forEach(btn=>{
+      btn.onclick=()=>mqChangeTier(q.key,btn.dataset.tier);
+    });
+    row.querySelector('.mq-remove-btn').onclick=()=>mqRemoveQuestion(q.key);
   }
   return row;
 }
 
 // ── Recommendation pill quick-add ──
 async function _addLibRec(libKey){
+  const context=captureAppContext();
   const libQ=QUESTION_LIBRARY.find(l=>l.libKey===libKey);
   if(!libQ) return;
   const questions=getActiveQuestions();
   const newQ={key:libKey,text:libQ.text,opts:libQ.opts,polarity:libQ.polarity,tier:libQ.defaultTier,is_fixed:false,source:'library',sort_order:questions.length};
   try{
-    await window.Storage.saveQuestion(newQ);
-    await loadUserQuestions();
+    await saveValidatedQuestion(newQ);assertAppContext(context);
+    await loadUserQuestions();assertAppContext(context);
     _buildMQPage();
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
-  }catch(e){ alert('Failed to add: '+e.message); }
+  }catch(e){if(!appContextIsCurrent(context))return; alert('Failed to add: '+e.message); }
 }
 
 // ── Library bottom sheet drawer ──
@@ -1244,7 +1730,7 @@ function _buildLibraryDrawer(filterText){
       const polarityDot=libQ.polarity==='negative'?'▼':'▲';
       const polarityColor=libQ.polarity==='negative'?'var(--negred)':'var(--green)';
       row.innerHTML=`
-        <div class="drawer-row-left"><span style="color:${polarityColor};font-size:10px">${polarityDot}</span><span class="drawer-row-text">${libQ.text}</span></div>
+        <div class="drawer-row-left"><span style="color:${polarityColor};font-size:10px">${polarityDot}</span><span class="drawer-row-text">${escapeHTML(libQ.text)}</span></div>
         <div class="drawer-row-right">
           <button class="drawer-tier-btn ${_drawerLibTier[libQ.libKey]==='S'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='S')?'active':''}" style="${_drawerLibTier[libQ.libKey]==='S'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='S')?'border-color:var(--gold);color:var(--gold)':''}" onclick="_drawerSetTier('${libQ.libKey}','S')">S</button>
           <button class="drawer-tier-btn ${_drawerLibTier[libQ.libKey]==='A'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='A')?'active':''}" style="${_drawerLibTier[libQ.libKey]==='A'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='A')?'border-color:var(--blue);color:var(--blue)':''}" onclick="_drawerSetTier('${libQ.libKey}','A')">A</button>
@@ -1279,6 +1765,7 @@ function _drawerSetTier(libKey,tier){
 }
 
 async function _drawerAdd(libKey){
+  const context=captureAppContext();
   const libQ=QUESTION_LIBRARY.find(l=>l.libKey===libKey);
   if(!libQ) return;
   const tier=_drawerLibTier[libKey]||libQ.defaultTier;
@@ -1287,20 +1774,21 @@ async function _drawerAdd(libKey){
   const btn=document.getElementById('dr-add-'+libKey);
   if(btn){btn.disabled=true;btn.textContent='✓ Added';}
   try{
-    await window.Storage.saveQuestion(newQ);
-    await loadUserQuestions();
+    await saveValidatedQuestion(newQ);assertAppContext(context);
+    await loadUserQuestions();assertAppContext(context);
     // Rebuild drawer to remove added items + refresh MQ page
     const filterText=(document.getElementById('drawer-search').value||'').toLowerCase().trim();
     _buildLibraryDrawer(filterText);
     _buildMQPage();
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
-  }catch(e){
+  }catch(e){if(!appContextIsCurrent(context))return;
     if(btn){btn.disabled=false;btn.textContent='+ Add';}
     alert('Failed: '+e.message);
   }
 }
 
 async function mqRemoveQuestion(key){
+  const context=captureAppContext();
   const questions=getActiveQuestions();
   const remaining=questions.filter(q=>q.key!==key);
   const bal=checkBalance(remaining);
@@ -1314,14 +1802,15 @@ async function mqRemoveQuestion(key){
     if(!ok) return;
   }
   try{
-    await window.Storage.deleteQuestion(key);
-    await loadUserQuestions();
+    await writableStore(context.revision).deleteQuestion(key);assertAppContext(context);
+    await loadUserQuestions();assertAppContext(context);
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
     _buildMQPage();
-  }catch(e){ alert('Failed to remove: '+e.message); }
+  }catch(e){if(!appContextIsCurrent(context))return; alert('Failed to remove: '+e.message); }
 }
 
 async function mqChangeTier(key,tier){
+  const context=captureAppContext();
   const questions=getActiveQuestions();
   const q=questions.find(q=>q.key===key);
   if(!q) return;
@@ -1330,10 +1819,11 @@ async function mqChangeTier(key,tier){
   window.UserQuestions=questions.map(qq=>qq.key===key?updated:qq);
   _buildMQPage();
   _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
-  try{ await window.Storage.saveQuestion(updated); }
-  catch(e){
+  try{ await saveValidatedQuestion(updated);assertAppContext(context); }
+  catch(e){if(!appContextIsCurrent(context))return;
     // Revert on failure
-    await loadUserQuestions();
+    try{await loadUserQuestions();assertAppContext(context);}
+    catch(loadError){if(appContextIsCurrent(context))alert('Could not reload questions. Reopen Manage Questions to retry.');return;}
     _buildMQPage();
     alert('Failed to save tier change: '+e.message);
   }
@@ -1359,9 +1849,19 @@ function mqSetTier(val){
 }
 
 async function mqAddCustom(){
+  const context=captureAppContext();
   const textEl=document.getElementById('mq-cust-text');
   const errEl=document.getElementById('mq-cust-err');
-  const text=(textEl&&textEl.value||'').trim();
+  const rawText=textEl?textEl.value:'';
+  const rawOpts=['mq-opt0','mq-opt1','mq-opt2'].map(id=>{
+    const el=document.getElementById(id);return el?el.value:'';
+  });
+  if(typeof rawText!=='string'||rawText.length>QUESTION_TEXT_LIMIT||
+     rawOpts.some(opt=>typeof opt!=='string'||opt.length>OPTION_TEXT_LIMIT)){
+    if(errEl) errEl.textContent='Question and option labels must be text of at most 80 characters.';
+    return;
+  }
+  const text=rawText.trim();
   if(!text){errEl&&(errEl.textContent='Enter a question.');return;}
 
   const placeholders=_mqCustPolarity==='positive'?CUSTOM_OPT_PLACEHOLDERS_POSITIVE:CUSTOM_OPT_PLACEHOLDERS_NEGATIVE;
@@ -1392,15 +1892,15 @@ async function mqAddCustom(){
   const btn=document.querySelector('#mq-custom-form .mq-btn-add');
   if(btn){btn.disabled=true;btn.textContent='Adding…';}
   try{
-    await window.Storage.saveQuestion(newQ);
-    await loadUserQuestions();
+    await saveValidatedQuestion(newQ);assertAppContext(context);
+    await loadUserQuestions();assertAppContext(context);
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
     // Reset form
     if(textEl) textEl.value='';
     ['mq-opt0','mq-opt1','mq-opt2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     _buildMQPage();
     if(!bal.ok&&errEl){errEl.style.color='var(--gold)';errEl.textContent='Added. '+bal.reason;}
-  }catch(e){
+  }catch(e){if(!appContextIsCurrent(context))return;
     if(btn){btn.disabled=false;btn.textContent='+ Add question';}
     if(errEl) errEl.textContent='Save failed: '+e.message;
   }
@@ -1425,39 +1925,45 @@ document.addEventListener('keydown',e=>{
 let _lastRenderedCache={};
 let _resizeBound=false;
 
-async function bootMomentum(){
-  showDashboardSkeleton();
-  try{
-    const migrationResult=await runLegacyMigrationIfNeeded();
-    await loadUserQuestions();
-    const cache=await loadCache();
-    _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
-    hideDashboardSkeleton();
-    renderDashboard(cache);
-    if(migrationResult.balanceWarning) showImbalanceBanner(migrationResult.balanceWarning);
-    if(!_resizeBound){
-      window.addEventListener('resize',()=>renderDashboard(_lastRenderedCache||{}));
-      _resizeBound=true;
+let _bootPromise=null,_bootKey=null;
+function bootMomentum(){
+  if(!window.Auth.getUserId())return Promise.resolve();
+  const context=captureAppContext(),key=context.generation+':'+context.revision+':'+context.account;
+  if(_bootPromise&&_bootKey===key)return _bootPromise;
+  _bootKey=key;
+  const work=(async()=>{
+    clearDashboardLoadError();showDashboardSkeleton();
+    try{
+      const migrationResult=await runLegacyMigrationIfNeeded();assertAppContext(context);
+      await loadUserQuestions();assertAppContext(context);
+      const cache=await loadCache();assertAppContext(context);
+      _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
+      hideDashboardSkeleton();renderDashboard(cache);
+      if(migrationResult.balanceWarning)showImbalanceBanner(migrationResult.balanceWarning);
+      if(!_resizeBound){
+        window.addEventListener('resize',()=>{if(window.Auth.getUserId()&&_dataCache)renderDashboard(_lastRenderedCache||{});});
+        _resizeBound=true;
+      }
+    }catch(e){
+      if(!appContextIsCurrent(context))return;
+      hideDashboardSkeleton();console.error('Boot failed:',e);
+      showDashboardLoadError(()=>bootMomentum());
+      alert('Could not load your Momentum data: '+e.message);
     }
-  }catch(e){
-    hideDashboardSkeleton();
-    console.error('Boot failed:',e);
-    alert('Could not load your Momentum data: '+e.message);
-  }
+  })();
+  _bootPromise=work;
+  work.finally(()=>{if(_bootPromise===work)_bootPromise=null;});
+  return work;
 }
 
 (async()=>{
   showDashboardSkeleton();
+  window.Auth.onBoundary=account=>updateSessionAccount(account);
   await window.Auth.init(async(session)=>{
     if(!session){
-      _dataCache={};_habitsCache={};_lastRenderedCache={};
-      hideDashboardSkeleton();
-      document.body.classList.add('app-auth-locked');
-      window.AuthUI.show();
-      return;
+      hideDashboardSkeleton();document.body.classList.add('app-auth-locked');window.AuthUI.show();return;
     }
-    document.body.classList.remove('app-auth-locked');
-    window.AuthUI.hide();
+    document.body.classList.remove('app-auth-locked');window.AuthUI.hide();
     await bootMomentum();
   });
 })();

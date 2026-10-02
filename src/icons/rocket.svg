@@ -1,0 +1,14 @@
+<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">
+  <!-- nose -->
+  <rect x="6" y="0" width="4" height="2"/>
+  <!-- upper body -->
+  <rect x="4" y="2" width="8" height="2"/>
+  <!-- main body -->
+  <rect x="4" y="4" width="8" height="6"/>
+  <!-- fins + lower body -->
+  <rect x="2" y="10" width="12" height="2"/>
+  <!-- exhaust core -->
+  <rect x="5" y="12" width="6" height="2"/>
+  <!-- exhaust tip -->
+  <rect x="6" y="14" width="4" height="2"/>
+</svg>
