@@ -1,7 +1,5 @@
 import type { AppState } from '../store.ts';
-import { signOut } from '../store.ts';
 import { Card } from '../components/Card.tsx';
-import { Button } from '../components/Button.tsx';
 import { StatusLine } from '../components/StatusLine.tsx';
 import type { QuestionRow } from '../../data/repositories.ts';
 
@@ -79,41 +77,18 @@ export function Today({ state }: TodayProps) {
         gap: 'var(--space-6)',
       }}
     >
-      <header
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 'var(--space-4)',
-        }}
-      >
-        <div>
-          <h1
+      <header>
+        {todayKey && (
+          <p
             style={{
-              fontFamily: 'var(--font-pixel)',
-              fontSize: 'var(--text-sm)',
-              color: 'var(--color-gold)',
-              marginBottom: 'var(--space-1)',
-              textTransform: 'uppercase',
+              fontSize: 'var(--text-lg)',
+              fontWeight: 600,
+              color: 'var(--text-primary)',
             }}
           >
-            Today
-          </h1>
-          {todayKey && (
-            <p
-              style={{
-                fontSize: 'var(--text-lg)',
-                fontWeight: 600,
-                color: 'var(--text-primary)',
-              }}
-            >
-              {formatDate(todayKey)}
-            </p>
-          )}
-        </div>
-        <Button variant="ghost" onClick={() => void signOut()} style={{ flexShrink: 0 }}>
-          Sign out
-        </Button>
+            {formatDate(todayKey)}
+          </p>
+        )}
       </header>
 
       <section aria-label="Today's status">
