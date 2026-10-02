@@ -1367,10 +1367,9 @@ function setHabitsFilter(filter){
 function getFilteredKeys(cache,filter){
   const allKeys=Object.keys(cache).sort();
   if(filter==='all') return allKeys;
-  const nowD=appNow(),cutoff=appNow();
-  if(filter==='week') cutoff.setDate(nowD.getDate()-7);
-  else if(filter==='month') cutoff.setMonth(nowD.getMonth()-1);
-  return allKeys.filter(k=>k>=localDateKey(cutoff));
+  const today=todayKey();
+  const cutoff=MomentumDomain.calendarKeyOffset(today,filter==='week'?-6:filter==='month'?-29:0);
+  return allKeys.filter(k=>k>=cutoff&&k<=today);
 }
 async function renderHabitsPage(){
   const context=captureAppContext();

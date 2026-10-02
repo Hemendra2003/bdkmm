@@ -322,11 +322,7 @@ export function createRepositories({
     },
     async removeAll(): Promise<true> {
       const userId = requireUserId();
-      const { error } = await client
-        .from('momentum_entries')
-        .delete()
-        .eq('user_id', userId)
-        .neq('date', '0000-00-00');
+      const { error } = await client.from('momentum_entries').delete().eq('user_id', userId);
       if (error) throw error;
       sameUser(userId);
       return true;

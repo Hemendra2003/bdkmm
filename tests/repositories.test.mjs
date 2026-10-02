@@ -424,10 +424,12 @@ test('delete filters include owner plus target and malformed delete key never qu
     ['key', question.key],
   ]);
   await h.repos.entries.removeAll();
-  assert.deepEqual(h.client.calls[1].filters, [
-    ['user_id', 'A'],
-    ['date!=', '0000-00-00'],
-  ]);
+  assert.equal(h.client.calls[1].table, 'momentum_entries');
+  assert.equal(h.client.calls[1].op, 'delete');
+  assert.deepEqual(h.client.calls[1].filters, [['user_id', 'A']]);
+  h.setUser('B');
+  await h.repos.entries.removeAll();
+  assert.deepEqual(h.client.calls[2].filters, [['user_id', 'B']]);
 });
 
 test('query errors propagate for every operation without a success/empty fallback', async () => {
