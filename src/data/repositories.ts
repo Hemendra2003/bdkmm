@@ -197,6 +197,10 @@ export function createRepositories({
     if (getUserId() !== userId) throw new Error('Account changed during the request.');
   }
 
+  function resetReadDiagnostics(): void {
+    diagnosticsOwner = null;
+    diagnostics = { normalizedFields: 0, droppedFields: 0, droppedRows: 0 };
+  }
   function getReadDiagnostics(): ReadDiagnostics {
     requireUserId();
     return { ...diagnostics };
@@ -467,6 +471,6 @@ export function createRepositories({
       return true;
     },
   };
-  return { requireUserId, getReadDiagnostics, entries, questions, settings };
+  return { requireUserId, getReadDiagnostics, resetReadDiagnostics, entries, questions, settings };
 }
 export type Repositories = ReturnType<typeof createRepositories>;

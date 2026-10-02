@@ -453,3 +453,18 @@ test('account changes reject late read/write results instead of returning stale 
     );
   }
 });
+
+test('explicit boundary reset clears diagnostics across same-owner logout/login', async () => {
+  const h = harness();
+  h.client.setResponse({ data: [{ ...entry, answers: { habit: '3' } }], error: null });
+  await h.repos.entries.list();
+  assert.equal(h.repos.getReadDiagnostics().normalizedFields, 1);
+  h.setUser(null);
+  h.repos.resetReadDiagnostics();
+  h.setUser('A');
+  assert.deepEqual(plain(h.repos.getReadDiagnostics()), {
+    normalizedFields: 0,
+    droppedFields: 0,
+    droppedRows: 0,
+  });
+});

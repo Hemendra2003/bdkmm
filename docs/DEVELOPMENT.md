@@ -265,3 +265,38 @@ config changes are needed. Its freshness test fails if the checked-in classic
 bundle differs from `repositories.ts`. Repository tests inject a local client
 that records every filter/payload and returns adversarial results; they do not
 certify live Supabase permissions or perform any production call.
+
+
+### Session boundaries (WP1.4)
+
+`src/state/session.ts` is an injectable controller with no browser, database or
+clock access. `auth.js` embeds its deterministic classic bundle. `Auth.init()` is
+idempotent: one subscription is installed before the initial session snapshot.
+Auth notifications synchronously publish credentials and invalidate the prior
+generation; boot runs in a scheduled task after the callback returns. Duplicate
+initial/sign-in events and token refresh for the current owner update credentials
+without re-booting or clearing state. A newer notification wins over a late initial
+snapshot. `Auth.init()` now resolves when session discovery finishes, rather than
+waiting for database boot; boot has its own error status and Retry action.
+
+The generation counter and app demo revision guard asynchronous read/write
+continuations (including errors). Boot, migration, question loading, dashboard,
+habits, exports, database status, editor/save and question mutations cannot
+populate a later account's caches or DOM. In-flight boot is deduped for its owner,
+generation and demo revision. A write already sent cannot be cancelled; its stale
+result cannot change the current UI or trigger a follow-up write.
+
+`updateSessionAccount()` owns transition cleanup: prior-owner durable drafts,
+entry/question/history caches, diagnostics, forms, generated DOM fragments,
+charts, summary values and overlays are cleared together. Static editor controls
+remain intact. `MomentumData.resetReadDiagnostics()` is an additive, local-only
+reset hook, callable during logout. The existing MomentumDemo, MomentumEntry and
+MomentumData methods and events retain their contracts. Token refresh does not
+invalidate the editor or its draft. The session controller supports disposal for
+an embedding host; the page's singleton keeps its subscription for page lifetime.
+
+Regenerate with `node src/state/build-legacy.mjs`; verify with `--check`, alongside
+the domain/data gates. `npm run format` must precede final handoff and
+`npm run format:check` is a required gate. Session tests use injected auth clients,
+schedulers and deferred responses; no live authentication/database/browser run
+is claimed by these tests.

@@ -141,6 +141,10 @@ function createRepositories({ client, getUserId, now, warn = (issue) => console.
         if (getUserId() !== userId)
             throw new Error('Account changed during the request.');
     }
+    function resetReadDiagnostics() {
+        diagnosticsOwner = null;
+        diagnostics = { normalizedFields: 0, droppedFields: 0, droppedRows: 0 };
+    }
     function getReadDiagnostics() {
         requireUserId();
         return { ...diagnostics };
@@ -415,7 +419,7 @@ function createRepositories({ client, getUserId, now, warn = (issue) => console.
             return true;
         },
     };
-    return { requireUserId, getReadDiagnostics, entries, questions, settings };
+    return { requireUserId, getReadDiagnostics, resetReadDiagnostics, entries, questions, settings };
 }
 
 return exports;})();
@@ -428,6 +432,7 @@ const momentumRepositories=MomentumRepositories.createRepositories({
 window.MomentumData={
   requireUserId:momentumRepositories.requireUserId,
   getReadDiagnostics:momentumRepositories.getReadDiagnostics,
+  resetReadDiagnostics:momentumRepositories.resetReadDiagnostics,
   loadEntries:()=>momentumRepositories.entries.list(),
   loadEntry:date=>momentumRepositories.entries.get(date),
   saveEntry:(date,answers)=>momentumRepositories.entries.save(date,answers),

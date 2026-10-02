@@ -304,6 +304,36 @@ function writableStore(expectedRevision=_appContextRevision){
   if(expectedRevision!==_appContextRevision) throw new Error('Account or demo mode changed. Reopen the form.');
   return window.MomentumData;
 }
+function captureAppContext(){
+  return {generation:typeof window.Auth.getGeneration==='function'?window.Auth.getGeneration():0,
+    revision:_appContextRevision,account:window.Auth.getUserId()};
+}
+function appContextIsCurrent(context){
+  const now=captureAppContext();
+  return context.generation===now.generation&&context.revision===now.revision&&context.account===now.account;
+}
+function assertAppContext(context){
+  if(!appContextIsCurrent(context))throw new Error('Session or demo context changed.');
+}
+function clearAccountUI(){
+  ['be-questions','habits-list','mq-root','drawer-body','sh-compare','week-line-svg','month-line-svg','sum-week-line-svg'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.innerHTML='';
+  });
+  ['velocity-display','status-line','stat-best','stat-days','stat-streak','mult-text','delta-badge-num',
+   'sh-thrust','sh-drag','sh-vel','sh-dv','sh-mult','sh-streak-text','streak-badge-num','streak-badge-label'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.textContent='—';
+  });
+  ['logged-note','db-status','be-entry-status','sh-streak-icon','auth-message'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
+  ['drawer-search','mq-cust-text','mq-opt0','mq-opt1','mq-opt2','auth-email','auth-password'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['empty-state','imbalance-banner','delta-badge','badge-sep-1'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  const logButton=document.getElementById('open-log-btn');
+  if(logButton){logButton.textContent='Loading your data…';logButton.disabled=true;logButton.onclick=null;}
+  updateFlameScale(100);
+  Object.keys(_drawerLibTier).forEach(key=>delete _drawerLibTier[key]);
+  _mqCustPolarity='positive';_mqCustTier='A';_habitsFilter='all';
+  _dashboardLoadRequest++;
+  clearDashboardLoadError();
+}
 function resetDateContext(){
   _appContextRevision++;
   invalidateEntry();
@@ -338,7 +368,10 @@ function updateSessionAccount(account){
   if(account!==_sessionAccount||(_demoAccount&&account!==_demoAccount)){
     if(_sessionAccount)clearAccountDrafts(_sessionAccount);
     _sessionAccount=account;_demoDate=null;_demoAccount=null;
-    resetDateContext();notifyDemoState();
+    resetDateContext();clearAccountUI();notifyDemoState();
+    if(typeof window.MomentumData.resetReadDiagnostics==='function')window.MomentumData.resetReadDiagnostics();
+    document.body.classList.add('app-auth-locked');
+    if(!account&&window.AuthUI)window.AuthUI.show();
   }
 }
 // Explicit runtime opt-in only: MomentumDemo.setDate('2026-06-27').
@@ -479,26 +512,27 @@ const LEGACY_MIGRATION_MAP=[
 // Returns {migrated:boolean, balanceWarning:string|null}
 async function runLegacyMigrationIfNeeded(){
   if(isDemoMode())return {migrated:false,balanceWarning:null};
-  const revision=_appContextRevision;
+  const revision=_appContextRevision,context=captureAppContext();
   let settings;
-  try{settings=await window.MomentumData.getSettings();}catch(e){console.warn('Settings check failed:',e.message);return{migrated:false,balanceWarning:null};}
+  try{settings=await window.MomentumData.getSettings();assertAppContext(context);}catch(e){if(!appContextIsCurrent(context))return{migrated:false,balanceWarning:null};console.warn('Settings check failed:',e.message);return{migrated:false,balanceWarning:null};}
   if(settings.legacy_migrated) return{migrated:false,balanceWarning:null};
 
   let existing;
-  try{existing=await window.MomentumData.loadQuestions();}catch(e){console.warn('Question check failed:',e.message);return{migrated:false,balanceWarning:null};}
+  try{existing=await window.MomentumData.loadQuestions();assertAppContext(context);}catch(e){if(!appContextIsCurrent(context))return{migrated:false,balanceWarning:null};console.warn('Question check failed:',e.message);return{migrated:false,balanceWarning:null};}
   if(existing&&existing.length>0){
     // Already has questions (new user who built their own set, or partial
     // migration retry) — just mark migrated and move on, don't overwrite.
-    try{await writableStore(revision).markLegacyMigrated();}catch(e){}
+    try{await writableStore(revision).markLegacyMigrated();assertAppContext(context);}catch(e){}
     return{migrated:false,balanceWarning:null};
   }
 
   const rows=LEGACY_MIGRATION_MAP.map(q=>({...q,source:'library'}));
   try{
     rows.forEach(validateQuestionText);
-    await writableStore(revision).saveQuestions(rows);
-    await writableStore(revision).markLegacyMigrated();
+    await writableStore(revision).saveQuestions(rows);assertAppContext(context);
+    await writableStore(revision).markLegacyMigrated();assertAppContext(context);
   }catch(e){
+    if(!appContextIsCurrent(context))return{migrated:false,balanceWarning:null};
     console.error('Legacy migration failed:',e.message);
     return{migrated:false,balanceWarning:null};
   }
@@ -516,7 +550,9 @@ async function runLegacyMigrationIfNeeded(){
 window.UserQuestions=null; // array of {key,text,opts,polarity,tier,is_fixed,...}
 
 async function loadUserQuestions(){
+  const context=captureAppContext();
   const rows=await window.MomentumData.loadQuestions();
+  assertAppContext(context);
   window.UserQuestions=rows;
   return rows;
 }
@@ -532,7 +568,10 @@ function runEngine(answers,prevV,posS,negS){
 function recomputeAll(rows){return MomentumDomain.recomputeAll(getActiveQuestions(),rows);}
 
 async function loadCache(){
-  return recomputeAll(await sbLoadAll());
+  const context=captureAppContext();
+  const rows=await sbLoadAll();
+  assertAppContext(context);
+  return recomputeAll(rows);
 }
 
 // STATUS LINE
@@ -602,15 +641,15 @@ function showDashboardLoadError(retry){
   status.appendChild(button);
 }
 async function loadDashboard(){
-  const request=++_dashboardLoadRequest,revision=_appContextRevision;
+  const request=++_dashboardLoadRequest,context=captureAppContext();
   clearDashboardLoadError();showDashboardSkeleton();
   try{
     const cache=await loadCache();
-    if(request!==_dashboardLoadRequest||revision!==_appContextRevision)return;
+    if(request!==_dashboardLoadRequest||!appContextIsCurrent(context))return;
     _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
     hideDashboardSkeleton();renderDashboard(cache);
   }catch{
-    if(request!==_dashboardLoadRequest||revision!==_appContextRevision)return;
+    if(request!==_dashboardLoadRequest||!appContextIsCurrent(context))return;
     hideDashboardSkeleton();showDashboardLoadError(()=>loadDashboard());
   }
 }
@@ -660,8 +699,9 @@ function clearAccountDrafts(userId){
     keys.forEach(key=>storage.removeItem(key));
   }catch(e){/* Account/date checks still prevent cross-account restoration. */}
 }
+let _entryGeneration=0;
 function entryIsCurrent(request=_entryRequest){
-  return request===_entryRequest&&_entryContext===_appContextRevision&&
+  return request===_entryRequest&&_entryGeneration===captureAppContext().generation&&_entryContext===_appContextRevision&&
     _entryAccount===window.Auth.getUserId();
 }
 function entryState(){
@@ -829,7 +869,7 @@ async function openDailyEntry(fullEdit,targetDate=todayKey()){
   const userId=window.Auth.getUserId();
   if(!userId){alert('Sign in before opening an entry.');return false;}
   const request=++_entryRequest;
-  _entryAccount=userId;_entryDate=targetDate;_entryContext=_appContextRevision;
+  _entryAccount=userId;_entryDate=targetDate;_entryContext=_appContextRevision;_entryGeneration=captureAppContext().generation;
   answers={};savedAnswers={};_draftError='';
   document.getElementById('questionnaire').classList.remove('active');
   setEntryStatus('loading');
@@ -1221,8 +1261,9 @@ function getFilteredKeys(cache,filter){
   return allKeys.filter(k=>k>=localDateKey(cutoff));
 }
 async function renderHabitsPage(){
+  const context=captureAppContext();
   let cache;
-  try{cache=_habitsCache||(await loadCache());_habitsCache=cache;}catch(e){document.getElementById('habits-list').innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--negred);margin-top:16px;letter-spacing:.08em">Failed to load data.</div>';return;}
+  try{cache=_habitsCache||(await loadCache());assertAppContext(context);_habitsCache=cache;}catch(e){if(!appContextIsCurrent(context))return;document.getElementById('habits-list').innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--negred);margin-top:16px;letter-spacing:.08em">Failed to load data.</div>';return;}
   const keys=getFilteredKeys(cache,_habitsFilter);
   if(keys.length===0){document.getElementById('habits-list').innerHTML='<div style="font-family:var(--mono);font-size:11px;color:var(--slate2);margin-top:16px;letter-spacing:.08em">No entries in this time period.</div>';return;}
   const questions=getActiveQuestions();
@@ -1269,13 +1310,15 @@ async function renderHabitsPage(){
 // DEV TOOLS
 async function devReset(){alert('Destructive developer tools are disabled.');}
 function devExport(){
+  const context=captureAppContext();
   sbLoadAll().then(rows=>{
+    if(!appContextIsCurrent(context))return;
     const b=new Blob([JSON.stringify(rows,null,2)],{type:'application/json'});
     const a=document.createElement('a');
     a.href=URL.createObjectURL(b);
     a.download='momentum_'+todayKey()+'.json';
     a.click();
-  }).catch(e=>alert('Export failed: '+e.message));
+  }).catch(e=>{if(appContextIsCurrent(context))alert('Export failed: '+e.message);});
 }
 function devImport(){alert('Developer import is disabled.');}
 async function handleImport(e){
@@ -1283,10 +1326,11 @@ async function handleImport(e){
   alert('Developer import is disabled.');
 }
 async function testDB(){
+  const context=captureAppContext();
   const el=document.getElementById('db-status');el.textContent='Testing...';el.style.color='var(--slate2)';
-  try{const rows=await sbLoadAll();el.textContent='Connected — '+rows.length+' row(s)';el.style.color='var(--green)';}
-  catch(e){el.textContent='Failed: '+e.message.slice(0,80);el.style.color='var(--negred)';}
-  setTimeout(()=>{el.textContent='';},6000);
+  try{const rows=await sbLoadAll();assertAppContext(context);el.textContent='Connected — '+rows.length+' row(s)';el.style.color='var(--green)';}
+  catch(e){if(!appContextIsCurrent(context))return;el.textContent='Failed: '+e.message.slice(0,80);el.style.color='var(--negred)';}
+  setTimeout(()=>{if(appContextIsCurrent(context))el.textContent='';},6000);
 }
 
 // ══════════════════════════════════
@@ -1295,10 +1339,11 @@ async function testDB(){
 
 // Called by showPage('questions') via routing
 async function renderManageQuestions(){
+  const context=captureAppContext();
   const el=document.getElementById('mq-root');
   if(!el) return;
   el.innerHTML='<div class="mq-loading">Loading questions…</div>';
-  try{ await loadUserQuestions(); }catch(e){ el.innerHTML='<div class="mq-loading" style="color:var(--negred)">Failed to load questions.</div>'; return; }
+  try{ await loadUserQuestions();assertAppContext(context); }catch(e){if(!appContextIsCurrent(context))return; el.innerHTML='<div class="mq-loading" style="color:var(--negred)">Failed to load questions.</div>'; return; }
   _buildMQPage();
 }
 
@@ -1512,16 +1557,17 @@ function _buildActiveRow(q,isFixed){
 
 // ── Recommendation pill quick-add ──
 async function _addLibRec(libKey){
+  const context=captureAppContext();
   const libQ=QUESTION_LIBRARY.find(l=>l.libKey===libKey);
   if(!libQ) return;
   const questions=getActiveQuestions();
   const newQ={key:libKey,text:libQ.text,opts:libQ.opts,polarity:libQ.polarity,tier:libQ.defaultTier,is_fixed:false,source:'library',sort_order:questions.length};
   try{
-    await saveValidatedQuestion(newQ);
-    await loadUserQuestions();
+    await saveValidatedQuestion(newQ);assertAppContext(context);
+    await loadUserQuestions();assertAppContext(context);
     _buildMQPage();
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
-  }catch(e){ alert('Failed to add: '+e.message); }
+  }catch(e){if(!appContextIsCurrent(context))return; alert('Failed to add: '+e.message); }
 }
 
 // ── Library bottom sheet drawer ──
@@ -1608,6 +1654,7 @@ function _drawerSetTier(libKey,tier){
 }
 
 async function _drawerAdd(libKey){
+  const context=captureAppContext();
   const libQ=QUESTION_LIBRARY.find(l=>l.libKey===libKey);
   if(!libQ) return;
   const tier=_drawerLibTier[libKey]||libQ.defaultTier;
@@ -1616,20 +1663,21 @@ async function _drawerAdd(libKey){
   const btn=document.getElementById('dr-add-'+libKey);
   if(btn){btn.disabled=true;btn.textContent='✓ Added';}
   try{
-    await saveValidatedQuestion(newQ);
-    await loadUserQuestions();
+    await saveValidatedQuestion(newQ);assertAppContext(context);
+    await loadUserQuestions();assertAppContext(context);
     // Rebuild drawer to remove added items + refresh MQ page
     const filterText=(document.getElementById('drawer-search').value||'').toLowerCase().trim();
     _buildLibraryDrawer(filterText);
     _buildMQPage();
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
-  }catch(e){
+  }catch(e){if(!appContextIsCurrent(context))return;
     if(btn){btn.disabled=false;btn.textContent='+ Add';}
     alert('Failed: '+e.message);
   }
 }
 
 async function mqRemoveQuestion(key){
+  const context=captureAppContext();
   const questions=getActiveQuestions();
   const remaining=questions.filter(q=>q.key!==key);
   const bal=checkBalance(remaining);
@@ -1643,14 +1691,15 @@ async function mqRemoveQuestion(key){
     if(!ok) return;
   }
   try{
-    await writableStore().deleteQuestion(key);
-    await loadUserQuestions();
+    await writableStore(context.revision).deleteQuestion(key);assertAppContext(context);
+    await loadUserQuestions();assertAppContext(context);
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
     _buildMQPage();
-  }catch(e){ alert('Failed to remove: '+e.message); }
+  }catch(e){if(!appContextIsCurrent(context))return; alert('Failed to remove: '+e.message); }
 }
 
 async function mqChangeTier(key,tier){
+  const context=captureAppContext();
   const questions=getActiveQuestions();
   const q=questions.find(q=>q.key===key);
   if(!q) return;
@@ -1659,10 +1708,11 @@ async function mqChangeTier(key,tier){
   window.UserQuestions=questions.map(qq=>qq.key===key?updated:qq);
   _buildMQPage();
   _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
-  try{ await saveValidatedQuestion(updated); }
-  catch(e){
+  try{ await saveValidatedQuestion(updated);assertAppContext(context); }
+  catch(e){if(!appContextIsCurrent(context))return;
     // Revert on failure
-    await loadUserQuestions();
+    try{await loadUserQuestions();assertAppContext(context);}
+    catch(loadError){if(appContextIsCurrent(context))alert('Could not reload questions. Reopen Manage Questions to retry.');return;}
     _buildMQPage();
     alert('Failed to save tier change: '+e.message);
   }
@@ -1688,6 +1738,7 @@ function mqSetTier(val){
 }
 
 async function mqAddCustom(){
+  const context=captureAppContext();
   const textEl=document.getElementById('mq-cust-text');
   const errEl=document.getElementById('mq-cust-err');
   const rawText=textEl?textEl.value:'';
@@ -1730,15 +1781,15 @@ async function mqAddCustom(){
   const btn=document.querySelector('#mq-custom-form .mq-btn-add');
   if(btn){btn.disabled=true;btn.textContent='Adding…';}
   try{
-    await saveValidatedQuestion(newQ);
-    await loadUserQuestions();
+    await saveValidatedQuestion(newQ);assertAppContext(context);
+    await loadUserQuestions();assertAppContext(context);
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
     // Reset form
     if(textEl) textEl.value='';
     ['mq-opt0','mq-opt1','mq-opt2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     _buildMQPage();
     if(!bal.ok&&errEl){errEl.style.color='var(--gold)';errEl.textContent='Added. '+bal.reason;}
-  }catch(e){
+  }catch(e){if(!appContextIsCurrent(context))return;
     if(btn){btn.disabled=false;btn.textContent='+ Add question';}
     if(errEl) errEl.textContent='Save failed: '+e.message;
   }
@@ -1763,42 +1814,45 @@ document.addEventListener('keydown',e=>{
 let _lastRenderedCache={};
 let _resizeBound=false;
 
-async function bootMomentum(){
-  clearDashboardLoadError();
-  showDashboardSkeleton();
-  try{
-    const migrationResult=await runLegacyMigrationIfNeeded();
-    await loadUserQuestions();
-    const cache=await loadCache();
-    _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
-    hideDashboardSkeleton();
-    renderDashboard(cache);
-    if(migrationResult.balanceWarning) showImbalanceBanner(migrationResult.balanceWarning);
-    if(!_resizeBound){
-      window.addEventListener('resize',()=>renderDashboard(_lastRenderedCache||{}));
-      _resizeBound=true;
+let _bootPromise=null,_bootKey=null;
+function bootMomentum(){
+  if(!window.Auth.getUserId())return Promise.resolve();
+  const context=captureAppContext(),key=context.generation+':'+context.revision+':'+context.account;
+  if(_bootPromise&&_bootKey===key)return _bootPromise;
+  _bootKey=key;
+  const work=(async()=>{
+    clearDashboardLoadError();showDashboardSkeleton();
+    try{
+      const migrationResult=await runLegacyMigrationIfNeeded();assertAppContext(context);
+      await loadUserQuestions();assertAppContext(context);
+      const cache=await loadCache();assertAppContext(context);
+      _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
+      hideDashboardSkeleton();renderDashboard(cache);
+      if(migrationResult.balanceWarning)showImbalanceBanner(migrationResult.balanceWarning);
+      if(!_resizeBound){
+        window.addEventListener('resize',()=>{if(window.Auth.getUserId()&&_dataCache)renderDashboard(_lastRenderedCache||{});});
+        _resizeBound=true;
+      }
+    }catch(e){
+      if(!appContextIsCurrent(context))return;
+      hideDashboardSkeleton();console.error('Boot failed:',e);
+      showDashboardLoadError(()=>bootMomentum());
+      alert('Could not load your Momentum data: '+e.message);
     }
-  }catch(e){
-    hideDashboardSkeleton();
-    console.error('Boot failed:',e);
-    showDashboardLoadError(()=>bootMomentum());
-    alert('Could not load your Momentum data: '+e.message);
-  }
+  })();
+  _bootPromise=work;
+  work.finally(()=>{if(_bootPromise===work)_bootPromise=null;});
+  return work;
 }
 
 (async()=>{
   showDashboardSkeleton();
+  window.Auth.onBoundary=account=>updateSessionAccount(account);
   await window.Auth.init(async(session)=>{
-    updateSessionAccount(session&&session.user?session.user.id:null);
     if(!session){
-      _dataCache={};_habitsCache={};_lastRenderedCache={};
-      hideDashboardSkeleton();
-      document.body.classList.add('app-auth-locked');
-      window.AuthUI.show();
-      return;
+      hideDashboardSkeleton();document.body.classList.add('app-auth-locked');window.AuthUI.show();return;
     }
-    document.body.classList.remove('app-auth-locked');
-    window.AuthUI.hide();
+    document.body.classList.remove('app-auth-locked');window.AuthUI.hide();
     await bootMomentum();
   });
 })();
