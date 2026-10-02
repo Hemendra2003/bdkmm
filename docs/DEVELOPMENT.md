@@ -34,7 +34,63 @@ ESLint covers src JavaScript/TypeScript and the existing Node tests. Legacy root
 scripts are excluded. Prettier is available through `npm run format` and
 `npm run format:check`, scoped to src/ and tests/. Existing files have not been
 reformatted; format:check may report existing formatting and is not a gate yet.
-The test runner remains `node --test`. No continuous integration is added here.
+The test runner remains `node --test`.
+
+## Continuous integration and the main branch gate
+
+`.github/workflows/ci.yml` runs on pull requests and pushes to main. Its
+`Quality checks` job uses Node.js 22 LTS, caches npm downloads by package-lock.json,
+and runs these commands in order:
+
+```sh
+npm ci
+npm run typecheck
+npm run lint
+npm run build
+npm test
+```
+
+`npm test` includes `tests/no-secrets.test.mjs`, which scans tracked source files
+without printing credential values. This is a current-tree guard, not a history
+scan. No Supabase credentials or other repository secrets are required for these
+checks. Actions are pinned to full commit hashes, with version comments; the
+workflow token has only contents:read and checkout does not persist it.
+
+The separate `Browser smoke (WP1.5b pending)` job is intentionally skipped.
+WP1.5b must add pinned Playwright, browser installation and a real smoke test
+against the built preview before enabling it. Until then CI does not verify
+rendered UI, authentication or integration behavior. Do not mark the skipped job
+as required or report it as passing. Local dev/preview serving checks also remain
+pending; WP1.1 build validation did not start those servers.
+
+**Founder repository-settings action:** after an authorized push and the first
+real GitHub Actions run, open repository **Settings → Branches → Add branch
+protection rule**, set the branch pattern to `main`, and enable:
+
+1. Require a pull request before merging.
+2. Require status checks to pass before merging; select the `Quality checks`
+   check from this workflow, with GitHub Actions as its expected source. Use the
+   exact check name shown by the first run if the interface adds context.
+3. Require branches to be up to date before merging.
+4. Do not allow bypassing the above settings, including administrator bypass.
+
+Save the rule and verify a pull request with a failed required check cannot
+merge. When WP1.5b is enabled and has run, add its actual browser check to the
+required checks too. The workflow file alone does not enforce merge protection;
+that repository setting and an observed remote run are still required. Michael
+owns remote pushes and integration; no push or settings change is authorized by
+adding this file. See GitHub's
+[branch protection instructions](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
+
+For local command validation use Node.js 22.12 or newer and run the five commands
+above. To parse the workflow locally without installing another dependency:
+
+```sh
+ruby -e 'require "yaml"; YAML.safe_load(File.read(".github/workflows/ci.yml")); puts "YAML parses"'
+git diff --check
+```
+
+YAML parsing and local commands do not simulate a GitHub-hosted workflow run.
 
 ## Public environment configuration
 
