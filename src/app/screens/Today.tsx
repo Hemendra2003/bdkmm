@@ -5,6 +5,7 @@ import { Button } from '../components/Button.tsx';
 
 interface TodayProps {
   state: AppState;
+  onStartCheckIn: () => void;
 }
 
 function formatDate(key: string): string {
@@ -73,7 +74,7 @@ function getNudge(
   return null;
 }
 
-export function Today({ state }: TodayProps) {
+export function Today({ state, onStartCheckIn }: TodayProps) {
   if (state.status === 'loading') {
     return (
       <main
@@ -155,7 +156,11 @@ export function Today({ state }: TodayProps) {
           >
             {isLogged ? "Today's check-in is recorded." : 'No check-in logged yet.'}
           </p>
-          <Button variant="primary" disabled style={{ minWidth: 120, fontSize: 'var(--text-xs)' }}>
+          <Button
+            variant="primary"
+            onClick={onStartCheckIn}
+            style={{ minWidth: 120, fontSize: 'var(--text-xs)' }}
+          >
             {isLogged ? 'Edit check-in' : 'Start check-in'}
           </Button>
         </div>

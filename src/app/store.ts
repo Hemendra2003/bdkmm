@@ -149,6 +149,18 @@ const controller = createSessionController({
   },
 });
 
+// Saves an entry and recomputes store state. Will be updated when Jim's WP2.5 lands.
+export async function saveEntry(answers: import('../data/repositories.ts').Answers): Promise<void> {
+  const { todayKey, questions } = state;
+  if (!todayKey) throw new Error('No date set.');
+  const entry = await repos.entries.save(todayKey, answers);
+  const allEntries = await repos.entries.list();
+  const history = recomputeAll(questions, allEntries, { todayKey });
+  const lastScored = findLastScored(history);
+  const weekCheckIns = countWeekCheckIns(allEntries, todayKey);
+  setState({ todayEntry: entry, lastScored, weekCheckIns });
+}
+
 export async function signIn(email: string, password: string): Promise<string | null> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   return error ? error.message : null;

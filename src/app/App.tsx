@@ -1,16 +1,28 @@
 import { useState, useEffect } from 'react';
-import { getState, subscribe, signOut, type AppState } from './store.ts';
+import { getState, subscribe, signOut, saveEntry, type AppState } from './store.ts';
 import { SignIn } from './screens/SignIn.tsx';
 import { Today } from './screens/Today.tsx';
+import { CheckIn } from './screens/CheckIn.tsx';
 import { Habits } from './screens/Habits.tsx';
 import { Progress } from './screens/Progress.tsx';
 import { BottomNav, type NavTab } from './components/BottomNav.tsx';
 import { StatusLine } from './components/StatusLine.tsx';
 import { Button } from './components/Button.tsx';
 
-function parseTab(): NavTab {
-  const h = window.location.hash.slice(1) as NavTab;
-  return h === 'habits' || h === 'progress' ? h : 'today';
+type Route = NavTab | 'checkin';
+
+function parseRoute(): Route {
+  const h = window.location.hash.slice(1);
+  if (h === 'habits') return 'habits';
+  if (h === 'progress') return 'progress';
+  if (h === 'checkin') return 'checkin';
+  return 'today';
+}
+
+function routeToTab(route: Route): NavTab {
+  if (route === 'habits') return 'habits';
+  if (route === 'progress') return 'progress';
+  return 'today';
 }
 
 function LoadingScreen() {
@@ -50,11 +62,12 @@ function ConfigErrorScreen({ message }: { message: string }) {
 
 interface ShellProps {
   state: AppState;
-  tab: NavTab;
-  onNavigate: (t: NavTab) => void;
+  route: Route;
+  onNavigate: (r: Route) => void;
 }
 
-function Shell({ state, tab, onNavigate }: ShellProps) {
+function Shell({ state, route, onNavigate }: ShellProps) {
+  const activeTab = routeToTab(route);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100dvh' }}>
       <header
@@ -82,17 +95,23 @@ function Shell({ state, tab, onNavigate }: ShellProps) {
         >
           MOMENTUM
         </span>
-        <Button
-          variant="ghost"
-          onClick={() => void signOut()}
-          style={{
-            fontSize: 'var(--text-xs)',
-            minHeight: 36,
-            padding: '0 var(--space-3)',
-          }}
-        >
-          Sign out
-        </Button>
+        {route === 'checkin' ? (
+          <Button
+            variant="ghost"
+            onClick={() => onNavigate('today')}
+            style={{ fontSize: 'var(--text-xs)', minHeight: 36, padding: '0 var(--space-3)' }}
+          >
+            Cancel
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            onClick={() => void signOut()}
+            style={{ fontSize: 'var(--text-xs)', minHeight: 36, padding: '0 var(--space-3)' }}
+          >
+            Sign out
+          </Button>
+        )}
       </header>
       <div
         style={{
@@ -101,30 +120,40 @@ function Shell({ state, tab, onNavigate }: ShellProps) {
           paddingBottom: 'calc(var(--nav-height) + env(safe-area-inset-bottom, 0px))',
         }}
       >
-        {tab === 'today' && <Today state={state} />}
-        {tab === 'habits' && <Habits />}
-        {tab === 'progress' && <Progress />}
+        {route === 'today' && <Today state={state} onStartCheckIn={() => onNavigate('checkin')} />}
+        {route === 'checkin' && state.todayKey && state.userId && (
+          <CheckIn
+            questions={state.questions}
+            initialAnswers={state.todayEntry?.answers ?? null}
+            todayKey={state.todayKey}
+            userId={state.userId}
+            onSave={saveEntry}
+            onClose={() => onNavigate('today')}
+          />
+        )}
+        {route === 'habits' && <Habits />}
+        {route === 'progress' && <Progress />}
       </div>
-      <BottomNav activeTab={tab} onNavigate={onNavigate} />
+      <BottomNav activeTab={activeTab} onNavigate={(t) => onNavigate(t)} />
     </div>
   );
 }
 
 export function App() {
   const [state, setState] = useState<AppState>(getState);
-  const [tab, setTab] = useState<NavTab>(parseTab);
+  const [route, setRoute] = useState<Route>(parseRoute);
 
   useEffect(() => subscribe(setState), []);
 
   useEffect(() => {
-    const handler = () => setTab(parseTab());
+    const handler = () => setRoute(parseRoute());
     window.addEventListener('hashchange', handler);
     return () => window.removeEventListener('hashchange', handler);
   }, []);
 
-  function navigate(t: NavTab) {
-    window.location.hash = t;
-    setTab(t);
+  function navigate(r: Route) {
+    window.location.hash = r;
+    setRoute(r);
   }
 
   if (state.status === 'loading') return <LoadingScreen />;
@@ -135,5 +164,5 @@ export function App() {
     return <ConfigErrorScreen message={state.loadError ?? 'App not configured.'} />;
   }
 
-  return <Shell state={state} tab={tab} onNavigate={navigate} />;
+  return <Shell state={state} route={route} onNavigate={navigate} />;
 }
