@@ -20,6 +20,27 @@
 })();
 
 // STORAGE ADAPTERS
+// Plain text is escaped only at HTML text sinks, never before persistence.
+// User keys must stay out of inline JavaScript, even when HTML-escaped.
+function escapeHTML(value){
+  return String(value == null ? '' : value).replace(/[&<>"']/g,ch=>({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[ch]);
+}
+const QUESTION_TEXT_LIMIT=80;
+const OPTION_TEXT_LIMIT=80;
+function validateQuestionText(q){
+  if(typeof q.text!=='string'||!q.text.trim()||q.text.length>QUESTION_TEXT_LIMIT)
+    throw new Error('Question text must be 1–80 characters.');
+  if(!Array.isArray(q.opts)||q.opts.length!==3||q.opts.some(opt=>
+    typeof opt!=='string'||!opt.trim()||opt.length>OPTION_TEXT_LIMIT))
+    throw new Error('Each of the three option labels must be 1–80 characters.');
+}
+async function saveValidatedQuestion(q){
+  validateQuestionText(q);
+  return window.Storage.saveQuestion(q);
+}
+
 // These wrappers preserve the original app call-sites while routing all data
 // through storage.js. Later, storage.js can become local-first without touching
 // the dashboard/questionnaire engine.
@@ -211,6 +232,7 @@ async function runLegacyMigrationIfNeeded(){
 
   const rows=LEGACY_MIGRATION_MAP.map(q=>({...q,source:'library'}));
   try{
+    rows.forEach(validateQuestionText);
     await window.Storage.saveQuestions(rows);
     await window.Storage.markLegacyMigrated();
   }catch(e){
@@ -405,10 +427,10 @@ function _buildBulkRow(q,wasSavedBefore){
 
   const top=document.createElement('div');top.className='be-q-top';
   top.innerHTML=`
-    <div class="be-q-text"><span style="color:${polarityColor};margin-right:6px">${polarityDot}</span>${q.text}</div>
+    <div class="be-q-text"><span style="color:${polarityColor};margin-right:6px">${polarityDot}</span>${escapeHTML(q.text)}</div>
     <div class="be-q-badge-row">
       ${q.is_fixed?'<span class="be-q-core">CORE</span>':''}
-      <span class="be-q-tier" style="color:${tierColor};border-color:${tierColor}">${q.tier}</span>
+      <span class="be-q-tier" style="color:${tierColor};border-color:${tierColor}">${escapeHTML(q.tier)}</span>
     </div>
   `;
 
@@ -578,7 +600,7 @@ function showSummary(c,cache,tk){
     const cc=cache[k].computed,it=k===tk;
     const dv2=cc.finalDv,dvS=(dv2>=0?'+':'')+dv2,dvC=dv2>=0?'var(--green)':'var(--negred)';
     const card=document.createElement('div');card.className='compare-card'+(it?' today-card':'');
-    card.innerHTML=`<div class="compare-day-label">${labels[i]}</div><div class="compare-vel">${cc.newVelocity}</div><div class="compare-dv" style="color:${dvC}">${dvS} km/s</div>`;
+    card.innerHTML=`<div class="compare-day-label">${labels[i]}</div><div class="compare-vel">${escapeHTML(cc.newVelocity)}</div><div class="compare-dv" style="color:${dvC}">${escapeHTML(dvS)} km/s</div>`;
     cEl.appendChild(card);
   });
   const wd=[];for(let i=6;i>=0;i--){const d=appNow();d.setDate(d.getDate()-i);wd.push(d.toISOString().slice(0,10));}
@@ -913,12 +935,12 @@ async function renderHabitsPage(){
       const s=stats[q.key];
       if(s.pct===null){
         const row=document.createElement('div');row.className='habit-row';
-        row.innerHTML=`<div><div class="habit-name">${q.text}</div><div class="habit-name-sub">NOT YET LOGGED</div></div><div></div><div class="habit-bar-wrap" style="opacity:.3"><div class="habit-bar-fill mid" style="width:0%"></div></div>`;
+        row.innerHTML=`<div><div class="habit-name">${escapeHTML(q.text)}</div><div class="habit-name-sub">NOT YET LOGGED</div></div><div></div><div class="habit-bar-wrap" style="opacity:.3"><div class="habit-bar-fill mid" style="width:0%"></div></div>`;
         listEl.appendChild(row);return;
       }
       const bucket=s.pct>=80?'great':s.pct>=60?'good':s.pct>=40?'mid':'bad';
       const row=document.createElement('div');row.className='habit-row';
-      row.innerHTML=`<div><div class="habit-name">${q.text}</div><div class="habit-name-sub">${q.tier}-TIER · AVG ${s.avg>0?'+':''}${s.avg}</div></div><div><div class="habit-score-num ${bucket}">${s.pct}</div><div class="habit-entries">/ 100</div></div><div><div class="habit-bar-wrap"><div class="habit-bar-fill ${bucket}" style="width:${s.pct}%"></div></div></div>`;
+      row.innerHTML=`<div><div class="habit-name">${escapeHTML(q.text)}</div><div class="habit-name-sub">${escapeHTML(q.tier)}-TIER · AVG ${s.avg>0?'+':''}${s.avg}</div></div><div><div class="habit-score-num ${bucket}">${s.pct}</div><div class="habit-entries">/ 100</div></div><div><div class="habit-bar-wrap"><div class="habit-bar-fill ${bucket}" style="width:${s.pct}%"></div></div></div>`;
       listEl.appendChild(row);
     });
   });
@@ -1008,7 +1030,7 @@ function _buildMQPage(){
       <div class="mq-balance-fill-pos" style="width:${posPct}%"></div>
       <div class="mq-balance-fill-neg" style="width:${negPct}%"></div>
     </div>
-    ${!balOk?`<div class="mq-balance-warn-text">${bal.reason}</div>`:''}
+    ${!balOk?`<div class="mq-balance-warn-text">${escapeHTML(bal.reason)}</div>`:''}
   `;
   el.appendChild(balDiv);
 
@@ -1078,7 +1100,7 @@ function _buildMQPage(){
       const pill=document.createElement('button');
       const tierColor=libQ.defaultTier==='S'?'var(--gold)':libQ.defaultTier==='A'?'var(--blue)':'var(--slate2)';
       pill.style.cssText=`background:var(--bg2);border:1px solid ${tierColor};color:var(--slate2);font-family:var(--mono);font-size:9px;letter-spacing:.08em;padding:6px 12px;cursor:pointer;border-radius:16px;transition:all .12s;white-space:nowrap`;
-      pill.innerHTML=`${libQ.polarity==='negative'?'▼':'▲'} ${libQ.text}`;
+      pill.textContent=`${libQ.polarity==='negative'?'▼':'▲'} ${libQ.text}`;
       pill.onmouseover=()=>{pill.style.background='var(--bg3)';pill.style.color='var(--white)';};
       pill.onmouseout=()=>{pill.style.background='var(--bg2)';pill.style.color='var(--slate2)';};
       pill.onclick=()=>{_addLibRec(libQ.libKey);pill.style.opacity='.4';pill.disabled=true;};
@@ -1129,9 +1151,9 @@ function _buildMQPage(){
       <div class="mq-field-group">
         <label class="mq-label">Option labels <span style="color:var(--slate2);font-weight:400">(worst → best)</span></label>
         <div class="mq-opts-row">
-          <input class="mq-input mq-opt-input" id="mq-opt0" placeholder="Didn't do it">
-          <input class="mq-input mq-opt-input" id="mq-opt1" placeholder="Did it partially">
-          <input class="mq-input mq-opt-input" id="mq-opt2" placeholder="Did it fully">
+          <input class="mq-input mq-opt-input" maxlength="80" id="mq-opt0" placeholder="Didn't do it">
+          <input class="mq-input mq-opt-input" maxlength="80" id="mq-opt1" placeholder="Did it partially">
+          <input class="mq-input mq-opt-input" maxlength="80" id="mq-opt2" placeholder="Did it fully">
         </div>
       </div>
       <div class="mq-custom-footer">
@@ -1155,10 +1177,10 @@ function _buildActiveRow(q,isFixed){
     row.innerHTML=`
       <div class="mq-row-left">
         ${polarityDot}
-        <div class="mq-row-text">${q.text}</div>
+        <div class="mq-row-text">${escapeHTML(q.text)}</div>
       </div>
       <div class="mq-row-right">
-        <span class="mq-tier-badge" style="color:${tierColor};border-color:${tierColor}">${q.tier}</span>
+        <span class="mq-tier-badge" style="color:${tierColor};border-color:${tierColor}">${escapeHTML(q.tier)}</span>
         <span class="mq-fixed-lock">CORE</span>
       </div>
     `;
@@ -1166,17 +1188,23 @@ function _buildActiveRow(q,isFixed){
     row.innerHTML=`
       <div class="mq-row-left">
         ${polarityDot}
-        <div class="mq-row-text">${q.text}</div>
+        <div class="mq-row-text">${escapeHTML(q.text)}</div>
       </div>
       <div class="mq-row-right">
         <div class="mq-tier-picker">
-          <button class="mq-tier-btn${q.tier==='S'?' active':''}" data-tier="S" style="${q.tier==='S'?'border-color:var(--gold);color:var(--gold)':''}" onclick="mqChangeTier('${q.key}','S')">S</button>
-          <button class="mq-tier-btn${q.tier==='A'?' active':''}" data-tier="A" style="${q.tier==='A'?'border-color:var(--blue);color:var(--blue)':''}" onclick="mqChangeTier('${q.key}','A')">A</button>
-          <button class="mq-tier-btn${q.tier==='B'?' active':''}" data-tier="B" style="${q.tier==='B'?'border-color:var(--slate2);color:var(--slate2)':''}" onclick="mqChangeTier('${q.key}','B')">B</button>
+          <button class="mq-tier-btn${q.tier==='S'?' active':''}" data-tier="S" style="${q.tier==='S'?'border-color:var(--gold);color:var(--gold)':''}">S</button>
+          <button class="mq-tier-btn${q.tier==='A'?' active':''}" data-tier="A" style="${q.tier==='A'?'border-color:var(--blue);color:var(--blue)':''}">A</button>
+          <button class="mq-tier-btn${q.tier==='B'?' active':''}" data-tier="B" style="${q.tier==='B'?'border-color:var(--slate2);color:var(--slate2)':''}">B</button>
         </div>
-        <button class="mq-remove-btn" onclick="mqRemoveQuestion('${q.key}')">✕</button>
+        <button class="mq-remove-btn">✕</button>
       </div>
     `;
+  }
+  if(!isFixed){
+    row.querySelectorAll('.mq-tier-btn').forEach(btn=>{
+      btn.onclick=()=>mqChangeTier(q.key,btn.dataset.tier);
+    });
+    row.querySelector('.mq-remove-btn').onclick=()=>mqRemoveQuestion(q.key);
   }
   return row;
 }
@@ -1188,7 +1216,7 @@ async function _addLibRec(libKey){
   const questions=getActiveQuestions();
   const newQ={key:libKey,text:libQ.text,opts:libQ.opts,polarity:libQ.polarity,tier:libQ.defaultTier,is_fixed:false,source:'library',sort_order:questions.length};
   try{
-    await window.Storage.saveQuestion(newQ);
+    await saveValidatedQuestion(newQ);
     await loadUserQuestions();
     _buildMQPage();
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
@@ -1244,7 +1272,7 @@ function _buildLibraryDrawer(filterText){
       const polarityDot=libQ.polarity==='negative'?'▼':'▲';
       const polarityColor=libQ.polarity==='negative'?'var(--negred)':'var(--green)';
       row.innerHTML=`
-        <div class="drawer-row-left"><span style="color:${polarityColor};font-size:10px">${polarityDot}</span><span class="drawer-row-text">${libQ.text}</span></div>
+        <div class="drawer-row-left"><span style="color:${polarityColor};font-size:10px">${polarityDot}</span><span class="drawer-row-text">${escapeHTML(libQ.text)}</span></div>
         <div class="drawer-row-right">
           <button class="drawer-tier-btn ${_drawerLibTier[libQ.libKey]==='S'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='S')?'active':''}" style="${_drawerLibTier[libQ.libKey]==='S'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='S')?'border-color:var(--gold);color:var(--gold)':''}" onclick="_drawerSetTier('${libQ.libKey}','S')">S</button>
           <button class="drawer-tier-btn ${_drawerLibTier[libQ.libKey]==='A'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='A')?'active':''}" style="${_drawerLibTier[libQ.libKey]==='A'||(!_drawerLibTier[libQ.libKey]&&libQ.defaultTier==='A')?'border-color:var(--blue);color:var(--blue)':''}" onclick="_drawerSetTier('${libQ.libKey}','A')">A</button>
@@ -1287,7 +1315,7 @@ async function _drawerAdd(libKey){
   const btn=document.getElementById('dr-add-'+libKey);
   if(btn){btn.disabled=true;btn.textContent='✓ Added';}
   try{
-    await window.Storage.saveQuestion(newQ);
+    await saveValidatedQuestion(newQ);
     await loadUserQuestions();
     // Rebuild drawer to remove added items + refresh MQ page
     const filterText=(document.getElementById('drawer-search').value||'').toLowerCase().trim();
@@ -1330,7 +1358,7 @@ async function mqChangeTier(key,tier){
   window.UserQuestions=questions.map(qq=>qq.key===key?updated:qq);
   _buildMQPage();
   _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
-  try{ await window.Storage.saveQuestion(updated); }
+  try{ await saveValidatedQuestion(updated); }
   catch(e){
     // Revert on failure
     await loadUserQuestions();
@@ -1361,7 +1389,16 @@ function mqSetTier(val){
 async function mqAddCustom(){
   const textEl=document.getElementById('mq-cust-text');
   const errEl=document.getElementById('mq-cust-err');
-  const text=(textEl&&textEl.value||'').trim();
+  const rawText=textEl?textEl.value:'';
+  const rawOpts=['mq-opt0','mq-opt1','mq-opt2'].map(id=>{
+    const el=document.getElementById(id);return el?el.value:'';
+  });
+  if(typeof rawText!=='string'||rawText.length>QUESTION_TEXT_LIMIT||
+     rawOpts.some(opt=>typeof opt!=='string'||opt.length>OPTION_TEXT_LIMIT)){
+    if(errEl) errEl.textContent='Question and option labels must be text of at most 80 characters.';
+    return;
+  }
+  const text=rawText.trim();
   if(!text){errEl&&(errEl.textContent='Enter a question.');return;}
 
   const placeholders=_mqCustPolarity==='positive'?CUSTOM_OPT_PLACEHOLDERS_POSITIVE:CUSTOM_OPT_PLACEHOLDERS_NEGATIVE;
@@ -1392,7 +1429,7 @@ async function mqAddCustom(){
   const btn=document.querySelector('#mq-custom-form .mq-btn-add');
   if(btn){btn.disabled=true;btn.textContent='Adding…';}
   try{
-    await window.Storage.saveQuestion(newQ);
+    await saveValidatedQuestion(newQ);
     await loadUserQuestions();
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
     // Reset form
