@@ -45,6 +45,15 @@ async function saveValidatedQuestion(q){
 // through storage.js. Later, storage.js can become local-first without touching
 // the dashboard/questionnaire engine.
 async function sbLoadAll(){return window.Storage.loadEntries();}
+// The history read is unpaginated. Only a successful date-specific read can
+// establish that the editor's target does not already have a saved entry.
+async function sbLoadEntry(date,userId){
+  const {data,error}=await window.supabaseClient.from('momentum_entries')
+    .select('date,answers,updated_at').eq('user_id',userId).eq('date',date).maybeSingle();
+  if(error)throw error;
+  if(data===undefined)throw new Error('Entry read returned no result.');
+  return data;
+}
 async function sbUpsert(row,revision){return writableStore(revision).saveEntry(row.date,row.answers);}
 async function sbDeleteAll(){throw new Error('Destructive developer tools are disabled.');}
 
@@ -70,6 +79,7 @@ function writableStore(expectedRevision=_appContextRevision){
 }
 function resetDateContext(){
   _appContextRevision++;
+  invalidateEntry();
   answers={};savedAnswers={};_entryDate=null;_entryContext=null;
   _dataCache=null;_habitsCache=null;_lastRenderedCache={};window.UserQuestions=null;
   ['questionnaire','summary-overlay','library-drawer','drawer-backdrop','loading-overlay'].forEach(id=>{
@@ -78,6 +88,7 @@ function resetDateContext(){
   if(document.body)document.body.style.overflow='';
   const body=document.getElementById('dev-body'),toggle=document.getElementById('dev-toggle');
   if(body)body.classList.remove('open');if(toggle)toggle.classList.remove('open');
+  notifyEntryState();
 }
 function demoState(){return {active:isDemoMode(),date:_demoDate,readOnly:isDemoMode()};}
 function notifyDemoState(){
@@ -98,6 +109,7 @@ async function setDemoDate(date){
 }
 function updateSessionAccount(account){
   if(account!==_sessionAccount||(_demoAccount&&account!==_demoAccount)){
+    if(_sessionAccount)clearAccountDrafts(_sessionAccount);
     _sessionAccount=account;_demoDate=null;_demoAccount=null;
     resetDateContext();notifyDemoState();
   }
@@ -440,7 +452,71 @@ function toggleDevTools(){
 // BULK-ENTRY QUESTIONNAIRE — scrollable list with inline segmented buttons
 // ══════════════════════════════════
 let answers={},savedAnswers={};
-let _entryDate=null,_entryContext=null;
+let _entryDate=null,_entryContext=null,_entryAccount=null,_entryRequest=0;
+let _entryStatus='idle',_entryError='',_draftError='';
+const DRAFT_PREFIX='momentum:draft:v1:';
+function draftKey(userId,date){return DRAFT_PREFIX+encodeURIComponent(userId)+':'+date;}
+function clearAccountDrafts(userId){
+  try{
+    const storage=window.localStorage,prefix=DRAFT_PREFIX+encodeURIComponent(userId)+':';
+    if(!storage)return;
+    const keys=[];
+    for(let i=0;i<storage.length;i++){const key=storage.key(i);if(key&&key.startsWith(prefix))keys.push(key);}
+    keys.forEach(key=>storage.removeItem(key));
+  }catch(e){/* Account/date checks still prevent cross-account restoration. */}
+}
+function entryIsCurrent(request=_entryRequest){
+  return request===_entryRequest&&_entryContext===_appContextRevision&&
+    _entryAccount===window.Auth.getUserId();
+}
+function entryState(){
+  return {status:_entryStatus,date:_entryDate,error:_entryError,draftError:_draftError,
+    canSave:entryIsCurrent()&&!isDemoMode()&&['ready','save-error'].includes(_entryStatus)};
+}
+function notifyEntryState(){
+  const state=entryState(),button=document.getElementById('be-save-btn');
+  if(button)button.disabled=!state.canSave;
+  const status=document.getElementById('be-entry-status');
+  if(status)status.textContent=state.error||state.draftError;
+  if(typeof window.dispatchEvent==='function'&&typeof CustomEvent==='function')
+    window.dispatchEvent(new CustomEvent('momentum-entry-change',{detail:state}));
+}
+function setEntryStatus(status,error=''){
+  _entryStatus=status;_entryError=error;notifyEntryState();
+}
+function invalidateEntry(){
+  _entryRequest++;_entryAccount=null;_entryStatus='idle';_entryError='';_draftError='';
+}
+function readDraft(userId,date){
+  try{
+    const raw=window.localStorage&&window.localStorage.getItem(draftKey(userId,date));
+    if(!raw)return {};
+    if(raw.length>1000000)throw new Error('Oversized draft');
+    const draft=JSON.parse(raw);
+    if(!draft||draft.version!==1||draft.userId!==userId||draft.date!==date||
+       !draft.answers||typeof draft.answers!=='object'||Array.isArray(draft.answers)||
+       Object.entries(draft.answers).some(([key,val])=>key.length>128||![1,2,3].includes(val)))
+      throw new Error('Invalid draft');
+    return draft.answers;
+  }catch(e){_draftError='The saved draft could not be restored. Your saved entry is still available.';return {};}
+}
+function persistDraft(){
+  if(!entryIsCurrent()||isDemoMode())return;
+  try{
+    if(!window.localStorage)throw new Error('Unavailable');
+    window.localStorage.setItem(draftKey(_entryAccount,_entryDate),JSON.stringify({
+      version:1,userId:_entryAccount,date:_entryDate,answers,updatedAt:Date.now()
+    }));
+    _draftError='';
+  }catch(e){_draftError='This device could not keep a draft. Keep the editor open until your entry saves.';}
+  notifyEntryState();
+}
+function removeDraft(userId,date){
+  try{if(window.localStorage)window.localStorage.removeItem(draftKey(userId,date));_draftError='';}
+  catch(e){_draftError='Entry saved, but this device could not remove its old draft.';}
+}
+// Pam can render be-entry-status and listen to momentum-entry-change.
+window.MomentumEntry={getState:entryState,retryLoad:()=>openDailyEntry(false,_entryDate||todayKey())};
 let _dataCache=null;   // shared in-memory cache, refreshed after every write — avoids refetch glitches
 
 function _renderBulkEntry(){
@@ -527,7 +603,9 @@ function _buildBulkRow(q,wasSavedBefore){
 }
 
 function _selectBulkAnswer(qKey,val){
-  answers[qKey]=val;
+  if(!entryIsCurrent()||!['ready','save-error'].includes(_entryStatus)||![1,2,3].includes(val))return;
+  answers={...answers,[qKey]:val};
+  _entryError='';persistDraft();
   // Refresh just this row's highlight state without rebuilding everything
   const row=document.getElementById('be-row-'+qKey);
   if(row){
@@ -556,89 +634,80 @@ function _selectBulkAnswer(qKey,val){
   }
 }
 
-function openLog(){
-  const entryDate=todayKey(),entryContext=_appContextRevision;_entryDate=entryDate;_entryContext=entryContext;
-  answers={};savedAnswers={};
-  const applyEntry=(cache)=>{
-    if(entryContext!==_appContextRevision)return;
-    const te=cache[entryDate];
-    if(te&&te.answers){
-      answers={...te.answers};savedAnswers={...te.answers};
-    }
-  };
-  const show=()=>{
-    if(entryContext!==_appContextRevision)return;
-    _renderBulkEntry();
-    document.getElementById('questionnaire').classList.add('active');
-    // Scroll to first unanswered
-    const questions=getActiveQuestions();
-    for(let i=0;i<questions.length;i++){
-      if(answers[questions[i].key]===undefined){
-        const el=document.getElementById('be-row-'+questions[i].key);
-        if(el){setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'center'}),50);}
-        break;
-      }
-    }
-  };
-  if(_dataCache){
-    applyEntry(_dataCache);
-    show();
-  } else {
-    loadCache().then(cache=>{
-      if(entryContext!==_appContextRevision)return;
-      _dataCache=cache;
-      applyEntry(cache);
-      show();
-    }).catch(()=>{show();});
+function openLog(){return openDailyEntry(false);}
+function openLogFullEdit(){return openDailyEntry(true);}
+async function openDailyEntry(fullEdit,targetDate=todayKey()){
+  if(_entryStatus==='saving')return false;
+  const userId=window.Auth.getUserId();
+  if(!userId){alert('Sign in before opening an entry.');return false;}
+  const request=++_entryRequest;
+  _entryAccount=userId;_entryDate=targetDate;_entryContext=_appContextRevision;
+  answers={};savedAnswers={};_draftError='';
+  document.getElementById('questionnaire').classList.remove('active');
+  setEntryStatus('loading');
+  let entry;
+  try{
+    entry=await sbLoadEntry(targetDate,userId);
+    if(entry&&(entry.date!==targetDate||!entry.answers||typeof entry.answers!=='object'||Array.isArray(entry.answers)))
+      throw new Error('Invalid saved entry');
+  }catch(e){
+    if(!entryIsCurrent(request))return false;
+    setEntryStatus('load-error','Could not load this day. Retry loading before editing or saving.');
+    alert(_entryError);return false;
   }
-}
-
-function openLogFullEdit(){
-  const entryDate=todayKey(),entryContext=_appContextRevision;_entryDate=entryDate;_entryContext=entryContext;
-  answers={};savedAnswers={};
-  const applyEntry=(cache)=>{
-    if(entryContext!==_appContextRevision)return;
-    const te=cache[entryDate];
-    if(te&&te.answers){answers={...te.answers};savedAnswers={...te.answers};}
-  };
-  const show=()=>{
-    if(entryContext!==_appContextRevision)return;
-    _renderBulkEntry();
-    document.getElementById('questionnaire').classList.add('active');
-    document.getElementById('be-scroll').scrollTop=0;
-  };
-  if(_dataCache){
-    applyEntry(_dataCache);
-    show();
-  } else {
-    loadCache().then(cache=>{
-      if(entryContext!==_appContextRevision)return;
-      _dataCache=cache;
-      applyEntry(cache);
-      show();
-    }).catch(()=>{show();});
+  if(!entryIsCurrent(request))return false;
+  savedAnswers=entry?{...entry.answers}:{};
+  answers={...savedAnswers,...(isDemoMode()?{}:readDraft(userId,targetDate))};
+  setEntryStatus('ready');_renderBulkEntry();
+  document.getElementById('questionnaire').classList.add('active');
+  if(fullEdit)document.getElementById('be-scroll').scrollTop=0;
+  else{
+    const first=getActiveQuestions().find(q=>answers[q.key]===undefined);
+    const row=first&&document.getElementById('be-row-'+first.key);
+    if(row)setTimeout(()=>{if(entryIsCurrent(request))row.scrollIntoView({behavior:'smooth',block:'center'});},50);
   }
+  return true;
 }
-
-function closeQuestionnaire(){document.getElementById('questionnaire').classList.remove('active');}
-
+function closeQuestionnaire(){
+  // Do not discard or close an in-flight save; a failed write must remain editable.
+  if(_entryStatus==='saving')return;
+  document.getElementById('questionnaire').classList.remove('active');
+}
 async function finishQuestionnaire(){
-  closeQuestionnaire();
-  if(!Object.keys(answers).length) return;
+  if(!entryState().canSave){
+    if(_entryStatus!=='saving')alert(isDemoMode()?'Demo mode is read-only.':'Load this day before saving.');
+    return false;
+  }
+  if(!Object.keys(answers).length)return false;
+  const request=_entryRequest,userId=_entryAccount,tk=_entryDate,revision=_entryContext;
+  const snapshot={...answers};
+  setEntryStatus('saving');
   document.getElementById('loading-overlay').classList.add('active');
-  const tk=_entryDate||todayKey();
-  const startTime=Date.now();
-  try{await sbUpsert({date:tk,answers},_entryContext==null?_appContextRevision:_entryContext);}
-  catch(e){document.getElementById('loading-overlay').classList.remove('active');alert('Save failed: '+e.message);return;}
+  try{await sbUpsert({date:tk,answers:snapshot},revision);}
+  catch(e){
+    if(!entryIsCurrent(request))return false;
+    document.getElementById('loading-overlay').classList.remove('active');
+    setEntryStatus('save-error','Could not save your entry. Your answers are still here; retry Save & Finish.');
+    alert(_entryError);return false;
+  }
+  if(!entryIsCurrent(request))return true;
+  removeDraft(userId,tk);
+  savedAnswers=snapshot;
+  setEntryStatus('saved');closeQuestionnaire();
   let cache;
   try{cache=await loadCache();}
-  catch(e){document.getElementById('loading-overlay').classList.remove('active');alert('Failed to load data: '+e.message);return;}
+  catch(e){
+    if(!entryIsCurrent(request))return true;
+    document.getElementById('loading-overlay').classList.remove('active');
+    _dataCache=null;_habitsCache=null;_lastRenderedCache={};
+    setEntryStatus('refresh-error','Entry saved, but the dashboard could not refresh. Reopen the day to reload it.');
+    alert(_entryError);return true;
+  }
+  if(!entryIsCurrent(request))return true;
   _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
-  const elapsed=Date.now()-startTime;
-  if(elapsed<180) await new Promise(r=>setTimeout(r,180-elapsed));
   document.getElementById('loading-overlay').classList.remove('active');
-  if(cache[tk]) showSummary(cache[tk].computed,cache,tk);
-  renderDashboard(cache);
+  if(cache[tk])showSummary(cache[tk].computed,cache,tk);
+  renderDashboard(cache);return true;
 }
 
 // SUMMARY
