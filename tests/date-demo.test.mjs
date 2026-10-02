@@ -25,7 +25,8 @@ function harness(instant='2026-09-04T19:00:00Z'){
   for(const method of ['saveEntry','deleteEntries','saveQuestion','saveQuestions','markLegacyMigrated','importEntries']){
     storage[method]=async(...args)=>{writes.push({method,args});return args[0];};
   }
-  const context=vm.createContext({document,window:{Storage:storage,Auth:{getUserId:()=>account},location:{search:'?dev=1'}},
+  const query={select(){return this;},eq(){return this;},async maybeSingle(){return {data:null,error:null};}};
+  const context=vm.createContext({document,window:{supabaseClient:{from:()=>query},Storage:storage,Auth:{getUserId:()=>account},location:{search:'?dev=1'}},
     Date:ClockDate,console,alert:message=>alerts.push(message),confirm:()=>true,setTimeout:fn=>{fn();return 0;},clearTimeout(){}});
   vm.runInContext(source.slice(start,end),context);
   const run=code=>vm.runInContext(code,context);
@@ -63,10 +64,10 @@ for(const [tz,instant,expected] of [
 test('form targets its opening day across midnight, and next day does not overwrite it',async()=>{
   const h=harness('2026-09-05T23:30:00');
   h.run('_renderBulkEntry=()=>{};renderDashboard=()=>{};showSummary=()=>{};loadCache=async()=>({});_dataCache={};');
-  h.run('openLog();answers={habit:3};');h.setClock('2026-09-06T00:30:00');
+  await h.run('openLog()');h.run('answers={habit:3};');h.setClock('2026-09-06T00:30:00');
   await h.run('finishQuestionnaire()');
   assert.equal(h.writes[0].method,'saveEntry');assert.equal(h.writes[0].args[0],'2026-09-05');
-  h.run('openLogFullEdit();answers={habit:1};');await h.run('finishQuestionnaire()');
+  await h.run('openLogFullEdit()');h.run('answers={habit:1};');await h.run('finishQuestionnaire()');
   assert.equal(h.writes[1].args[0],'2026-09-06');
 });
 
@@ -111,7 +112,7 @@ test('logout/account switch clear demo and drafts; same-account refresh retains 
 test('mode transitions invalidate pending editor reads and stale save contexts',async()=>{
   const h=harness();let resolve;
   h.context.pending=new Promise(r=>{resolve=r;});
-  h.run('_renderBulkEntry=()=>{};loadCache=()=>pending;openLog();');
+  h.run('_renderBulkEntry=()=>{};sbLoadEntry=()=>pending;openLog();');
   const revision=h.run('_appContextRevision');await h.run("setDemoDate('2026-06-27');window.MomentumDemo.clear();");
   resolve({'2026-09-05':{answers:{habit:3}}});await Promise.resolve();
   assert.equal(h.run('Object.keys(answers).length'),0);
