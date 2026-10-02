@@ -38,23 +38,74 @@ function validateQuestionText(q){
 }
 async function saveValidatedQuestion(q){
   validateQuestionText(q);
-  return window.Storage.saveQuestion(q);
+  return writableStore().saveQuestion(q);
 }
 
 // These wrappers preserve the original app call-sites while routing all data
 // through storage.js. Later, storage.js can become local-first without touching
 // the dashboard/questionnaire engine.
 async function sbLoadAll(){return window.Storage.loadEntries();}
-async function sbUpsert(row){return window.Storage.saveEntry(row.date,row.answers);}
-async function sbDeleteAll(){return window.Storage.deleteEntries();}
+async function sbUpsert(row,revision){return writableStore(revision).saveEntry(row.date,row.answers);}
+async function sbDeleteAll(){throw new Error('Destructive developer tools are disabled.');}
 
-// DEMO DATE OVERRIDE — set to an ISO date string (e.g. '2026-06-27') to pin
-// "today" to that date app-wide, so old seed data renders as recent for a
-// demo. Set back to null for real usage.
-const DEMO_DATE_OVERRIDE='2026-06-27';
-function appNow(){return DEMO_DATE_OVERRIDE?new Date(DEMO_DATE_OVERRIDE+'T12:00:00'):new Date();}
-
-function todayKey(){return appNow().toISOString().slice(0,10);}
+// Device-local calendar policy. Calendar keys are never UTC instants.
+function localDateKey(date){
+  return `${String(date.getFullYear()).padStart(4,'0')}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+function calendarDate(key){return new Date(key+'T12:00:00');}
+function dateKeyOffset(date,days){
+  const shifted=new Date(date.getTime());
+  shifted.setHours(12,0,0,0);
+  shifted.setDate(shifted.getDate()+days);
+  return localDateKey(shifted);
+}
+let _demoDate=null,_demoAccount=null,_sessionAccount=null,_appContextRevision=0;
+function isDemoMode(){return _demoDate!==null;}
+function appNow(){return isDemoMode()?calendarDate(_demoDate):new Date();}
+function todayKey(){return localDateKey(appNow());}
+function writableStore(expectedRevision=_appContextRevision){
+  if(isDemoMode()) throw new Error('Demo mode is read-only. No account data was changed.');
+  if(expectedRevision!==_appContextRevision) throw new Error('Account or demo mode changed. Reopen the form.');
+  return window.Storage;
+}
+function resetDateContext(){
+  _appContextRevision++;
+  answers={};savedAnswers={};_entryDate=null;_entryContext=null;
+  _dataCache=null;_habitsCache=null;_lastRenderedCache={};window.UserQuestions=null;
+  ['questionnaire','summary-overlay','library-drawer','drawer-backdrop','loading-overlay'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.classList.remove('active');
+  });
+  if(document.body)document.body.style.overflow='';
+  const body=document.getElementById('dev-body'),toggle=document.getElementById('dev-toggle');
+  if(body)body.classList.remove('open');if(toggle)toggle.classList.remove('open');
+}
+function demoState(){return {active:isDemoMode(),date:_demoDate,readOnly:isDemoMode()};}
+function notifyDemoState(){
+  if(typeof window.dispatchEvent==='function'&&typeof CustomEvent==='function')
+    window.dispatchEvent(new CustomEvent('momentum-demo-change',{detail:demoState()}));
+}
+async function setDemoDate(date){
+  const account=window.Auth.getUserId();
+  if(date!==null){
+    if(!account)throw new Error('Sign in before opting into demo mode.');
+    if(typeof date!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(date)||localDateKey(calendarDate(date))!==date)
+      throw new Error('Demo date must be a real YYYY-MM-DD calendar date.');
+  }
+  _demoDate=date;_demoAccount=date===null?null:account;
+  resetDateContext();notifyDemoState();
+  if(account)await bootMomentum();
+  return demoState();
+}
+function updateSessionAccount(account){
+  if(account!==_sessionAccount||(_demoAccount&&account!==_demoAccount)){
+    _sessionAccount=account;_demoDate=null;_demoAccount=null;
+    resetDateContext();notifyDemoState();
+  }
+}
+// Explicit runtime opt-in only: MomentumDemo.setDate('2026-06-27').
+// No URL/localStorage preference; reload, logout and account switch clear it.
+// Pam consumes getState() / momentum-demo-change for the visible demo label.
+window.MomentumDemo={setDate:setDemoDate,clear:()=>setDemoDate(null),getState:demoState};
 
 // ══════════════════════════════════
 // TIER SYSTEM — replaces hardcoded per-question weight arrays.
@@ -217,6 +268,8 @@ const LEGACY_MIGRATION_MAP=[
 // Runs once per user, only if they have zero rows in user_questions yet.
 // Returns {migrated:boolean, balanceWarning:string|null}
 async function runLegacyMigrationIfNeeded(){
+  if(isDemoMode())return {migrated:false,balanceWarning:null};
+  const revision=_appContextRevision;
   let settings;
   try{settings=await window.Storage.getSettings();}catch(e){console.warn('Settings check failed:',e.message);return{migrated:false,balanceWarning:null};}
   if(settings.legacy_migrated) return{migrated:false,balanceWarning:null};
@@ -226,15 +279,15 @@ async function runLegacyMigrationIfNeeded(){
   if(existing&&existing.length>0){
     // Already has questions (new user who built their own set, or partial
     // migration retry) — just mark migrated and move on, don't overwrite.
-    try{await window.Storage.markLegacyMigrated();}catch(e){}
+    try{await writableStore(revision).markLegacyMigrated();}catch(e){}
     return{migrated:false,balanceWarning:null};
   }
 
   const rows=LEGACY_MIGRATION_MAP.map(q=>({...q,source:'library'}));
   try{
     rows.forEach(validateQuestionText);
-    await window.Storage.saveQuestions(rows);
-    await window.Storage.markLegacyMigrated();
+    await writableStore(revision).saveQuestions(rows);
+    await writableStore(revision).markLegacyMigrated();
   }catch(e){
     console.error('Legacy migration failed:',e.message);
     return{migrated:false,balanceWarning:null};
@@ -376,6 +429,7 @@ function dismissImbalanceBanner(){
 }
 
 function toggleDevTools(){
+  if(!isDemoMode())return;
   const body=document.getElementById('dev-body');
   const toggle=document.getElementById('dev-toggle');
   body.classList.toggle('open');
@@ -386,6 +440,7 @@ function toggleDevTools(){
 // BULK-ENTRY QUESTIONNAIRE — scrollable list with inline segmented buttons
 // ══════════════════════════════════
 let answers={},savedAnswers={};
+let _entryDate=null,_entryContext=null;
 let _dataCache=null;   // shared in-memory cache, refreshed after every write — avoids refetch glitches
 
 function _renderBulkEntry(){
@@ -502,14 +557,17 @@ function _selectBulkAnswer(qKey,val){
 }
 
 function openLog(){
+  const entryDate=todayKey(),entryContext=_appContextRevision;_entryDate=entryDate;_entryContext=entryContext;
   answers={};savedAnswers={};
   const applyEntry=(cache)=>{
-    const te=cache[todayKey()];
+    if(entryContext!==_appContextRevision)return;
+    const te=cache[entryDate];
     if(te&&te.answers){
       answers={...te.answers};savedAnswers={...te.answers};
     }
   };
   const show=()=>{
+    if(entryContext!==_appContextRevision)return;
     _renderBulkEntry();
     document.getElementById('questionnaire').classList.add('active');
     // Scroll to first unanswered
@@ -527,6 +585,7 @@ function openLog(){
     show();
   } else {
     loadCache().then(cache=>{
+      if(entryContext!==_appContextRevision)return;
       _dataCache=cache;
       applyEntry(cache);
       show();
@@ -535,12 +594,15 @@ function openLog(){
 }
 
 function openLogFullEdit(){
+  const entryDate=todayKey(),entryContext=_appContextRevision;_entryDate=entryDate;_entryContext=entryContext;
   answers={};savedAnswers={};
   const applyEntry=(cache)=>{
-    const te=cache[todayKey()];
+    if(entryContext!==_appContextRevision)return;
+    const te=cache[entryDate];
     if(te&&te.answers){answers={...te.answers};savedAnswers={...te.answers};}
   };
   const show=()=>{
+    if(entryContext!==_appContextRevision)return;
     _renderBulkEntry();
     document.getElementById('questionnaire').classList.add('active');
     document.getElementById('be-scroll').scrollTop=0;
@@ -550,6 +612,7 @@ function openLogFullEdit(){
     show();
   } else {
     loadCache().then(cache=>{
+      if(entryContext!==_appContextRevision)return;
       _dataCache=cache;
       applyEntry(cache);
       show();
@@ -563,9 +626,9 @@ async function finishQuestionnaire(){
   closeQuestionnaire();
   if(!Object.keys(answers).length) return;
   document.getElementById('loading-overlay').classList.add('active');
-  const tk=todayKey();
+  const tk=_entryDate||todayKey();
   const startTime=Date.now();
-  try{await sbUpsert({date:tk,answers});}
+  try{await sbUpsert({date:tk,answers},_entryContext==null?_appContextRevision:_entryContext);}
   catch(e){document.getElementById('loading-overlay').classList.remove('active');alert('Save failed: '+e.message);return;}
   let cache;
   try{cache=await loadCache();}
@@ -603,10 +666,10 @@ function showSummary(c,cache,tk){
     card.innerHTML=`<div class="compare-day-label">${labels[i]}</div><div class="compare-vel">${escapeHTML(cc.newVelocity)}</div><div class="compare-dv" style="color:${dvC}">${escapeHTML(dvS)} km/s</div>`;
     cEl.appendChild(card);
   });
-  const wd=[];for(let i=6;i>=0;i--){const d=appNow();d.setDate(d.getDate()-i);wd.push(d.toISOString().slice(0,10));}
+  const wd=[];for(let i=6;i>=0;i--){wd.push(dateKeyOffset(appNow(),-i));}
   const DN=['SUN','MON','TUE','WED','THU','FRI','SAT'];
   const sumPoints=wd.map(k=>({
-    label:DN[new Date(k+'T12:00:00').getDay()],
+    label:DN[calendarDate(k).getDay()],
     value:cache[k]?cache[k].computed.finalDv:null,
     isToday:k===tk,
   }));
@@ -745,11 +808,11 @@ function renderWeekLineGraph(cache){
   const tk=todayKey();
   const hasToday=!!(cache[tk]&&cache[tk].computed);
   const span=hasToday?7:8; // pull one extra day back so we still show 7 *logged* days when today is empty
-  const days=[];for(let i=span-1;i>=0;i--){const d=appNow();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  const days=[];for(let i=span-1;i>=0;i--){days.push(dateKeyOffset(appNow(),-i));}
   const trimmed=hasToday?days:days.filter(k=>k!==tk).slice(-7);
   const DN=['SUN','MON','TUE','WED','THU','FRI','SAT'];
   const points=trimmed.map(k=>({
-    label:DN[new Date(k+'T12:00:00').getDay()],
+    label:DN[calendarDate(k).getDay()],
     value:(cache[k]&&cache[k].computed)?cache[k].computed.finalDv:null,
     isToday:k===tk,
   }));
@@ -764,18 +827,18 @@ function renderMonthLineGraph(cache){
   const tk=todayKey();
   let spanDays=30;
   if(allKeys.length>0){
-    const earliest=new Date(allKeys[0]+'T12:00:00');
-    const today=new Date(tk+'T12:00:00');
+    const earliest=calendarDate(allKeys[0]);
+    const today=calendarDate(tk);
     const daysSinceEarliest=Math.round((today-earliest)/86400000)+1;
     spanDays=Math.max(1,Math.min(30,daysSinceEarliest));
   }
-  const days=[];for(let i=spanDays-1;i>=0;i--){const d=appNow();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+  const days=[];for(let i=spanDays-1;i>=0;i--){days.push(dateKeyOffset(appNow(),-i));}
   const hasToday=!!(cache[tk]&&cache[tk].computed);
   let trimmedDays=hasToday?days:days.filter(k=>k!==tk);
   if(trimmedDays.length===0) trimmedDays=days; // fallback: nothing logged yet at all
   const labelEvery=trimmedDays.length<=7?1:trimmedDays.length<=14?2:5;
   const points=trimmedDays.map((k,i)=>{
-    const d=new Date(k+'T12:00:00');
+    const d=calendarDate(k);
     const dayNum=d.getDate();
     const showLabel=i===0||i===trimmedDays.length-1||i%labelEvery===0||k===tk;
     return{
@@ -898,7 +961,7 @@ function getFilteredKeys(cache,filter){
   const nowD=appNow(),cutoff=appNow();
   if(filter==='week') cutoff.setDate(nowD.getDate()-7);
   else if(filter==='month') cutoff.setMonth(nowD.getMonth()-1);
-  return allKeys.filter(k=>k>=cutoff.toISOString().slice(0,10));
+  return allKeys.filter(k=>k>=localDateKey(cutoff));
 }
 async function renderHabitsPage(){
   let cache;
@@ -947,14 +1010,7 @@ async function renderHabitsPage(){
 }
 
 // DEV TOOLS
-async function devReset(){
-  if(!confirm('Reset ALL your Momentum data?'))return;
-  try{await sbDeleteAll();}
-  catch(e){alert('Reset failed: '+e.message);return;}
-  const cache={};
-  _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
-  renderDashboard(cache);
-}
+async function devReset(){alert('Destructive developer tools are disabled.');}
 function devExport(){
   sbLoadAll().then(rows=>{
     const b=new Blob([JSON.stringify(rows,null,2)],{type:'application/json'});
@@ -964,22 +1020,10 @@ function devExport(){
     a.click();
   }).catch(e=>alert('Export failed: '+e.message));
 }
-function devImport(){document.getElementById('import-file').click();}
+function devImport(){alert('Developer import is disabled.');}
 async function handleImport(e){
-  const file=e.target.files[0];if(!file)return;
-  const r=new FileReader();
-  r.onload=async ev=>{try{
-    const obj=JSON.parse(ev.target.result);let rows=[];
-    if(Array.isArray(obj))rows=obj;
-    else if(obj.entries)rows=Object.entries(obj.entries).map(([date,v])=>({date,answers:v.answers||{}}));
-    else rows=Object.entries(obj).map(([date,v])=>({date,answers:v.answers||v}));
-    await window.Storage.importEntries(rows);
-    const cache=await loadCache();
-    _dataCache=cache;_habitsCache=cache;_lastRenderedCache=cache;
-    renderDashboard(cache);
-    alert('Imported '+rows.length+' entries.');
-  }catch(err){alert('Import failed: '+err.message);}};
-  r.readAsText(file);e.target.value='';
+  if(e&&e.target)e.target.value='';
+  alert('Developer import is disabled.');
 }
 async function testDB(){
   const el=document.getElementById('db-status');el.textContent='Testing...';el.style.color='var(--slate2)';
@@ -1342,7 +1386,7 @@ async function mqRemoveQuestion(key){
     if(!ok) return;
   }
   try{
-    await window.Storage.deleteQuestion(key);
+    await writableStore().deleteQuestion(key);
     await loadUserQuestions();
     _dataCache=null;_habitsCache=null;_lastRenderedCache=null;
     _buildMQPage();
@@ -1486,6 +1530,7 @@ async function bootMomentum(){
 (async()=>{
   showDashboardSkeleton();
   await window.Auth.init(async(session)=>{
+    updateSessionAccount(session&&session.user?session.user.id:null);
     if(!session){
       _dataCache={};_habitsCache={};_lastRenderedCache={};
       hideDashboardSkeleton();
