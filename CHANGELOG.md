@@ -28,4 +28,5 @@ All notable changes to MOMENTUM. Each release is one reviewed pull request into 
 
 - Vite + TypeScript toolchain, ESLint, Prettier, Node test runner + Vitest (WP1.1).
 - GitHub Actions CI with SHA-pinned actions: typecheck, lint, format, tests, build, legacy bundle freshness (WP1.5).
+- Playwright browser smoke test (desktop + 390px mobile Chromium) runs in CI (WP1.5b).
 - Docs: `DEVELOPMENT.md`, `SECURITY.md`, `BACKLOG.md`, `FOUNDER-ACTIONS.md`, `ENGINE-DECISION.md`.
