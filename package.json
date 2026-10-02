@@ -1,10 +1,29 @@
 {
   "name": "momentum",
   "private": true,
+  "type": "module",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint src tests --max-warnings=0",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write src tests",
+    "format:check": "prettier --check src tests",
     "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.117.2"
+  },
+  "devDependencies": {
+    "eslint": "9.36.0",
+    "globals": "16.4.0",
+    "prettier": "3.6.2",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.44.1",
+    "vite": "8.3.2"
   }
 }
