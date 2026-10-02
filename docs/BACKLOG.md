@@ -127,5 +127,58 @@ Exit (plan §11): typed modules, pinned build, characterization tests, state/ses
 
 ---
 
-## Deferred to later work packages (not WP0/WP1)
-Engine implementation (gate in `ENGINE-DECISION.md`, WP2), immutable revision schema + idempotent mutations (WP3), full daily product + PWA/offline (WP4), hardening/beta (WP5). Listed so no one pulls them into foundations.
+## Work Package 2 — Engine B implementation (founder chose B, 2026-10-02)
+
+Spec: `docs/ENGINE.md` (version `b-1`). Engine A is a documented future option, not built. **Blocker:** the gap-policy variant (`ENGINE.md` §4) is still with the founder — WP2.4 and the gap-related fixture flips are `BLOCKED` on that; everything else in WP2 can proceed.
+
+### WP2.1 — Answer validation + eligibility gate
+- Owner **Jim** — `READY`
+- Files: `src/domain/scoring.ts` (`runEngine` ~`51-92`), `src/domain/validation.ts` (reuse the `[1,2,3]` rule from `parseDraft`), `src/domain/history.ts` (completion count ~`42-43`).
+- Spec: `ENGINE.md` §6, §5.
+- Acceptance: invalid answers (`"garbage"`, `"0"`, `999`, non-numeric, out-of-range) are rejected, not coerced; they do not score and do not satisfy completion. Completion counts only valid keys for currently-due questions; `null` and orphan keys are excluded. A day is eligible only when every due action is answered or excused with ≥1 non-excused scored action; otherwise No score / pending.
+
+### WP2.2 — Rounding policy (half-away-from-zero)
+- Owner **Jim** — `READY`
+- Files: new `src/domain/rounding.ts` (`roundHalfAwayFromZero`), applied in `scoring.ts` (mult, rawChange) and `history.ts` (shadow).
+- Spec: `ENGINE.md` §2.
+- Acceptance: a shared helper replaces every `Math.round` in the engine; negative half-ties round away from zero (`−2.5 → −3`); client and server fixtures agree.
+
+### WP2.3 — Calendar-keyed shadow + single floor + streaks from actualChange
+- Owner **Jim** — `READY` (depends on WP2.1 for eligibility)
+- Files: `src/domain/history.ts` (`recomputeAll` ~`16-46`), `src/domain/scoring.ts` (remove the inner floor so it applies once).
+- Spec: `ENGINE.md` §3.3–3.5.
+- Acceptance: shadow sums drag from **calendar** dates t−1/t−2 (not most-recent cache rows); a gap ages shadow to 0. The zero floor is applied exactly once. Engine streaks derive from `actualChange` after shadow+floor; negative intent absorbed by the floor (`actualChange = 0`) does not extend the negative streak or show as lost velocity.
+
+### WP2.4 — Gap / missed-day policy
+- Owner **Jim** — `BLOCKED` (founder picks Variant 1 or 2 — `ENGINE.md` §4)
+- Files: `src/domain/history.ts`; if Variant 2, a new `src/domain/trajectory.ts` for dated system adjustments.
+- Acceptance (Variant 1): unknown/pending/no-action days carry velocity unchanged; multiplier streak resets when a gap day closes. (Variant 2 adds 3% decay, one positive-streak grace, retained negative streak — needs its own sub-spec first.)
+
+### WP2.5 — Immutable question-set revision + engine-version stamp (AUDIT-05)
+- Owner **Jim** (schema overlaps WP3) — `BLOCKED` (needs Supabase access; coordinate with WP3 schema)
+- Files: `src/data/repositories.ts`, new `supabase/migrations/*.sql`, `src/domain/history.ts` (score from the entry's stored revision, not live questions).
+- Spec: `ENGINE.md` §7 E6, §8.
+- Acceptance: re-tiering or removing a question does not change any already-saved day's score; each entry carries the question-set revision + engine version used.
+
+### WP2.6 — Score explanation surface
+- Owner **Pam** (UI) + **Jim** (data) — `READY` (after WP2.3)
+- Files: `index.html`/summary overlay + a formatter that reads the engine result.
+- Spec: `ENGINE.md` §3.6.
+- Acceptance: the day summary shows raw, multiplier, shadow, intendedChange, and actualChange separately, with copy generated from fixture values (no hand-typed numbers); engine streaks are named distinctly from check-in/habit streaks.
+
+### WP2.7 — Fixture updates: flip KNOWN-BUG tests to intended values + add new fixtures
+- Owner **Dwight** — `READY` (lands per-case as each Jim ticket merges; gap cases `BLOCKED` on WP2.4)
+- Files: `tests/engine.characterization.test.mjs`, new `tests/engine-b.fixtures.test.mjs`.
+- Spec: `ENGINE.md` §9 table.
+- Acceptance: each `[KNOWN-BUG]` test is deliberately updated to the Engine-B intended value (validation family → not scored/partial; AUDIT-10 gap → streak 1 / shadow 0; AUDIT-05 → stays 108); new fixtures cover the negative-tie rounding, actualChange-vs-finalDv streaks, calendar-keyed shadow, and the §7 worked examples (first day, partial, all-excused, backfill, re-tier, floor). The golden app.js-extraction tests are retired or re-pointed as the engine moves fully into `src/domain/`.
+
+**WP2 parallelism map:**
+- **Serialize within Jim (shared files `scoring.ts`/`history.ts`):** WP2.1 → WP2.2 → WP2.3. WP2.5 is separate (schema/repositories) and blocked on Supabase.
+- **Parallel:** WP2.7 fixtures (Dwight) follow each Jim merge case-by-case; WP2.6 explanation UI (Pam) after WP2.3; both independent of each other's files.
+- **Blocked on founder:** WP2.4 (gap variant) and the two AUDIT-10 fixture flips in WP2.7.
+- **Blocked on Supabase access:** WP2.5 (immutable revisions) — coordinate with WP3.
+
+---
+
+## Deferred to later work packages
+Immutable revision schema + idempotent mutations (WP3, overlaps WP2.5), full daily product + PWA/offline (WP4), hardening/beta (WP5). Listed so no one pulls them into foundations or the engine package.
