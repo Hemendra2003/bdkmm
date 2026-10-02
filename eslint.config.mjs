@@ -11,6 +11,11 @@ export default tseslint.config(
     languageOptions: { globals: globals.browser },
   },
   {
+    files: ['tests/e2e/**/*.ts'],
+    extends: [...tseslint.configs.recommended],
+    languageOptions: { globals: { ...globals.browser, ...globals.node } },
+  },
+  {
     files: ['tests/**/*.{js,mjs}'],
     languageOptions: {
       ecmaVersion: 'latest',

@@ -13,6 +13,8 @@
 # ── Dependencies / build output ──
 node_modules/
 dist/
+test-results/
+playwright-report/
 
 # ── OS cruft ──
 .DS_Store
