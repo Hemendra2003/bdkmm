@@ -39,6 +39,9 @@ jobs:
       - name: Lint source and tests
         run: npm run lint
 
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Build static app
         run: npm run build
 

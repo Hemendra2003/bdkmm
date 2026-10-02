@@ -20,18 +20,32 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim();
+const REPO_ROOT = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+  encoding: 'utf8',
+}).trim();
 
 // Rules are built with RegExp(...) from fragments so this scanner's OWN source
 // never contains a full credential-shaped literal that would match itself.
 const RULES = [
   { name: 'anthropic-api-key', re: new RegExp('sk-ant-' + '[A-Za-z0-9_\\-]{20,}') },
-  { name: 'openai-api-key',    re: new RegExp('sk-' + '(proj-)?[A-Za-z0-9]{20,}') },
-  { name: 'auth-token-assignment', re: new RegExp('AUTH_TOKEN["\']?\\s*[:=]\\s*["\']?[A-Za-z0-9_.\\-]{20,}', 'i') },
-  { name: 'generic-api-key-assignment', re: new RegExp('(api[_-]?key|secret[_-]?key|access[_-]?token)["\']?\\s*[:=]\\s*["\']?[A-Za-z0-9_.\\-]{24,}', 'i') },
+  { name: 'openai-api-key', re: new RegExp('sk-' + '(proj-)?[A-Za-z0-9]{20,}') },
+  {
+    name: 'auth-token-assignment',
+    re: new RegExp('AUTH_TOKEN["\']?\\s*[:=]\\s*["\']?[A-Za-z0-9_.\\-]{20,}', 'i'),
+  },
+  {
+    name: 'generic-api-key-assignment',
+    re: new RegExp(
+      '(api[_-]?key|secret[_-]?key|access[_-]?token)["\']?\\s*[:=]\\s*["\']?[A-Za-z0-9_.\\-]{24,}',
+      'i',
+    ),
+  },
   // Supabase service_role / secret keys. JWT = three base64url segments.
   { name: 'supabase-secret-key', re: new RegExp('sb_secret_' + '[A-Za-z0-9_\\-]{10,}') },
-  { name: 'jwt-token', re: new RegExp('eyJ' + '[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{10,}') },
+  {
+    name: 'jwt-token',
+    re: new RegExp('eyJ' + '[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{10,}\\.[A-Za-z0-9_\\-]{10,}'),
+  },
   { name: 'private-key-block', re: new RegExp('-----BEGIN ' + '[A-Z ]*PRIVATE KEY-----') },
 ];
 
@@ -44,7 +58,20 @@ const ALLOWLIST_SUBSTRINGS = [
 
 // Files we never scan as text (binary / this test's own fragments are fine to scan,
 // but binaries produce noise). Extensions treated as binary:
-const BINARY_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.ico', '.webp', '.pdf', '.zip', '.woff', '.woff2', '.ttf', '.DS_Store']);
+const BINARY_EXT = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.ico',
+  '.webp',
+  '.pdf',
+  '.zip',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.DS_Store',
+]);
 
 function trackedFiles() {
   const out = execFileSync('git', ['ls-files', '-z'], { cwd: REPO_ROOT, encoding: 'utf8' });
@@ -65,11 +92,15 @@ function scan() {
     if (BINARY_EXT.has(ext) || rel.endsWith('.DS_Store')) continue;
     const abs = path.join(REPO_ROOT, rel);
     let buf;
-    try { buf = fs.readFileSync(abs); } catch { continue; }
+    try {
+      buf = fs.readFileSync(abs);
+    } catch {
+      continue;
+    }
     if (looksBinary(buf)) continue;
     const lines = buf.toString('utf8').split(/\r?\n/);
     lines.forEach((line, i) => {
-      if (ALLOWLIST_SUBSTRINGS.some(s => line.includes(s))) return;
+      if (ALLOWLIST_SUBSTRINGS.some((s) => line.includes(s))) return;
       for (const rule of RULES) {
         if (rule.re.test(line)) findings.push(`${rel}:${i + 1}  ${rule.name}`);
       }
@@ -81,7 +112,8 @@ function scan() {
 test('no tracked file contains a likely secret', () => {
   const findings = scan();
   assert.equal(
-    findings.length, 0,
+    findings.length,
+    0,
     `Possible secret(s) in tracked files (values withheld; rotate + remove from git):\n  ${findings.join('\n  ')}`,
   );
 });
@@ -97,12 +129,15 @@ test('scanner actually detects a planted secret-shaped string (self-check)', () 
     'sb_secret_' + 'z'.repeat(30),
   ];
   for (const s of samples) {
-    assert.ok(RULES.some(r => r.re.test(s)), `rules failed to flag a planted sample`);
+    assert.ok(
+      RULES.some((r) => r.re.test(s)),
+      `rules failed to flag a planted sample`,
+    );
   }
 });
 
 test('publishable Supabase key is allowlisted, not flagged', () => {
   const line = "const SB_KEY='sb_publishable_" + 'x'.repeat(30) + "';";
-  const exempt = ALLOWLIST_SUBSTRINGS.some(sub => line.includes(sub));
+  const exempt = ALLOWLIST_SUBSTRINGS.some((sub) => line.includes(sub));
   assert.ok(exempt, 'publishable key line should be allowlisted');
 });

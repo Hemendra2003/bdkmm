@@ -68,7 +68,7 @@ test('[CURRENT-BEHAVIOR] scoreForAnswer: index clamps to 0..2; unknown polarity�
 // ───────────────────────────── runEngine ─────────────────────────────
 
 test('[CURRENT-BEHAVIOR] runEngine: positive-streak multiplier curve (rawDv>0), capped at 2.2', () => {
-  const m = ps => runEngine([q('k', 'positive', 'S')], { k: 3 }, 100, ps, 0).mult;
+  const m = (ps) => runEngine([q('k', 'positive', 'S')], { k: 3 }, 100, ps, 0).mult;
   assert.equal(m(0), 1);
   assert.equal(m(1), 1.29);
   assert.equal(m(3), 1.59);
@@ -77,7 +77,7 @@ test('[CURRENT-BEHAVIOR] runEngine: positive-streak multiplier curve (rawDv>0), 
 });
 
 test('[CURRENT-BEHAVIOR] runEngine: negative-streak multiplier curve (rawDv<0), capped at 3.5', () => {
-  const m = ns => runEngine([q('k', 'negative', 'S')], { k: 1 }, 100, 0, ns).mult;
+  const m = (ns) => runEngine([q('k', 'negative', 'S')], { k: 1 }, 100, 0, ns).mult;
   assert.equal(m(0), 1.15);
   assert.equal(m(1), 1.4);
   assert.equal(m(3), 2.04);
@@ -110,7 +110,9 @@ test('[KNOWN-BUG: AUDIT-11] runEngine: non-numeric→worst option, "0"→"1", ou
 // ───────────────────────────── recomputeAll (history) ─────────────────────────────
 
 test('[CURRENT-BEHAVIOR] recomputeAll: first day from velocity 100, no shadow', () => {
-  const c = recomputeAll([q('k', 'positive', 'S')], [{ date: '2026-06-01', answers: { k: 3 } }])['2026-06-01'];
+  const c = recomputeAll([q('k', 'positive', 'S')], [{ date: '2026-06-01', answers: { k: 3 } }])[
+    '2026-06-01'
+  ];
   assert.equal(c.computed.newVelocity, 108);
   assert.equal(c.computed.shadow, 0);
   assert.equal(c.partial, false);
@@ -118,56 +120,79 @@ test('[CURRENT-BEHAVIOR] recomputeAll: first day from velocity 100, no shadow', 
 });
 
 test('[CURRENT-BEHAVIOR] recomputeAll: velocity floored at 0 over a long bad run', () => {
-  const rows = Array.from({ length: 7 }, (_, i) => ({ date: `2026-06-0${i + 1}`, answers: { k: 1 } }));
+  const rows = Array.from({ length: 7 }, (_, i) => ({
+    date: `2026-06-0${i + 1}`,
+    answers: { k: 1 },
+  }));
   assert.equal(recomputeAll([q('k', 'negative', 'S')], rows)['2026-06-07'].computed.newVelocity, 0);
 });
 
 test('[CURRENT-BEHAVIOR] recomputeAll: shadow drag accrues from the two most recent entries', () => {
-  const cache = recomputeAll([q('k', 'negative', 'S')], [
-    { date: '2026-06-01', answers: { k: 1 } },
-    { date: '2026-06-02', answers: { k: 1 } },
-    { date: '2026-06-03', answers: { k: 3 } },
-  ]);
+  const cache = recomputeAll(
+    [q('k', 'negative', 'S')],
+    [
+      { date: '2026-06-01', answers: { k: 1 } },
+      { date: '2026-06-02', answers: { k: 1 } },
+      { date: '2026-06-03', answers: { k: 3 } },
+    ],
+  );
   assert.equal(cache['2026-06-02'].computed.shadow, 3); // round(0.5 * 0.6*10)
   assert.equal(cache['2026-06-03'].computed.shadow, 4); // round(0.5 * (0.6*10 + 0.24*10))
 });
 
 test('[CURRENT-BEHAVIOR] recomputeAll: a genuinely incomplete day is marked partial', () => {
-  const c = recomputeAll([q('a', 'positive', 'S'), q('b', 'positive', 'S')], [
-    { date: '2026-06-01', answers: { a: 3 } },
-  ])['2026-06-01'];
+  const c = recomputeAll(
+    [q('a', 'positive', 'S'), q('b', 'positive', 'S')],
+    [{ date: '2026-06-01', answers: { a: 3 } }],
+  )['2026-06-01'];
   assert.equal(c.partial, true);
   assert.equal(c.answeredCount, 1);
 });
 
 test('[KNOWN-BUG: AUDIT-10] recomputeAll: a month gap still yields a 2-day streak and keeps shadow', () => {
-  const streak = recomputeAll([q('k', 'positive', 'S')], [
-    { date: '2026-05-01', answers: { k: 3 } },
-    { date: '2026-06-01', answers: { k: 3 } },
-  ])['2026-06-01'].computed.posStreak;
+  const streak = recomputeAll(
+    [q('k', 'positive', 'S')],
+    [
+      { date: '2026-05-01', answers: { k: 3 } },
+      { date: '2026-06-01', answers: { k: 3 } },
+    ],
+  )['2026-06-01'].computed.posStreak;
   assert.equal(streak, 2);
-  const shadow = recomputeAll([q('k', 'positive', 'S')], [
-    { date: '2026-05-01', answers: { k: 1 } },
-    { date: '2026-06-01', answers: { k: 3 } },
-  ])['2026-06-01'].computed.shadow;
+  const shadow = recomputeAll(
+    [q('k', 'positive', 'S')],
+    [
+      { date: '2026-05-01', answers: { k: 1 } },
+      { date: '2026-06-01', answers: { k: 3 } },
+    ],
+  )['2026-06-01'].computed.shadow;
   assert.equal(shadow, 2);
 });
 
 test('[KNOWN-BUG: AUDIT-11] recomputeAll: null answer counts as complete; orphan key inflates count', () => {
-  const nullDay = recomputeAll([q('k', 'positive', 'S')], [{ date: '2026-06-01', answers: { k: null } }])['2026-06-01'];
+  const nullDay = recomputeAll(
+    [q('k', 'positive', 'S')],
+    [{ date: '2026-06-01', answers: { k: null } }],
+  )['2026-06-01'];
   assert.equal(nullDay.partial, false); // null !== undefined → counted
   assert.equal(nullDay.computed.thrust, 0); // ...but scores nothing
-  const orphan = recomputeAll([q('a', 'positive', 'S'), q('b', 'positive', 'S')], [
-    { date: '2026-06-01', answers: { a: 3, removed: 3 } },
-  ])['2026-06-01'];
+  const orphan = recomputeAll(
+    [q('a', 'positive', 'S'), q('b', 'positive', 'S')],
+    [{ date: '2026-06-01', answers: { a: 3, removed: 3 } }],
+  )['2026-06-01'];
   assert.equal(orphan.answeredCount, 2);
   assert.equal(orphan.partial, false);
 });
 
 test('[KNOWN-BUG: AUDIT-05] recomputeAll: retiering rewrites an already-saved day (108→103)', () => {
   const rows = [{ date: '2026-06-01', answers: { k: 3 } }];
-  assert.equal(recomputeAll([q('k', 'positive', 'S')], rows)['2026-06-01'].computed.newVelocity, 108);
-  assert.equal(recomputeAll([q('k', 'positive', 'B')], rows)['2026-06-01'].computed.newVelocity, 103);
+  assert.equal(
+    recomputeAll([q('k', 'positive', 'S')], rows)['2026-06-01'].computed.newVelocity,
+    108,
+  );
+  assert.equal(
+    recomputeAll([q('k', 'positive', 'B')], rows)['2026-06-01'].computed.newVelocity,
+    103,
+  );
 });
 
 test('[CURRENT-BEHAVIOR] recomputeAll: rows with no answers are skipped; input is not mutated', () => {
@@ -198,9 +223,18 @@ test('[CURRENT-BEHAVIOR] localDateKey: invalid Date preserves legacy sentinel fo
 
 test('[CURRENT-BEHAVIOR] calendarDate: local noon maps across DST (spring-forward and fall-back)', () => {
   // US Eastern: 2026-03-08 is spring-forward (EDT, −04:00), 2026-11-01 is fall-back (EST, −05:00).
-  assert.equal(calendarDate('2026-03-08', 'America/New_York').getTime(), Date.parse('2026-03-08T16:00:00Z'));
-  assert.equal(calendarDate('2026-11-01', 'America/New_York').getTime(), Date.parse('2026-11-01T17:00:00Z'));
-  assert.equal(calendarDate('2026-09-05', 'Asia/Kolkata').getTime(), Date.parse('2026-09-05T06:30:00Z'));
+  assert.equal(
+    calendarDate('2026-03-08', 'America/New_York').getTime(),
+    Date.parse('2026-03-08T16:00:00Z'),
+  );
+  assert.equal(
+    calendarDate('2026-11-01', 'America/New_York').getTime(),
+    Date.parse('2026-11-01T17:00:00Z'),
+  );
+  assert.equal(
+    calendarDate('2026-09-05', 'Asia/Kolkata').getTime(),
+    Date.parse('2026-09-05T06:30:00Z'),
+  );
 });
 
 test('[CURRENT-BEHAVIOR] calendarDate/localDateKey round-trip holds through DST and across zones', () => {
@@ -220,7 +254,10 @@ test('[CURRENT-BEHAVIOR] dateKeyOffset: year boundary and leap day in both direc
   assert.equal(dateKeyOffset(new Date('2024-03-01T12:00:00Z'), -1, 'UTC'), '2024-02-29'); // back to leap day
   assert.equal(dateKeyOffset(new Date('2023-03-01T12:00:00Z'), -1, 'UTC'), '2023-02-28'); // non-leap
   // Near a DST boundary, a −1 day offset still lands on the previous calendar day.
-  assert.equal(dateKeyOffset(new Date('2026-03-08T07:30:00Z'), -1, 'America/New_York'), '2026-03-07');
+  assert.equal(
+    dateKeyOffset(new Date('2026-03-08T07:30:00Z'), -1, 'America/New_York'),
+    '2026-03-07',
+  );
 });
 
 // ───────────────────────────── validation ─────────────────────────────
@@ -229,17 +266,25 @@ test('[CURRENT-BEHAVIOR] validateQuestionText: accepts valid, rejects bad text/o
   assert.doesNotThrow(() => validateQuestionText({ text: 'Habit', opts: ['Low', 'Mid', 'High'] }));
   assert.throws(() => validateQuestionText({ text: '', opts: ['a', 'b', 'c'] }), /1–80/);
   assert.throws(() => validateQuestionText({ text: '   ', opts: ['a', 'b', 'c'] }), /1–80/);
-  assert.throws(() => validateQuestionText({ text: 'x'.repeat(QUESTION_TEXT_LIMIT + 1), opts: ['a', 'b', 'c'] }), /1–80/);
+  assert.throws(
+    () =>
+      validateQuestionText({ text: 'x'.repeat(QUESTION_TEXT_LIMIT + 1), opts: ['a', 'b', 'c'] }),
+    /1–80/,
+  );
   assert.throws(() => validateQuestionText({ text: 'ok', opts: ['a', 'b'] }), /three option/);
   assert.throws(() => validateQuestionText({ text: 'ok', opts: ['a', '', 'c'] }), /three option/);
-  assert.throws(() => validateQuestionText({ text: 'ok', opts: ['a', 'b', 'x'.repeat(OPTION_TEXT_LIMIT + 1)] }), /three option/);
+  assert.throws(
+    () => validateQuestionText({ text: 'ok', opts: ['a', 'b', 'x'.repeat(OPTION_TEXT_LIMIT + 1)] }),
+    /three option/,
+  );
   assert.throws(() => validateQuestionText({ text: 'ok', opts: 'abc' }), /three option/);
 });
 
 test('[CURRENT-BEHAVIOR] checkBalance: thresholds for count and polarity ratio', () => {
   assert.deepEqual(checkBalance([]).reason, 'No questions.');
   assert.match(
-    checkBalance(Array.from({ length: MIN_TOTAL_QUESTIONS - 1 }, () => ({ polarity: 'positive' }))).reason,
+    checkBalance(Array.from({ length: MIN_TOTAL_QUESTIONS - 1 }, () => ({ polarity: 'positive' })))
+      .reason,
     /at least 10/,
   );
   assert.match(
@@ -262,7 +307,12 @@ test('[CURRENT-BEHAVIOR] checkBalance: thresholds for count and polarity ratio',
 // ───────────────────────────── parseDraft ─────────────────────────────
 
 test('[CURRENT-BEHAVIOR] parseDraft: valid draft returns answers for the matching owner+date', () => {
-  const raw = JSON.stringify({ version: 1, userId: 'A', date: '2026-06-01', answers: { sleep: 3, mood: 1 } });
+  const raw = JSON.stringify({
+    version: 1,
+    userId: 'A',
+    date: '2026-06-01',
+    answers: { sleep: 3, mood: 1 },
+  });
   assert.deepEqual(parseDraft(raw, 'A', '2026-06-01'), { sleep: 3, mood: 1 });
 });
 
@@ -274,12 +324,31 @@ test('[CURRENT-BEHAVIOR] parseDraft: empty/absent raw returns {} without throwin
 
 test('[CURRENT-BEHAVIOR] parseDraft: rejects wrong owner, wrong date, bad version/shape/values', () => {
   const base = { version: 1, userId: 'A', date: '2026-06-01', answers: { k: 3 } };
-  assert.throws(() => parseDraft(JSON.stringify({ ...base, userId: 'B' }), 'A', '2026-06-01'), /Invalid draft/);
-  assert.throws(() => parseDraft(JSON.stringify({ ...base, date: '2026-06-02' }), 'A', '2026-06-01'), /Invalid draft/);
-  assert.throws(() => parseDraft(JSON.stringify({ ...base, version: 2 }), 'A', '2026-06-01'), /Invalid draft/);
-  assert.throws(() => parseDraft(JSON.stringify({ ...base, answers: [1, 2, 3] }), 'A', '2026-06-01'), /Invalid draft/);
-  assert.throws(() => parseDraft(JSON.stringify({ ...base, answers: { k: 4 } }), 'A', '2026-06-01'), /Invalid draft/);
-  assert.throws(() => parseDraft(JSON.stringify({ ...base, answers: { ['x'.repeat(129)]: 3 } }), 'A', '2026-06-01'), /Invalid draft/);
+  assert.throws(
+    () => parseDraft(JSON.stringify({ ...base, userId: 'B' }), 'A', '2026-06-01'),
+    /Invalid draft/,
+  );
+  assert.throws(
+    () => parseDraft(JSON.stringify({ ...base, date: '2026-06-02' }), 'A', '2026-06-01'),
+    /Invalid draft/,
+  );
+  assert.throws(
+    () => parseDraft(JSON.stringify({ ...base, version: 2 }), 'A', '2026-06-01'),
+    /Invalid draft/,
+  );
+  assert.throws(
+    () => parseDraft(JSON.stringify({ ...base, answers: [1, 2, 3] }), 'A', '2026-06-01'),
+    /Invalid draft/,
+  );
+  assert.throws(
+    () => parseDraft(JSON.stringify({ ...base, answers: { k: 4 } }), 'A', '2026-06-01'),
+    /Invalid draft/,
+  );
+  assert.throws(
+    () =>
+      parseDraft(JSON.stringify({ ...base, answers: { ['x'.repeat(129)]: 3 } }), 'A', '2026-06-01'),
+    /Invalid draft/,
+  );
   assert.throws(() => parseDraft('{not json', 'A', '2026-06-01')); // JSON.parse throws
 });
 

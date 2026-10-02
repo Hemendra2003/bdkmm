@@ -38,35 +38,77 @@ function loadEngine() {
   const element = () => {
     const classes = new Set();
     return {
-      style: {}, children: [], innerHTML: '', textContent: '', dataset: {}, scrollIntoView() {},
-      classList: { add: x => classes.add(x), remove: x => classes.delete(x), contains: x => classes.has(x) },
-      appendChild(child) { this.children.push(child); },
+      style: {},
+      children: [],
+      innerHTML: '',
+      textContent: '',
+      dataset: {},
+      scrollIntoView() {},
+      classList: {
+        add: (x) => classes.add(x),
+        remove: (x) => classes.delete(x),
+        contains: (x) => classes.has(x),
+      },
+      appendChild(child) {
+        this.children.push(child);
+      },
     };
   };
   const ctx = vm.createContext({
-    window: {}, console, Date, Math, JSON, parseInt, parseFloat,
-    setTimeout, clearTimeout, alert() {}, confirm: () => true,
+    window: {},
+    console,
+    Date,
+    Math,
+    JSON,
+    parseInt,
+    parseFloat,
+    setTimeout,
+    clearTimeout,
+    alert() {},
+    confirm: () => true,
     document: {
-      addEventListener() {}, createElement: element,
-      getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); },
+      addEventListener() {},
+      createElement: element,
+      getElementById(id) {
+        if (!elements.has(id)) elements.set(id, element());
+        return elements.get(id);
+      },
     },
   });
   vm.runInContext(source.slice(start, end), ctx);
 
   // Sanity: the three functions under test must exist as functions.
   for (const fn of ['scoreForAnswer', 'runEngine', 'recomputeAll']) {
-    assert.equal(vm.runInContext(`typeof ${fn}`, ctx), 'function', `${fn} not found in app.js slice`);
+    assert.equal(
+      vm.runInContext(`typeof ${fn}`, ctx),
+      'function',
+      `${fn} not found in app.js slice`,
+    );
   }
 
   return {
-    run: code => vm.runInContext(code, ctx),
-    setQuestions(qs) { ctx.window.UserQuestions = qs; },
+    run: (code) => vm.runInContext(code, ctx),
+    setQuestions(qs) {
+      ctx.window.UserQuestions = qs;
+    },
   };
 }
 
 // Question helpers (shape matches app.js: {key,text,opts,polarity,tier}).
-const pos = (key, tier = 'S') => ({ key, text: key, opts: ['Bad', 'Okay', 'Good'], polarity: 'positive', tier });
-const neg = (key, tier = 'S') => ({ key, text: key, opts: ['Bad', 'Okay', 'Good'], polarity: 'negative', tier });
+const pos = (key, tier = 'S') => ({
+  key,
+  text: key,
+  opts: ['Bad', 'Okay', 'Good'],
+  polarity: 'positive',
+  tier,
+});
+const neg = (key, tier = 'S') => ({
+  key,
+  text: key,
+  opts: ['Bad', 'Okay', 'Good'],
+  polarity: 'negative',
+  tier,
+});
 
 // ───────────────────────────────────────────────────────────────────────────
 // scoreForAnswer(question, strengthIndex)
@@ -92,7 +134,7 @@ test('[CURRENT-BEHAVIOR] scoreForAnswer: negative tier weights (bad hurts, good 
 
 test('[CURRENT-BEHAVIOR] scoreForAnswer: strengthIndex is clamped to 0..2', () => {
   const { run } = loadEngine();
-  assert.equal(run('scoreForAnswer({polarity:"positive",tier:"A"},5)'), 5);   // ->good
+  assert.equal(run('scoreForAnswer({polarity:"positive",tier:"A"},5)'), 5); // ->good
   assert.equal(run('scoreForAnswer({polarity:"positive",tier:"A"},-3)'), -3); // ->bad
 });
 
@@ -113,8 +155,26 @@ test('[CURRENT-BEHAVIOR] runEngine: one S-positive "good" day from velocity 100'
   e.setQuestions([pos('sleep')]);
   const r = e.run('runEngine({sleep:3},100,0,0)');
   assert.deepEqual(
-    { thrust: r.thrust, drag: r.drag, rawDv: r.rawDv, mult: r.mult, finalDv: r.finalDv, newVelocity: r.newVelocity, posStreak: r.posStreak, negStreak: r.negStreak },
-    { thrust: 8, drag: 0, rawDv: 8, mult: 1, finalDv: 8, newVelocity: 108, posStreak: 1, negStreak: 0 },
+    {
+      thrust: r.thrust,
+      drag: r.drag,
+      rawDv: r.rawDv,
+      mult: r.mult,
+      finalDv: r.finalDv,
+      newVelocity: r.newVelocity,
+      posStreak: r.posStreak,
+      negStreak: r.negStreak,
+    },
+    {
+      thrust: 8,
+      drag: 0,
+      rawDv: 8,
+      mult: 1,
+      finalDv: 8,
+      newVelocity: 108,
+      posStreak: 1,
+      negStreak: 0,
+    },
   );
 });
 
@@ -131,7 +191,13 @@ test('[CURRENT-BEHAVIOR] runEngine: negative-streak multiplier amplifies a bad d
   // args: (answers, prevV=100, posS=0, negS=3). Negative-side mult = 1+pow(negS+1,1.4)*0.15.
   const r = e.run('runEngine({vice:1},100,0,3)');
   assert.deepEqual(
-    { rawDv: r.rawDv, mult: r.mult, finalDv: r.finalDv, newVelocity: r.newVelocity, negStreak: r.negStreak },
+    {
+      rawDv: r.rawDv,
+      mult: r.mult,
+      finalDv: r.finalDv,
+      newVelocity: r.newVelocity,
+      negStreak: r.negStreak,
+    },
     { rawDv: -10, mult: 2.04, finalDv: -20, newVelocity: 80, negStreak: 4 },
   );
 });
@@ -168,7 +234,14 @@ test('[CURRENT-BEHAVIOR] recomputeAll: first day starts from velocity 100, no sh
   e.setQuestions([pos('sleep')]);
   const c = e.run("recomputeAll([{date:'2026-06-01',answers:{sleep:3}}])['2026-06-01']");
   assert.deepEqual(
-    { nv: c.computed.newVelocity, shadow: c.computed.shadow, finalDv: c.computed.finalDv, posStreak: c.computed.posStreak, partial: c.partial, answeredCount: c.answeredCount },
+    {
+      nv: c.computed.newVelocity,
+      shadow: c.computed.shadow,
+      finalDv: c.computed.finalDv,
+      posStreak: c.computed.posStreak,
+      partial: c.partial,
+      answeredCount: c.answeredCount,
+    },
     { nv: 108, shadow: 0, finalDv: 8, posStreak: 1, partial: false, answeredCount: 1 },
   );
 });
@@ -184,7 +257,9 @@ test('[CURRENT-BEHAVIOR] recomputeAll: a genuinely incomplete day is marked part
 test('[CURRENT-BEHAVIOR] recomputeAll: velocity is floored at 0 after a long bad run', () => {
   const e = loadEngine();
   e.setQuestions([neg('vice')]);
-  const rows = ['01','02','03','04','05','06','07'].map(d => `{date:'2026-06-${d}',answers:{vice:1}}`).join(',');
+  const rows = ['01', '02', '03', '04', '05', '06', '07']
+    .map((d) => `{date:'2026-06-${d}',answers:{vice:1}}`)
+    .join(',');
   assert.equal(e.run(`recomputeAll([${rows}])['2026-06-07'].computed.newVelocity`), 0);
 });
 
@@ -192,10 +267,12 @@ test('[CURRENT-BEHAVIOR] recomputeAll: shadow drag accrues from the two most-rec
   const e = loadEngine();
   e.setQuestions([neg('vice')]);
   // Day1 bad, Day2 bad, Day3 good: day3 still carries shadow from days 1-2.
-  const cache = e.run("recomputeAll([{date:'2026-06-01',answers:{vice:1}},{date:'2026-06-02',answers:{vice:1}},{date:'2026-06-03',answers:{vice:3}}])");
+  const cache = e.run(
+    "recomputeAll([{date:'2026-06-01',answers:{vice:1}},{date:'2026-06-02',answers:{vice:1}},{date:'2026-06-03',answers:{vice:3}}])",
+  );
   assert.equal(cache['2026-06-02'].computed.shadow, 3); // 0.6*drag(day1=10)*0.5
   assert.equal(cache['2026-06-03'].computed.shadow, 4); // 0.5*(0.6*10 + 0.24*10)
-  assert.equal(cache['2026-06-03'].computed.drag, 0);   // the day itself is clean
+  assert.equal(cache['2026-06-03'].computed.drag, 0); // the day itself is clean
 });
 
 test('[KNOWN-BUG: AUDIT-10] recomputeAll: a month-long gap still yields a 2-day streak', () => {
@@ -203,7 +280,9 @@ test('[KNOWN-BUG: AUDIT-10] recomputeAll: a month-long gap still yields a 2-day 
   e.setQuestions([pos('sleep')]);
   // No calendar-gap check: consecutive CACHE entries count as a streak regardless of date distance.
   assert.equal(
-    e.run("recomputeAll([{date:'2026-05-01',answers:{sleep:3}},{date:'2026-06-01',answers:{sleep:3}}])['2026-06-01'].computed.posStreak"),
+    e.run(
+      "recomputeAll([{date:'2026-05-01',answers:{sleep:3}},{date:'2026-06-01',answers:{sleep:3}}])['2026-06-01'].computed.posStreak",
+    ),
     2,
   );
 });
@@ -213,7 +292,9 @@ test('[KNOWN-BUG: AUDIT-10] recomputeAll: shadow drag survives a month-long gap'
   e.setQuestions([pos('sleep')]);
   // Old drag is not aged out by elapsed calendar time.
   assert.equal(
-    e.run("recomputeAll([{date:'2026-05-01',answers:{sleep:1}},{date:'2026-06-01',answers:{sleep:3}}])['2026-06-01'].computed.shadow"),
+    e.run(
+      "recomputeAll([{date:'2026-05-01',answers:{sleep:1}},{date:'2026-06-01',answers:{sleep:3}}])['2026-06-01'].computed.shadow",
+    ),
     2,
   );
 });
@@ -222,8 +303,8 @@ test('[KNOWN-BUG: AUDIT-11] recomputeAll: a null answer counts toward completion
   const e = loadEngine();
   e.setQuestions([pos('sleep')]);
   const c = e.run("recomputeAll([{date:'2026-06-01',answers:{sleep:null}}])['2026-06-01']");
-  assert.equal(c.partial, false);         // null !== undefined, so it is counted as answered
-  assert.equal(c.computed.thrust, 0);     // ...yet runEngine skips it, so it adds no score
+  assert.equal(c.partial, false); // null !== undefined, so it is counted as answered
+  assert.equal(c.computed.thrust, 0); // ...yet runEngine skips it, so it adds no score
 });
 
 test('[KNOWN-BUG: AUDIT-11] recomputeAll: an orphan (removed-question) key inflates the completion count', () => {
@@ -231,7 +312,9 @@ test('[KNOWN-BUG: AUDIT-11] recomputeAll: an orphan (removed-question) key infla
   e.setQuestions([pos('sleep'), pos('mood')]);
   // Only 1 of 2 active questions answered, but a stale "removed_habit" key makes
   // answeredCount=2, so the half-finished day is wrongly treated as complete.
-  const c = e.run("recomputeAll([{date:'2026-06-01',answers:{sleep:3,removed_habit:3}}])['2026-06-01']");
+  const c = e.run(
+    "recomputeAll([{date:'2026-06-01',answers:{sleep:3,removed_habit:3}}])['2026-06-01']",
+  );
   assert.equal(c.answeredCount, 2);
   assert.equal(c.partial, false);
 });
@@ -240,8 +323,10 @@ test('[KNOWN-BUG: AUDIT-05] recomputeAll: retiering a question retroactively rew
   // Same stored answer, same date: switching the question S->B silently changes
   // the historical score (108 -> 103). History is not immutable.
   const rows = "[{date:'2026-06-01',answers:{sleep:3}}]";
-  const sTier = loadEngine(); sTier.setQuestions([pos('sleep', 'S')]);
+  const sTier = loadEngine();
+  sTier.setQuestions([pos('sleep', 'S')]);
   assert.equal(sTier.run(`recomputeAll(${rows})['2026-06-01'].computed.newVelocity`), 108);
-  const bTier = loadEngine(); bTier.setQuestions([pos('sleep', 'B')]);
+  const bTier = loadEngine();
+  bTier.setQuestions([pos('sleep', 'B')]);
   assert.equal(bTier.run(`recomputeAll(${rows})['2026-06-01'].computed.newVelocity`), 103);
 });
