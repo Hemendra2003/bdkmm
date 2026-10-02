@@ -1,0 +1,26 @@
+<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <defs>
+    <mask id="settings-mask">
+      <rect width="16" height="16" fill="white"/>
+      <!-- center hole -->
+      <rect x="6" y="6" width="4" height="4" fill="black"/>
+    </mask>
+  </defs>
+  <g fill="currentColor" mask="url(#settings-mask)">
+    <!-- top tooth -->
+    <rect x="6" y="0" width="4" height="2"/>
+    <!-- bottom tooth -->
+    <rect x="6" y="14" width="4" height="2"/>
+    <!-- left tooth -->
+    <rect x="0" y="6" width="2" height="4"/>
+    <!-- right tooth -->
+    <rect x="14" y="6" width="2" height="4"/>
+    <!-- diagonal teeth -->
+    <rect x="2" y="2" width="2" height="2"/>
+    <rect x="12" y="2" width="2" height="2"/>
+    <rect x="2" y="12" width="2" height="2"/>
+    <rect x="12" y="12" width="2" height="2"/>
+    <!-- body -->
+    <rect x="2" y="4" width="12" height="8"/>
+  </g>
+</svg>
