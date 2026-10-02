@@ -52,6 +52,15 @@ function slugify(text: string): string {
   return base || `habit-${Date.now()}`;
 }
 
+function newHabitKey(text: string, existingKeys: readonly string[]): string {
+  const base = slugify(text);
+  const taken = new Set(existingKeys);
+  let key = base;
+  let suffix = 2;
+  while (taken.has(key)) key = `${base}-${suffix++}`;
+  return key;
+}
+
 function validateForm(form: FormState): Partial<Record<keyof FormState, string>> {
   const errors: Partial<Record<keyof FormState, string>> = {};
   if (!form.text.trim()) errors.text = 'Habit name is required.';
@@ -72,12 +81,20 @@ function validateForm(form: FormState): Partial<Record<keyof FormState, string>>
 interface HabitFormProps {
   initial: FormState;
   existingKey?: string;
+  existingKeys?: readonly string[];
   onSave: (input: QuestionInput) => Promise<void>;
   onRemove?: () => Promise<void>;
   onCancel: () => void;
 }
 
-function HabitForm({ initial, existingKey, onSave, onRemove, onCancel }: HabitFormProps) {
+function HabitForm({
+  initial,
+  existingKey,
+  existingKeys = [],
+  onSave,
+  onRemove,
+  onCancel,
+}: HabitFormProps) {
   const id = useId();
   const [form, setForm] = useState<FormState>(initial);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -99,7 +116,7 @@ function HabitForm({ initial, existingKey, onSave, onRemove, onCancel }: HabitFo
     setSaving(true);
     setOpError(null);
     try {
-      const key = existingKey ?? slugify(form.text);
+      const key = existingKey ?? newHabitKey(form.text, existingKeys);
       await onSave({
         key,
         text: form.text.trim(),
@@ -224,6 +241,7 @@ function HabitForm({ initial, existingKey, onSave, onRemove, onCancel }: HabitFo
           {(['positive', 'negative'] as Polarity[]).map((p) => (
             <label
               key={p}
+              className="radio-option"
               style={{
                 flex: 1,
                 display: 'flex',
@@ -247,7 +265,7 @@ function HabitForm({ initial, existingKey, onSave, onRemove, onCancel }: HabitFo
                 value={p}
                 checked={form.polarity === p}
                 onChange={() => set('polarity', p)}
-                style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }}
               />
               {POLARITY_LABELS[p]}
             </label>
@@ -272,6 +290,7 @@ function HabitForm({ initial, existingKey, onSave, onRemove, onCancel }: HabitFo
           {(['S', 'A', 'B'] as Tier[]).map((t) => (
             <label
               key={t}
+              className="radio-option"
               style={{
                 flex: 1,
                 display: 'flex',
@@ -295,7 +314,7 @@ function HabitForm({ initial, existingKey, onSave, onRemove, onCancel }: HabitFo
                 value={t}
                 checked={form.tier === t}
                 onChange={() => set('tier', t)}
-                style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }}
               />
               {TIER_LABELS[t]}
             </label>
@@ -497,7 +516,12 @@ export function Habits({ questions, onSave, onRemove }: HabitsProps) {
       )}
 
       {creating && (
-        <HabitForm initial={BLANK_FORM} onSave={onSave} onCancel={() => setCreating(false)} />
+        <HabitForm
+          initial={BLANK_FORM}
+          existingKeys={questions.map((question) => question.key)}
+          onSave={onSave}
+          onCancel={() => setCreating(false)}
+        />
       )}
     </main>
   );

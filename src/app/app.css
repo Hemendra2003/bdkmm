@@ -27,3 +27,9 @@ body {
   display: flex;
   flex-direction: column;
 }
+
+/* Hidden native radios keep their keyboard behavior; show focus on the visible choice. */
+.radio-option:has(input:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

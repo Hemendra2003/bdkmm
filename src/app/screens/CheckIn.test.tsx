@@ -125,3 +125,19 @@ describe('CheckIn', () => {
     expect(screen.getByText(/0 \/ 2 answered/)).toBeTruthy();
   });
 });
+
+it('keeps check-in radios natively focusable with a visible-label focus hook', () => {
+  render(<CheckIn {...defaultProps} />);
+  const radios = screen.getAllByRole('radio');
+  expect(radios).toHaveLength(6);
+  for (const radio of radios) {
+    expect(radio).toBeEnabled();
+    expect(radio.tabIndex).toBe(0);
+    expect(radio.closest('label')).toHaveClass('radio-option');
+    radio.focus();
+    expect(radio).toHaveFocus();
+  }
+  fireEvent.click(radios[1]);
+  expect(radios[1]).toBeChecked();
+  expect(radios[0]).not.toBeChecked();
+});

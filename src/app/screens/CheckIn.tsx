@@ -89,6 +89,7 @@ function RadioGroup({ question, answer, onChange, onSkip, groupId }: RadioGroupP
               <label
                 key={i}
                 htmlFor={inputId}
+                className="radio-option"
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -109,7 +110,7 @@ function RadioGroup({ question, answer, onChange, onSkip, groupId }: RadioGroupP
                   value={String(val)}
                   checked={checked}
                   onChange={() => onChange(val)}
-                  style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+                  style={{ position: 'absolute', opacity: 0, width: 1, height: 1 }}
                 />
                 {/* Non-color indicator: filled square when selected, outlined when not */}
                 <svg

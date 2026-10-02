@@ -82,3 +82,53 @@ describe('Habits', () => {
     expect(call.tier).toBe('A');
   });
 });
+
+describe('habit identity and keyboard focus', () => {
+  it.each([
+    { name: 'Read!', keys: ['read', 'read-2'], expected: 'read-3' },
+    {
+      name: 'a'.repeat(36) + ' different ending',
+      keys: ['a'.repeat(36)],
+      expected: 'a'.repeat(36) + '-2',
+    },
+  ])('allocates a new key for a colliding name: $name', async ({ name, keys, expected }) => {
+    const onSave = makeSave();
+    const questions = keys.map((key, index) => ({ ...q1, id: String(index), key }));
+    render(<Habits questions={questions} onSave={onSave} onRemove={makeRemove()} />);
+    fireEvent.click(screen.getByText('+ Add habit'));
+    fireEvent.change(screen.getByLabelText('Habit name'), { target: { value: name } });
+    for (const [index, option] of ['No', 'Somewhat', 'Yes'].entries()) {
+      fireEvent.change(screen.getByLabelText(`Option ${index + 1}`), { target: { value: option } });
+    }
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0].key).toBe(expected);
+    expect(keys).not.toContain(onSave.mock.calls[0][0].key);
+  });
+
+  it('keeps the existing identity when editing a name', async () => {
+    const onSave = makeSave();
+    render(<Habits questions={[q1]} onSave={onSave} onRemove={makeRemove()} />);
+    fireEvent.click(screen.getByText(q1.text));
+    fireEvent.change(screen.getByLabelText('Habit name'), { target: { value: 'New name' } });
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0][0].key).toBe(q1.key);
+  });
+
+  it('keeps polarity and importance radios focusable with a visible-label focus hook', () => {
+    render(<Habits questions={[]} onSave={makeSave()} onRemove={makeRemove()} />);
+    fireEvent.click(screen.getByText('+ Add habit'));
+    const radios = screen.getAllByRole('radio');
+    expect(radios).toHaveLength(5);
+    for (const radio of radios) {
+      expect(radio).toBeEnabled();
+      expect(radio.tabIndex).toBe(0);
+      expect(radio.closest('label')).toHaveClass('radio-option');
+      radio.focus();
+      expect(radio).toHaveFocus();
+    }
+    fireEvent.click(screen.getByRole('radio', { name: 'Reduce (negative)' }));
+    expect(screen.getByRole('radio', { name: 'Reduce (negative)' })).toBeChecked();
+  });
+});
