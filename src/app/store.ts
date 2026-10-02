@@ -1,3 +1,4 @@
+import { recoveryIntent, clearRecoveryIntent, recoveryLinkFailed } from './auth/redirect.ts';
 import type { Session } from '../state/session.ts';
 import { createSessionController } from '../state/session.ts';
 import {
@@ -12,6 +13,8 @@ import type { EngineResult } from '../domain/scoring.ts';
 import { supabase, SUPABASE_SETUP_ERROR } from './supabase.ts';
 
 export interface AppState {
+  recoveryMode: boolean;
+  recoveryReady: boolean;
   status: 'loading' | 'signed-out' | 'signed-in' | 'error';
   userId: string | null;
   todayKey: string | null;
@@ -28,6 +31,8 @@ export interface AppState {
 type Listener = (state: AppState) => void;
 
 const initialState: AppState = {
+  recoveryMode: recoveryIntent(),
+  recoveryReady: false,
   status: 'loading',
   userId: null,
   todayKey: null,
@@ -93,6 +98,7 @@ const controller = createSessionController({
   subscribe(receive) {
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
       receive(event, session as Session | null);
+      if (event === 'PASSWORD_RECOVERY') setState({ recoveryMode: true, recoveryReady: !!session });
     });
     return () => data.subscription.unsubscribe();
   },
@@ -105,9 +111,17 @@ const controller = createSessionController({
     const next = session?.user.id ?? null;
     if (next !== _userId) accountGeneration++;
     _userId = next;
+    setState({ recoveryReady: state.recoveryMode && !!session && !recoveryLinkFailed });
   },
   clear(_previous, current) {
-    setState({ ...initialState, status: current ? 'loading' : 'signed-out', userId: current });
+    const recoveryMode = recoveryIntent();
+    setState({
+      ...initialState,
+      recoveryMode,
+      recoveryReady: recoveryMode && !!current && !recoveryLinkFailed,
+      status: current ? 'loading' : 'signed-out',
+      userId: current,
+    });
   },
   async boot(session, _event, context) {
     if (!session) return;
@@ -227,6 +241,21 @@ export async function saveCheckIn(date: string, values: Answers): Promise<void> 
     }
     throw error;
   }
+}
+
+export interface AuthContext {
+  userId: string | null;
+  generation: number;
+}
+export function getAuthContext(): AuthContext {
+  return { userId: _userId, generation: accountGeneration };
+}
+export function isAuthContextCurrent(context: AuthContext): boolean {
+  return context.userId === _userId && context.generation === accountGeneration;
+}
+export function finishRecovery(): void {
+  clearRecoveryIntent();
+  setState({ recoveryMode: false, recoveryReady: false });
 }
 
 export async function signIn(email: string, password: string): Promise<string | null> {
