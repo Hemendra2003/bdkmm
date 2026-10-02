@@ -2,6 +2,14 @@
 
 All notable changes to MOMENTUM. Each release is one reviewed pull request into `main`.
 
+## [0.3.0] - 2026-10-02 — Score explanation
+
+### Added
+
+- The day summary shows how the score was built: raw change, multiplier, shadow (penalty carried from missed habits), intended change and actual change, straight from the engine result (WP2.6).
+- Engine streaks are labelled "positive/negative score streak" so they are not confused with check-in or habit streaks.
+- `docs/UX-0.md`: state glossary, screen inventory and build order for the UI overhaul.
+
 ## [0.2.1] - 2026-10-02 — Browser tests for /app/
 
 ### Build & CI
