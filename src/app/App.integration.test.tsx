@@ -26,6 +26,8 @@ const state: AppState = {
   entries: [],
   history: {},
   savingDate: null,
+  recoveryMode: false,
+  recoveryReady: false,
 };
 beforeEach(() => {
   vi.clearAllMocks();
