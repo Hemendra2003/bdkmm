@@ -1,14 +1,14 @@
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const sourceFiles = ['src/**/*.{js,mjs,ts}'];
+const sourceFiles = ['src/**/*.{js,mjs,ts,tsx}'];
 
 export default tseslint.config(
   { ignores: ['node_modules/**', 'dist/**', 'app.js', 'auth.js', 'storage.js'] },
   {
     files: sourceFiles,
     extends: [...tseslint.configs.recommended],
-    languageOptions: { globals: globals.browser },
+    languageOptions: { globals: { ...globals.browser } },
   },
   {
     files: ['tests/**/*.{js,mjs}'],
