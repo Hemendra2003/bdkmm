@@ -32,8 +32,8 @@ allowJs/checkJs=false permits the legacy scripts without enforcing types on them
 
 ESLint covers src JavaScript/TypeScript and the existing Node tests. Legacy root
 scripts are excluded. Prettier is available through `npm run format` and
-`npm run format:check`, scoped to src/ and tests/. Existing files have not been
-reformatted; format:check may report existing formatting and is not a gate yet.
+`npm run format:check`, scoped to src/ and tests/. The formatting baseline has
+been applied; format:check is required in CI after lint.
 The test runner remains `node --test`.
 
 ## Continuous integration and the main branch gate
@@ -46,6 +46,7 @@ and runs these commands in order:
 npm ci
 npm run typecheck
 npm run lint
+npm run format:check
 npm run build
 npm test
 ```
@@ -56,12 +57,40 @@ scan. No Supabase credentials or other repository secrets are required for these
 checks. Actions are pinned to full commit hashes, with version comments; the
 workflow token has only contents:read and checkout does not persist it.
 
-The separate `Browser smoke (WP1.5b pending)` job is intentionally skipped.
-WP1.5b must add pinned Playwright, browser installation and a real smoke test
-against the built preview before enabling it. Until then CI does not verify
-rendered UI, authentication or integration behavior. Do not mark the skipped job
-as required or report it as passing. Local dev/preview serving checks also remain
-pending; WP1.1 build validation did not start those servers.
+The separate `Browser smoke` job installs Chromium and its operating system
+dependencies, builds the static app, then runs `npm run test:e2e`. It is enabled
+for the same pull requests and main pushes as the quality job. Playwright
+1.63.0 is pinned exactly, verified against the
+[published package metadata](https://registry.npmjs.org/@playwright/test/latest).
+The signed-out smoke runs on desktop Chromium and a 390×844 mobile Chromium
+viewport against `vite preview` of dist. This tests sign-in UI visibility,
+default demo visibility, removed destructive handlers, uncaught/console errors
+and keyboard navigation between the sign-in fields.
+
+Each fresh browser context injects the real pinned Supabase UMD bundle from
+node_modules before the classic auth script loads. All HTTP requests outside
+the exact local preview origin are aborted; service workers and WebSockets are
+blocked too. The CDN script and Google font requests are expected blocked loads,
+with an explicit narrow console-error allowlist. Other external attempts and
+page exceptions fail the smoke. No login, credentials, auth submission or
+production database access occurs. This does not test real authentication,
+account isolation, saving, or live service availability.
+
+After dependency installation, run locally:
+
+```sh
+npx --no-install playwright install chromium
+npm run build
+npm run test:e2e
+```
+
+On Linux CI, install the operating system dependencies too with
+`npx --no-install playwright install --with-deps chromium`. The test config starts
+and stops the preview itself; port 4173 must be free, and an existing server is
+not reused. Build first so the preview tests the current artifact. Failure traces
+and screenshots are written under ignored test-results/. `npm test` continues to
+run the Node suite separately. Browser installation and successful actual smoke
+execution must be observed before claiming browser verification.
 
 **Founder repository-settings action:** after an authorized push and the first
 real GitHub Actions run, open repository **Settings → Branches → Add branch
@@ -75,14 +104,14 @@ protection rule**, set the branch pattern to `main`, and enable:
 4. Do not allow bypassing the above settings, including administrator bypass.
 
 Save the rule and verify a pull request with a failed required check cannot
-merge. When WP1.5b is enabled and has run, add its actual browser check to the
+merge. After the first observed `Browser smoke` run, add that actual check to the
 required checks too. The workflow file alone does not enforce merge protection;
 that repository setting and an observed remote run are still required. Michael
 owns remote pushes and integration; no push or settings change is authorized by
 adding this file. See GitHub's
 [branch protection instructions](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
 
-For local command validation use Node.js 22.12 or newer and run the five commands
+For local command validation use Node.js 22.12 or newer and run the six commands
 above. To parse the workflow locally without installing another dependency:
 
 ```sh
