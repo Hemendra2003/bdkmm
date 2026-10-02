@@ -25,8 +25,9 @@ function harness(instant='2026-09-04T19:00:00Z'){
   for(const method of ['saveEntry','deleteEntries','saveQuestion','saveQuestions','markLegacyMigrated','importEntries']){
     storage[method]=async(...args)=>{writes.push({method,args});return args[0];};
   }
+  storage.loadEntry=async()=>null;
   const query={select(){return this;},eq(){return this;},async maybeSingle(){return {data:null,error:null};}};
-  const context=vm.createContext({document,window:{supabaseClient:{from:()=>query},Storage:storage,Auth:{getUserId:()=>account},location:{search:'?dev=1'}},
+  const context=vm.createContext({document,window:{supabaseClient:{from:()=>query},MomentumData:storage,Auth:{getUserId:()=>account},location:{search:'?dev=1'}},
     Date:ClockDate,console,alert:message=>alerts.push(message),confirm:()=>true,setTimeout:fn=>{fn();return 0;},clearTimeout(){}});
   vm.runInContext(source.slice(start,end),context);
   const run=code=>vm.runInContext(code,context);
@@ -96,7 +97,7 @@ test('all app mutations are blocked during demo, including migration and destruc
   h.document.getElementById('mq-cust-text').value='New habit';await h.run('mqAddCustom()');
   await h.run('devReset();devImport();handleImport({target:{files:[{}],value:"file"}})');
   assert.equal(h.writes.length,0);
-  assert(!/window\.Storage\.(saveEntry|saveQuestion|saveQuestions|markLegacyMigrated|deleteQuestion|deleteEntries|importEntries)\(/.test(source));
+  assert(!/window\.MomentumData\.(saveEntry|saveQuestion|saveQuestions|markLegacyMigrated|deleteQuestion|deleteEntries|importEntries)\(/.test(source));
 });
 
 test('logout/account switch clear demo and drafts; same-account refresh retains opt-in',async()=>{
@@ -136,7 +137,7 @@ test('all graph/summary/filter calendar keys use local helpers without UTC slice
 test('a pre-demo migration cannot resume production writes after mode changes',async()=>{
   const h=harness();let resolve;
   h.context.console={warn(){},error(){}};
-  h.context.window.Storage.getSettings=()=>new Promise(r=>{resolve=r;});
+  h.context.window.MomentumData.getSettings=()=>new Promise(r=>{resolve=r;});
   const migration=h.run('runLegacyMigrationIfNeeded()');
   await h.run("setDemoDate('2026-06-27');window.MomentumDemo.clear();");
   resolve({legacy_migrated:false});await migration;

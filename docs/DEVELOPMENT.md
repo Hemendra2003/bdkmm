@@ -135,3 +135,71 @@ WP1.6 can add direct module cases; the existing 19 engine golden assertions and
 all legacy editor/rendering tests remain intact. Once the page uses the module
 pipeline, import the TypeScript sources directly and remove the generated bridge
 and its classic adapters together.
+
+## Typed data repositories and native Storage (WP1.3)
+
+`src/data/repositories.ts` exports `createRepositories({client, getUserId, now})`.
+The injected client uses the existing Supabase SDK; account identity and the
+migration timestamp clock are explicit dependencies. The factory returns typed
+`entries`, `questions`, and `settings` repositories, with typed input/row/results.
+Every public operation checks the current account before starting a query.
+Every read, upsert and delete includes `.eq('user_id', currentUserId)`; upsert
+payloads also stamp that identity. Supplied foreign ownership is rejected rather
+than forwarded. A result from an operation whose account has since changed is
+rejected. A write already sent cannot be cancelled by this result check.
+
+These client checks are defence in depth, not database authorization. Supabase
+row-level security, grants and ownership constraints remain required. Table
+names, selected columns, payload columns, conflict keys and legacy delete-date
+filter are unchanged. History reads remain unpaginated; only the separate
+owner/date-specific `entries.get(date)` can establish that an editor day is
+absent. No production policies, data or schema were inspected or changed here.
+
+Read results and mutation responses are validated before being returned. Lists
+must be arrays; only a `null` single-row result confirms absence. Entry dates must
+be real `YYYY-MM-DD` dates; answer maps permit numeric `1`, `2`, `3`, or `null`
+(with partial/orphan keys retained), and at most 1,000 safe keys. String answers,
+invalid choices, invalid dates and malformed timestamps are rejected, not
+silently repaired. Questions require valid identity, polarity/tier, three text
+choices, boolean fixed status, library/custom source and nonnegative integer
+order. Existing labels up to 4,096 characters can be read without truncation;
+new question and option text still has the P0.4 80-character limit. Question IDs
+permit nonempty strings or nonnegative safe integers because no tracked/live
+schema establishes one ID type. Settings validate the boolean migration flag
+and nullable timestamp. Errors identify fields without embedding private values.
+
+Batches validate all members, duplicates and optional ownership before making
+any request. Invalid batches cannot partially begin from this client. Returned
+batches must contain all expected dates/keys without duplicates. Backend errors
+propagate rather than becoming empty rows or success. These boundary contracts
+may reject malformed legacy/imported data (including string-valued answers or
+unknown source/tier values); inventory and a deliberate repair/migration are
+required if such data exists. No legacy data was normalized in this task, and
+the pure scoring engine/golden rules remain unchanged.
+
+`storage.js` is now only a generated repository bundle plus a classic adapter.
+The custom browser global is `window.MomentumData`, preserving the old method
+names and adding `loadEntry(date)` for the editor. The browser's native
+`window.Storage` interface is never replaced. `app.js` routes every data call
+through the adapter; it no longer queries Supabase directly. `auth.js` keeps its
+existing auth client/session behavior for WP1.4. Existing entry/demo UI hooks are
+unchanged; future module consumers can call the typed factory directly.
+
+Regenerate and verify the data bridge with:
+
+```sh
+node src/data/build-legacy.mjs
+node src/data/build-legacy.mjs --check
+node src/domain/build-legacy.mjs --check
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+The data bridge uses the same pinned compiler and generated-marker approach as
+the domain bridge. No runtime dependency/import, script tag, package or Vite
+config changes are needed. Its freshness test fails if the checked-in classic
+bundle differs from `repositories.ts`. Repository tests inject a local client
+that records every filter/payload and returns adversarial results; they do not
+certify live Supabase permissions or perform any production call.

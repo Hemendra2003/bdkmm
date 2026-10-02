@@ -107,7 +107,7 @@ test('recommendations use textContent and library drawer escapes text',()=>{
 
 test('write validation rejects wrong types/lengths before storage and preserves literal valid text',async()=>{
   const h=harness();let writes=[];
-  h.context.window.Storage={saveQuestion:async q=>{writes.push(q);return q;}};
+  h.context.window.MomentumData={saveQuestion:async q=>{writes.push(q);return q;}};
   const valid={...question,tier:'A',text:'<b>Habit & routine</b>',opts:['<5k steps','Partial','Full']};
   h.context.q=valid;await h.run('saveValidatedQuestion(q)');
   assert.equal(writes[0].text,valid.text);assert.equal(writes[0].opts[0],'<5k steps');
@@ -123,7 +123,7 @@ test('write validation rejects wrong types/lengths before storage and preserves 
 });
 
 test('custom form rejects programmatic oversized/type input without a write',async()=>{
-  const h=harness();let writes=0;h.context.window.Storage={saveQuestion:async()=>{writes++;}};
+  const h=harness();let writes=0;h.context.window.MomentumData={saveQuestion:async()=>{writes++;}};
   const text=h.document.getElementById('mq-cust-text');text.value='Valid habit';
   for(const invalid of ['x'.repeat(81),42]){
     h.document.getElementById('mq-opt0').value=invalid;
@@ -147,13 +147,13 @@ test('summary comparison safely renders unexpected metadata as literal text',()=
 test('custom save keeps literal text/default options and reports failed writes as text',async()=>{
   const h=harness();let saved;
   h.run('_buildMQPage=()=>{};loadUserQuestions=async()=>{};');
-  h.context.window.Storage={saveQuestion:async q=>{saved=q;}};
+  h.context.window.MomentumData={saveQuestion:async q=>{saved=q;}};
   const text=h.document.getElementById('mq-cust-text');text.value='  <b>Habit</b>  ';
   await h.run('mqAddCustom()');
   assert.equal(saved.text,'<b>Habit</b>');
   assert.deepEqual(Array.from(saved.opts),["Didn't do it",'Did it partially','Did it fully']);
   assert.equal(text.value,'');
-  h.context.window.Storage.saveQuestion=async()=>{throw new Error(payload);};
+  h.context.window.MomentumData.saveQuestion=async()=>{throw new Error(payload);};
   text.value='<b>Keep my habit</b>';
   await h.run('mqAddCustom()');
   assert.equal(text.value,'<b>Keep my habit</b>');

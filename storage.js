@@ -1,143 +1,351 @@
-// storage.js
-// Supabase-first now; this is the seam to replace with local-first later.
-window.Storage={
-  async requireUserId(){
-    const userId=window.Auth.getUserId();
-    if(!userId) throw new Error('You must be logged in.');
-    return userId;
-  },
-  async loadEntries(){
-    await this.requireUserId();
-    const {data,error}=await window.supabaseClient
-      .from('momentum_entries')
-      .select('date,answers,updated_at')
-      .order('date',{ascending:true});
-    if(error) throw error;
-    return data||[];
-  },
-  async saveEntry(date,answers){
-    const userId=await this.requireUserId();
-    const {data,error}=await window.supabaseClient
-      .from('momentum_entries')
-      .upsert({user_id:userId,date,answers},{onConflict:'user_id,date'})
-      .select('date,answers,updated_at')
-      .single();
-    if(error) throw error;
-    return data;
-  },
-  async deleteEntries(){
-    const userId=await this.requireUserId();
-    const {error}=await window.supabaseClient
-      .from('momentum_entries')
-      .delete()
-      .eq('user_id',userId)
-      .neq('date','0000-00-00');
-    if(error) throw error;
-    return true;
-  },
-  async exportEntries(){return await this.loadEntries();},
-  async importEntries(rows){
-    const userId=await this.requireUserId();
-    const normalized=(rows||[])
-      .filter(row=>row&&row.date)
-      .map(row=>({user_id:userId,date:row.date,answers:row.answers||{}}));
-    if(!normalized.length) return [];
-    const {data,error}=await window.supabaseClient
-      .from('momentum_entries')
-      .upsert(normalized,{onConflict:'user_id,date'})
-      .select('date,answers,updated_at');
-    if(error) throw error;
-    return data||[];
-  },
-
-  // ============================================================
-  // USER QUESTIONS — replaces the old hardcoded QS constant.
-  // Each user owns their own question set, stored in user_questions.
-  // ============================================================
-  async loadQuestions(){
-    await this.requireUserId();
-    const {data,error}=await window.supabaseClient
-      .from('user_questions')
-      .select('id,key,text,opts,polarity,tier,is_fixed,source,sort_order')
-      .order('sort_order',{ascending:true});
-    if(error) throw error;
-    return data||[];
-  },
-  async saveQuestion(q){
-    const userId=await this.requireUserId();
-    const row={
-      user_id:userId,
-      key:q.key,
-      text:q.text,
-      opts:q.opts,
-      polarity:q.polarity,
-      tier:q.tier,
-      is_fixed:!!q.is_fixed,
-      source:q.source||'custom',
-      sort_order:q.sort_order||0,
+// Supabase repository bridge. Browser's native Storage interface is untouched.
+// BEGIN GENERATED DATA BUNDLE — node src/data/build-legacy.mjs
+const MomentumRepositories=(()=>{const exports={};
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createRepositories = createRepositories;
+function object(value, field) {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+        throw new Error(`Invalid ${field}.`);
+    return value;
+}
+function text(value, field, max) {
+    if (typeof value !== 'string' || !value.trim() || value.length > max)
+        throw new Error(`Invalid ${field}.`);
+    return value;
+}
+function key(value) {
+    const result = text(value, 'question key', 128);
+    if (['__proto__', 'constructor', 'prototype'].includes(result))
+        throw new Error('Invalid question key.');
+    return result;
+}
+function dateKey(value) {
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))
+        throw new Error('Invalid entry date.');
+    const parsed = new Date(value + 'T12:00:00Z');
+    if (!Number.isFinite(parsed.getTime()) ||
+        parsed.getUTCFullYear() !== Number(value.slice(0, 4)) ||
+        parsed.getUTCMonth() + 1 !== Number(value.slice(5, 7)) ||
+        parsed.getUTCDate() !== Number(value.slice(8, 10)))
+        throw new Error('Invalid entry date.');
+    return value;
+}
+function timestamp(value, field) {
+    if (value === null)
+        return null;
+    if (typeof value !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}T/.test(value) ||
+        !Number.isFinite(Date.parse(value)))
+        throw new Error(`Invalid ${field}.`);
+    return value;
+}
+function answers(value) {
+    const source = object(value, 'entry answers');
+    const items = Object.entries(source);
+    if (items.length > 1000)
+        throw new Error('Too many entry answers.');
+    for (const [name, answer] of items) {
+        key(name);
+        if (answer !== null && answer !== 1 && answer !== 2 && answer !== 3)
+            throw new Error('Invalid answer choice.');
+    }
+    return Object.fromEntries(items);
+}
+function owned(row, userId) {
+    if ('user_id' in row && row.user_id !== userId)
+        throw new Error('Row belongs to a different account.');
+}
+function entryRow(value, userId) {
+    const row = object(value, 'entry row');
+    owned(row, userId);
+    return {
+        date: dateKey(row.date),
+        answers: answers(row.answers),
+        updated_at: timestamp(row.updated_at, 'entry timestamp'),
     };
-    const {data,error}=await window.supabaseClient
-      .from('user_questions')
-      .upsert(row,{onConflict:'user_id,key'})
-      .select('id,key,text,opts,polarity,tier,is_fixed,source,sort_order')
-      .single();
-    if(error) throw error;
-    return data;
-  },
-  async saveQuestions(questions){
-    const userId=await this.requireUserId();
-    const rows=(questions||[]).map(q=>({
-      user_id:userId,
-      key:q.key,
-      text:q.text,
-      opts:q.opts,
-      polarity:q.polarity,
-      tier:q.tier,
-      is_fixed:!!q.is_fixed,
-      source:q.source||'custom',
-      sort_order:q.sort_order||0,
-    }));
-    if(!rows.length) return [];
-    const {data,error}=await window.supabaseClient
-      .from('user_questions')
-      .upsert(rows,{onConflict:'user_id,key'})
-      .select('id,key,text,opts,polarity,tier,is_fixed,source,sort_order');
-    if(error) throw error;
-    return data||[];
-  },
-  async deleteQuestion(key){
-    const userId=await this.requireUserId();
-    const {error}=await window.supabaseClient
-      .from('user_questions')
-      .delete()
-      .eq('user_id',userId)
-      .eq('key',key);
-    if(error) throw error;
-    return true;
-  },
+}
+function questionFields(value, userId, writing) {
+    const row = object(value, 'question');
+    owned(row, userId);
+    const limit = writing ? 80 : 4096; // Safely display pre-existing long labels; new writes retain P0.4 limits.
+    const opts = row.opts;
+    if (!Array.isArray(opts) || opts.length !== 3)
+        throw new Error('Invalid question options.');
+    const validatedOpts = opts.map((option) => text(option, 'option label', limit));
+    if (row.polarity !== 'positive' && row.polarity !== 'negative')
+        throw new Error('Invalid question polarity.');
+    if (row.tier !== 'S' && row.tier !== 'A' && row.tier !== 'B')
+        throw new Error('Invalid question tier.');
+    const fixed = writing && row.is_fixed === undefined ? false : row.is_fixed;
+    const source = writing && row.source === undefined ? 'custom' : row.source;
+    const order = writing && row.sort_order === undefined ? 0 : row.sort_order;
+    if (typeof fixed !== 'boolean')
+        throw new Error('Invalid fixed-question flag.');
+    if (source !== 'library' && source !== 'custom')
+        throw new Error('Invalid question source.');
+    if (typeof order !== 'number' || !Number.isSafeInteger(order) || order < 0)
+        throw new Error('Invalid question order.');
+    return {
+        key: key(row.key),
+        text: text(row.text, 'question text', limit),
+        opts: validatedOpts,
+        polarity: row.polarity,
+        tier: row.tier,
+        is_fixed: fixed,
+        source,
+        sort_order: order,
+    };
+}
+function questionRow(value, userId) {
+    const row = object(value, 'question row');
+    const fields = questionFields(row, userId, false);
+    if (!(typeof row.id === 'string' && row.id.trim() && row.id.length <= 128) &&
+        !(typeof row.id === 'number' && Number.isSafeInteger(row.id) && row.id >= 0))
+        throw new Error('Invalid question id.');
+    return { id: row.id, ...fields };
+}
+function settingsRow(value, userId) {
+    const row = object(value, 'settings row');
+    owned(row, userId);
+    if (typeof row.legacy_migrated !== 'boolean')
+        throw new Error('Invalid migration flag.');
+    return {
+        legacy_migrated: row.legacy_migrated,
+        migrated_at: timestamp(row.migrated_at, 'migration timestamp'),
+    };
+}
+function list(value, parse) {
+    if (!Array.isArray(value))
+        throw new Error('Expected a list of rows.');
+    return value.map(parse);
+}
+function distinct(rows, field) {
+    if (new Set(rows.map((row) => row[field])).size !== rows.length)
+        throw new Error('Duplicate records in batch.');
+}
+// Client, current-account accessor and clock are injected. This module never
+// accesses browser globals or chooses a session. RLS remains the authority.
+function createRepositories({ client, getUserId, now }) {
+    function requireUserId() {
+        return text(getUserId(), 'signed-in user', 128);
+    }
+    function sameUser(userId) {
+        if (getUserId() !== userId)
+            throw new Error('Account changed during the request.');
+    }
+    const entryColumns = 'date,answers,updated_at';
+    const questionColumns = 'id,key,text,opts,polarity,tier,is_fixed,source,sort_order';
+    const entries = {
+        async list() {
+            const userId = requireUserId();
+            const { data, error } = await client
+                .from('momentum_entries')
+                .select(entryColumns)
+                .eq('user_id', userId)
+                .order('date', { ascending: true });
+            if (error)
+                throw error;
+            sameUser(userId);
+            return list(data, (row) => entryRow(row, userId));
+        },
+        async get(date) {
+            const userId = requireUserId(), target = dateKey(date);
+            const { data, error } = await client
+                .from('momentum_entries')
+                .select(entryColumns)
+                .eq('user_id', userId)
+                .eq('date', target)
+                .maybeSingle();
+            if (error)
+                throw error;
+            sameUser(userId);
+            if (data === null)
+                return null;
+            const row = entryRow(data, userId);
+            if (row.date !== target)
+                throw new Error('Unexpected entry date.');
+            return row;
+        },
+        async save(date, values) {
+            const userId = requireUserId();
+            const payload = { user_id: userId, date: dateKey(date), answers: answers(values) };
+            const { data, error } = await client
+                .from('momentum_entries')
+                .upsert(payload, { onConflict: 'user_id,date' })
+                .eq('user_id', userId)
+                .select(entryColumns)
+                .single();
+            if (error)
+                throw error;
+            sameUser(userId);
+            const row = entryRow(data, userId);
+            if (row.date !== payload.date)
+                throw new Error('Unexpected entry date.');
+            return row;
+        },
+        async removeAll() {
+            const userId = requireUserId();
+            const { error } = await client
+                .from('momentum_entries')
+                .delete()
+                .eq('user_id', userId)
+                .neq('date', '0000-00-00');
+            if (error)
+                throw error;
+            sameUser(userId);
+            return true;
+        },
+        async import(value) {
+            const userId = requireUserId();
+            const rows = list(value, (value) => {
+                const row = object(value, 'imported entry');
+                owned(row, userId);
+                return { user_id: userId, date: dateKey(row.date), answers: answers(row.answers) };
+            });
+            distinct(rows, 'date');
+            if (!rows.length)
+                return [];
+            const { data, error } = await client
+                .from('momentum_entries')
+                .upsert(rows, { onConflict: 'user_id,date' })
+                .eq('user_id', userId)
+                .select(entryColumns);
+            if (error)
+                throw error;
+            sameUser(userId);
+            const result = list(data, (row) => entryRow(row, userId));
+            if (result.length !== rows.length ||
+                result.some((row) => !rows.some((input) => input.date === row.date)))
+                throw new Error('Incomplete entry batch result.');
+            distinct(result, 'date');
+            return result;
+        },
+    };
+    const questions = {
+        async list() {
+            const userId = requireUserId();
+            const { data, error } = await client
+                .from('user_questions')
+                .select(questionColumns)
+                .eq('user_id', userId)
+                .order('sort_order', { ascending: true });
+            if (error)
+                throw error;
+            sameUser(userId);
+            return list(data, (row) => questionRow(row, userId));
+        },
+        async save(value) {
+            const userId = requireUserId();
+            const payload = { user_id: userId, ...questionFields(value, userId, true) };
+            const { data, error } = await client
+                .from('user_questions')
+                .upsert(payload, { onConflict: 'user_id,key' })
+                .eq('user_id', userId)
+                .select(questionColumns)
+                .single();
+            if (error)
+                throw error;
+            sameUser(userId);
+            const row = questionRow(data, userId);
+            if (row.key !== payload.key)
+                throw new Error('Unexpected question key.');
+            return row;
+        },
+        async saveMany(value) {
+            const userId = requireUserId();
+            const rows = list(value, (row) => ({
+                user_id: userId,
+                ...questionFields(row, userId, true),
+            }));
+            distinct(rows, 'key');
+            if (!rows.length)
+                return [];
+            const { data, error } = await client
+                .from('user_questions')
+                .upsert(rows, { onConflict: 'user_id,key' })
+                .eq('user_id', userId)
+                .select(questionColumns);
+            if (error)
+                throw error;
+            sameUser(userId);
+            const result = list(data, (row) => questionRow(row, userId));
+            if (result.length !== rows.length ||
+                result.some((row) => !rows.some((input) => input.key === row.key)))
+                throw new Error('Incomplete question batch result.');
+            distinct(result, 'key');
+            return result;
+        },
+        async remove(value) {
+            const userId = requireUserId(), target = key(value);
+            const { error } = await client
+                .from('user_questions')
+                .delete()
+                .eq('user_id', userId)
+                .eq('key', target);
+            if (error)
+                throw error;
+            sameUser(userId);
+            return true;
+        },
+    };
+    const settings = {
+        async get() {
+            const userId = requireUserId();
+            const { data, error } = await client
+                .from('user_settings')
+                .select('legacy_migrated,migrated_at')
+                .eq('user_id', userId)
+                .maybeSingle();
+            if (error)
+                throw error;
+            sameUser(userId);
+            return data === null
+                ? { legacy_migrated: false, migrated_at: null }
+                : settingsRow(data, userId);
+        },
+        async markMigrated() {
+            const userId = requireUserId(), instant = now();
+            if (!(instant instanceof Date) || !Number.isFinite(instant.getTime()))
+                throw new Error('Invalid migration clock.');
+            const payload = {
+                user_id: userId,
+                legacy_migrated: true,
+                migrated_at: instant.toISOString(),
+            };
+            settingsRow(payload, userId);
+            const { error } = await client
+                .from('user_settings')
+                .upsert(payload, { onConflict: 'user_id' })
+                .eq('user_id', userId);
+            if (error)
+                throw error;
+            sameUser(userId);
+            return true;
+        },
+    };
+    return { requireUserId, entries, questions, settings };
+}
 
-  // ============================================================
-  // USER SETTINGS — currently just the legacy-migration flag.
-  // Kept minimal on purpose: once legacy_migrated is true, the
-  // one-time migration code path in app.js is dead and can be
-  // deleted outright in a future cleanup pass.
-  // ============================================================
-  async getSettings(){
-    const userId=await this.requireUserId();
-    const {data,error}=await window.supabaseClient
-      .from('user_settings')
-      .select('legacy_migrated,migrated_at')
-      .eq('user_id',userId)
-      .maybeSingle();
-    if(error) throw error;
-    return data||{legacy_migrated:false,migrated_at:null};
-  },
-  async markLegacyMigrated(){
-    const userId=await this.requireUserId();
-    const {error}=await window.supabaseClient
-      .from('user_settings')
-      .upsert({user_id:userId,legacy_migrated:true,migrated_at:new Date().toISOString()},{onConflict:'user_id'});
-    if(error) throw error;
-    return true;
-  }
+return exports;})();
+// END GENERATED DATA BUNDLE
+const momentumRepositories=MomentumRepositories.createRepositories({
+  client:window.supabaseClient,
+  getUserId:()=>window.Auth.getUserId(),
+  now:()=>new Date(),
+});
+window.MomentumData={
+  requireUserId:momentumRepositories.requireUserId,
+  loadEntries:()=>momentumRepositories.entries.list(),
+  loadEntry:date=>momentumRepositories.entries.get(date),
+  saveEntry:(date,answers)=>momentumRepositories.entries.save(date,answers),
+  deleteEntries:()=>momentumRepositories.entries.removeAll(),
+  exportEntries:()=>momentumRepositories.entries.list(),
+  importEntries:rows=>momentumRepositories.entries.import(rows),
+  loadQuestions:()=>momentumRepositories.questions.list(),
+  saveQuestion:q=>momentumRepositories.questions.save(q),
+  saveQuestions:rows=>momentumRepositories.questions.saveMany(rows),
+  deleteQuestion:key=>momentumRepositories.questions.remove(key),
+  getSettings:()=>momentumRepositories.settings.get(),
+  markLegacyMigrated:()=>momentumRepositories.settings.markMigrated(),
 };

@@ -283,16 +283,9 @@ async function saveValidatedQuestion(q){
 // These wrappers preserve the original app call-sites while routing all data
 // through storage.js. Later, storage.js can become local-first without touching
 // the dashboard/questionnaire engine.
-async function sbLoadAll(){return window.Storage.loadEntries();}
-// The history read is unpaginated. Only a successful date-specific read can
-// establish that the editor's target does not already have a saved entry.
-async function sbLoadEntry(date,userId){
-  const {data,error}=await window.supabaseClient.from('momentum_entries')
-    .select('date,answers,updated_at').eq('user_id',userId).eq('date',date).maybeSingle();
-  if(error)throw error;
-  if(data===undefined)throw new Error('Entry read returned no result.');
-  return data;
-}
+async function sbLoadAll(){return window.MomentumData.loadEntries();}
+// A successful owner/date-specific repository read confirms editor absence.
+async function sbLoadEntry(date){return window.MomentumData.loadEntry(date);}
 async function sbUpsert(row,revision){return writableStore(revision).saveEntry(row.date,row.answers);}
 async function sbDeleteAll(){throw new Error('Destructive developer tools are disabled.');}
 
@@ -309,7 +302,7 @@ function todayKey(){return localDateKey(appNow());}
 function writableStore(expectedRevision=_appContextRevision){
   if(isDemoMode()) throw new Error('Demo mode is read-only. No account data was changed.');
   if(expectedRevision!==_appContextRevision) throw new Error('Account or demo mode changed. Reopen the form.');
-  return window.Storage;
+  return window.MomentumData;
 }
 function resetDateContext(){
   _appContextRevision++;
@@ -488,11 +481,11 @@ async function runLegacyMigrationIfNeeded(){
   if(isDemoMode())return {migrated:false,balanceWarning:null};
   const revision=_appContextRevision;
   let settings;
-  try{settings=await window.Storage.getSettings();}catch(e){console.warn('Settings check failed:',e.message);return{migrated:false,balanceWarning:null};}
+  try{settings=await window.MomentumData.getSettings();}catch(e){console.warn('Settings check failed:',e.message);return{migrated:false,balanceWarning:null};}
   if(settings.legacy_migrated) return{migrated:false,balanceWarning:null};
 
   let existing;
-  try{existing=await window.Storage.loadQuestions();}catch(e){console.warn('Question check failed:',e.message);return{migrated:false,balanceWarning:null};}
+  try{existing=await window.MomentumData.loadQuestions();}catch(e){console.warn('Question check failed:',e.message);return{migrated:false,balanceWarning:null};}
   if(existing&&existing.length>0){
     // Already has questions (new user who built their own set, or partial
     // migration retry) — just mark migrated and move on, don't overwrite.
@@ -523,7 +516,7 @@ async function runLegacyMigrationIfNeeded(){
 window.UserQuestions=null; // array of {key,text,opts,polarity,tier,is_fixed,...}
 
 async function loadUserQuestions(){
-  const rows=await window.Storage.loadQuestions();
+  const rows=await window.MomentumData.loadQuestions();
   window.UserQuestions=rows;
   return rows;
 }
