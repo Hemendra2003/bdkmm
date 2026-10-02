@@ -138,3 +138,56 @@ Exact versions were confirmed against upstream releases before the handoff:
 TypeScript 5.9 and ESLint 9 are retained together with the compatible
 typescript-eslint 8.44 parser rather than introducing a compiler/linter major
 migration alongside the static-app build.
+
+## Pure domain modules and the classic app bridge (WP1.2)
+
+The source of truth for domain logic is `src/domain/`:
+
+- `dates.ts`: `localDateKey(date, timeZone)`, `calendarDate(key, timeZone)`, and
+  `dateKeyOffset(date, days, timeZone)`. Inputs use `Date` instants, calendar keys,
+  and an explicit IANA timezone. No function reads the current clock or device
+  timezone. Internal UTC arithmetic represents calendar components; it does not
+  change the app's device-local date policy.
+- `scoring.ts`: tier weights, `scoreForAnswer(question, strengthIndex)`, and
+  `runEngine(questions, answers, previousVelocity, positiveStreak, negativeStreak)`.
+- `history.ts`: `recomputeAll(questions, rows)` and its typed entry/result contract.
+- `validation.ts`: question text/option limits, `checkBalance(questions)`, and
+  `parseDraft(rawJSON, userId, date)`. Draft parsing checks size, version, owner,
+  date and numeric choices; storage access and UI errors remain in the app.
+
+All four modules have explicit inputs and no DOM, network, storage or account
+state. Scoring intentionally retains all characterized behavior, including the
+known bugs in `tests/engine.characterization.test.mjs`. This extraction does not
+choose Engine A/B or change saved scores, answer coercion, historical re-tiering,
+completion counts, streak gaps, shadow drag or rounding.
+
+The legacy page remains a classic script. `src/domain/build-legacy.mjs` uses the
+existing pinned TypeScript compiler to transpile the four modules to an embedded,
+self-contained bundle between `BEGIN GENERATED DOMAIN BUNDLE` and
+`END GENERATED DOMAIN BUNDLE` in `app.js`. Its tiny private CommonJS loader only
+resolves these four local factories. It uses no runtime `eval`, dynamic import,
+network loader or Node dependency. `app.js` delegates to the `MomentumDomain`
+namespace: its thin adapters supply current questions and the device timezone.
+The clock, demo state, storage and UI remain outside the pure modules.
+
+This checked-in bundle keeps root static serving and the unchanged VM golden
+harness working. It also fits the existing Vite allowlist plugin, which copies
+`app.js` into `dist` unchanged. No new script tag or Vite/package configuration is
+required. Do not manually edit generated code. After editing a domain module:
+
+```sh
+node src/domain/build-legacy.mjs
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+`tests/domain-wiring.test.mjs` fails if the embedded bundle differs from a fresh
+transpile of the TypeScript source. For a standalone read-only check, run
+`node src/domain/build-legacy.mjs --check`. `npm run build` itself still copies the
+checked-in bundle, so run the test gate before producing a release artifact.
+WP1.6 can add direct module cases; the existing 19 engine golden assertions and
+all legacy editor/rendering tests remain intact. Once the page uses the module
+pipeline, import the TypeScript sources directly and remove the generated bridge
+and its classic adapters together.

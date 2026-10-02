@@ -20,6 +20,252 @@
 })();
 
 // STORAGE ADAPTERS
+// BEGIN GENERATED DOMAIN BUNDLE — node src/domain/build-legacy.mjs
+const MomentumDomain=(()=>{
+const modules={"./dates":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.localDateKey = localDateKey;
+exports.calendarDate = calendarDate;
+exports.dateKeyOffset = dateKeyOffset;
+// Every conversion takes an instant/calendar key and an explicit IANA timezone.
+// The caller owns the clock and the choice of device/profile timezone.
+function formatter(timeZone) {
+    return new Intl.DateTimeFormat('en-US', {
+        timeZone,
+        calendar: 'gregory',
+        numberingSystem: 'latn',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hourCycle: 'h23',
+    });
+}
+function parts(date, timeZone) {
+    return Object.fromEntries(formatter(timeZone)
+        .formatToParts(date)
+        .map((part) => [part.type, part.value]));
+}
+function localDateKey(date, timeZone) {
+    // Preserve the legacy invalid-date behavior used by demo input validation.
+    if (!Number.isFinite(date.getTime()))
+        return '0NaN-NaN-NaN';
+    const value = parts(date, timeZone);
+    return `${value.year.padStart(4, '0')}-${value.month}-${value.day}`;
+}
+function utcCalendar(year, month, day, hour = 12, minute = 0, second = 0) {
+    const date = new Date(0);
+    date.setUTCFullYear(year, month - 1, day);
+    date.setUTCHours(hour, minute, second, 0);
+    return date;
+}
+function calendarDate(key, timeZone) {
+    const desired = new Date(key + 'T12:00:00Z');
+    if (!Number.isFinite(desired.getTime()))
+        return desired;
+    let instant = desired.getTime();
+    // Translate local noon to an instant using the zone's actual offset, including
+    // DST. Noon avoids the usual missing/duplicated midnight transition hours.
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const value = parts(new Date(instant), timeZone);
+        const wall = utcCalendar(Number(value.year), Number(value.month), Number(value.day), Number(value.hour), Number(value.minute), Number(value.second)).getTime();
+        const correction = desired.getTime() - wall;
+        instant += correction;
+        if (correction === 0)
+            break;
+    }
+    return new Date(instant);
+}
+function dateKeyOffset(date, days, timeZone) {
+    const value = parts(date, timeZone);
+    const shifted = utcCalendar(Number(value.year), Number(value.month), Number(value.day) + days);
+    return `${String(shifted.getUTCFullYear()).padStart(4, '0')}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
+}
+
+},
+"./scoring":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.STRENGTH_LABEL = exports.TIER_WEIGHTS = void 0;
+exports.scoreForAnswer = scoreForAnswer;
+exports.runEngine = runEngine;
+exports.TIER_WEIGHTS = {
+    positive: {
+        S: { bad: -5, neutral: 0, good: 8 },
+        A: { bad: -3, neutral: 0, good: 5 },
+        B: { bad: -1.5, neutral: 0, good: 3 },
+    },
+    negative: {
+        S: { bad: -10, neutral: -4, good: 0 },
+        A: { bad: -6, neutral: -2, good: 0 },
+        B: { bad: -3, neutral: -1, good: 0 },
+    },
+};
+// strengthIndex 0/1/2 -> 'bad'/'neutral'/'good' lookup key
+exports.STRENGTH_LABEL = ['bad', 'neutral', 'good'];
+function scoreForAnswer(question, strengthIndex) {
+    const idx = Math.max(0, Math.min(2, strengthIndex));
+    const table = exports.TIER_WEIGHTS[question.polarity] || exports.TIER_WEIGHTS.positive;
+    const tierRow = table[question.tier] || table.B;
+    return tierRow[exports.STRENGTH_LABEL[idx]];
+}
+function runEngine(questions, answers, prevV, posS, negS) {
+    let thrust = 0, drag = 0;
+    const thrustItems = [], dragItems = [];
+    questions.forEach((q) => {
+        if (answers[q.key] === undefined || answers[q.key] === null)
+            return;
+        const idx = (parseInt(answers[q.key]) || 1) - 1;
+        const score = scoreForAnswer(q, idx);
+        if (score > 0) {
+            thrust += score;
+            thrustItems.push({ name: q.text, score });
+        }
+        else if (score < 0) {
+            drag += Math.abs(score);
+            dragItems.push({ name: q.text, score });
+        }
+    });
+    const rawDv = thrust - drag;
+    let mult = 1.0;
+    if (rawDv > 0)
+        mult = Math.min(2.2, 1 + (Math.log(posS + 1) / Math.log(1.8)) * 0.25);
+    else if (rawDv < 0)
+        mult = Math.min(3.5, 1 + Math.pow(negS + 1, 1.4) * 0.15);
+    mult = Math.round(mult * 100) / 100;
+    const finalDv = Math.round(rawDv * mult);
+    return {
+        thrust,
+        drag,
+        rawDv,
+        mult,
+        finalDv,
+        newVelocity: Math.max(0, prevV + finalDv),
+        posStreak: finalDv > 0 ? posS + 1 : 0,
+        negStreak: finalDv < 0 ? negS + 1 : 0,
+        thrustItems,
+        dragItems,
+    };
+}
+
+},
+"./validation":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.OPTION_TEXT_LIMIT = exports.QUESTION_TEXT_LIMIT = exports.MIN_POLARITY_RATIO = exports.MIN_TOTAL_QUESTIONS = void 0;
+exports.validateQuestionText = validateQuestionText;
+exports.checkBalance = checkBalance;
+exports.parseDraft = parseDraft;
+exports.MIN_TOTAL_QUESTIONS = 10;
+exports.MIN_POLARITY_RATIO = 0.3;
+exports.QUESTION_TEXT_LIMIT = 80;
+exports.OPTION_TEXT_LIMIT = 80;
+function validateQuestionText(q) {
+    if (typeof q.text !== 'string' || !q.text.trim() || q.text.length > exports.QUESTION_TEXT_LIMIT)
+        throw new Error('Question text must be 1–80 characters.');
+    if (!Array.isArray(q.opts) ||
+        q.opts.length !== 3 ||
+        q.opts.some((opt) => typeof opt !== 'string' || !opt.trim() || opt.length > exports.OPTION_TEXT_LIMIT))
+        throw new Error('Each of the three option labels must be 1–80 characters.');
+}
+function checkBalance(questions) {
+    const total = questions.length;
+    if (total === 0)
+        return { ok: false, reason: 'No questions.' };
+    const posCount = questions.filter((q) => q.polarity === 'positive').length;
+    const negCount = total - posCount;
+    const posRatio = posCount / total, negRatio = negCount / total;
+    if (total < exports.MIN_TOTAL_QUESTIONS)
+        return {
+            ok: false,
+            reason: `Need at least ${exports.MIN_TOTAL_QUESTIONS} questions (have ${total}).`,
+            posCount,
+            negCount,
+            total,
+        };
+    if (posRatio < exports.MIN_POLARITY_RATIO)
+        return {
+            ok: false,
+            reason: `Too few positive-habit questions (need \u226530%, have ${Math.round(posRatio * 100)}%).`,
+            posCount,
+            negCount,
+            total,
+        };
+    if (negRatio < exports.MIN_POLARITY_RATIO)
+        return {
+            ok: false,
+            reason: `Too few negative-habit questions (need \u226530%, have ${Math.round(negRatio * 100)}%).`,
+            posCount,
+            negCount,
+            total,
+        };
+    return { ok: true, posCount, negCount, total };
+}
+// Storage access and error presentation remain in the app adapter.
+function parseDraft(raw, userId, date) {
+    if (!raw)
+        return {};
+    if (raw.length > 1000000)
+        throw new Error('Oversized draft');
+    const draft = JSON.parse(raw);
+    if (!draft ||
+        draft.version !== 1 ||
+        draft.userId !== userId ||
+        draft.date !== date ||
+        !draft.answers ||
+        typeof draft.answers !== 'object' ||
+        Array.isArray(draft.answers) ||
+        Object.entries(draft.answers).some(([key, val]) => key.length > 128 || ![1, 2, 3].includes(val)))
+        throw new Error('Invalid draft');
+    return draft.answers;
+}
+
+},
+"./history":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.recomputeAll = recomputeAll;
+const scoring_1 = require("./scoring");
+// Sorting, prior-row shadow, null/orphan completion counts and historical
+// re-tiering intentionally retain the golden characterization behavior.
+function recomputeAll(questions, rows) {
+    const sorted = [...rows].sort((a, b) => (a.date < b.date ? -1 : 1));
+    const cache = {};
+    let prevV = 100, posS = 0, negS = 0;
+    sorted.forEach((row) => {
+        if (!row.answers)
+            return;
+        const answers = row.answers;
+        const c = (0, scoring_1.runEngine)(questions, answers, prevV, posS, negS);
+        const pd = Object.keys(cache).sort();
+        let shadow = 0;
+        if (pd.length >= 1)
+            shadow += (cache[pd[pd.length - 1]].computed.drag || 0) * 0.6;
+        if (pd.length >= 2)
+            shadow += (cache[pd[pd.length - 2]].computed.drag || 0) * 0.4 * 0.6;
+        const sp = Math.round(shadow * 0.5);
+        c.newVelocity = Math.max(0, c.newVelocity - sp);
+        c.finalDv -= sp;
+        c.shadow = sp;
+        c.posStreak = c.finalDv > 0 ? posS + 1 : 0;
+        c.negStreak = c.finalDv < 0 ? negS + 1 : 0;
+        prevV = c.newVelocity;
+        posS = c.posStreak;
+        negS = c.negStreak;
+        const ac = Object.keys(answers).filter((k) => answers[k] !== undefined).length;
+        cache[row.date] = { answers, computed: c, partial: ac < questions.length, answeredCount: ac };
+    });
+    return cache;
+}
+
+}};
+const cache={};function load(name){if(cache[name])return cache[name];const exports={};cache[name]=exports;modules[name](exports,load);return exports;}
+return Object.assign({},load('./dates'),load('./scoring'),load('./validation'),load('./history'));
+})();
+// END GENERATED DOMAIN BUNDLE
 // Plain text is escaped only at HTML text sinks, never before persistence.
 // User keys must stay out of inline JavaScript, even when HTML-escaped.
 function escapeHTML(value){
@@ -27,15 +273,8 @@ function escapeHTML(value){
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   })[ch]);
 }
-const QUESTION_TEXT_LIMIT=80;
-const OPTION_TEXT_LIMIT=80;
-function validateQuestionText(q){
-  if(typeof q.text!=='string'||!q.text.trim()||q.text.length>QUESTION_TEXT_LIMIT)
-    throw new Error('Question text must be 1–80 characters.');
-  if(!Array.isArray(q.opts)||q.opts.length!==3||q.opts.some(opt=>
-    typeof opt!=='string'||!opt.trim()||opt.length>OPTION_TEXT_LIMIT))
-    throw new Error('Each of the three option labels must be 1–80 characters.');
-}
+const {QUESTION_TEXT_LIMIT,OPTION_TEXT_LIMIT,validateQuestionText,checkBalance,
+  MIN_TOTAL_QUESTIONS,MIN_POLARITY_RATIO,TIER_WEIGHTS,scoreForAnswer}=MomentumDomain;
 async function saveValidatedQuestion(q){
   validateQuestionText(q);
   return writableStore().saveQuestion(q);
@@ -58,16 +297,11 @@ async function sbUpsert(row,revision){return writableStore(revision).saveEntry(r
 async function sbDeleteAll(){throw new Error('Destructive developer tools are disabled.');}
 
 // Device-local calendar policy. Calendar keys are never UTC instants.
-function localDateKey(date){
-  return `${String(date.getFullYear()).padStart(4,'0')}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-}
-function calendarDate(key){return new Date(key+'T12:00:00');}
-function dateKeyOffset(date,days){
-  const shifted=new Date(date.getTime());
-  shifted.setHours(12,0,0,0);
-  shifted.setDate(shifted.getDate()+days);
-  return localDateKey(shifted);
-}
+// Legacy adapters supply the device timezone; pure modules never infer it.
+function deviceTimeZone(){return Intl.DateTimeFormat().resolvedOptions().timeZone;}
+function localDateKey(date){return MomentumDomain.localDateKey(date,deviceTimeZone());}
+function calendarDate(key){return MomentumDomain.calendarDate(key,deviceTimeZone());}
+function dateKeyOffset(date,days){return MomentumDomain.dateKeyOffset(date,days,deviceTimeZone());}
 let _demoDate=null,_demoAccount=null,_sessionAccount=null,_appContextRevision=0;
 function isDemoMode(){return _demoDate!==null;}
 function appNow(){return isDemoMode()?calendarDate(_demoDate):new Date();}
@@ -124,21 +358,6 @@ window.MomentumDemo={setDate:setDemoDate,clear:()=>setDemoDate(null),getState:de
 // Every question now stores polarity + tier; the actual score for a given
 // answer is looked up here, not hand-specified per question.
 // ══════════════════════════════════
-const TIER_WEIGHTS={
-  positive:{ S:{bad:-5,   neutral:0, good:8}, A:{bad:-3,   neutral:0, good:5}, B:{bad:-1.5, neutral:0, good:3} },
-  negative:{ S:{bad:-10,  neutral:-4,good:0}, A:{bad:-6,   neutral:-2,good:0}, B:{bad:-3,   neutral:-1,good:0} },
-};
-
-// strengthIndex 0/1/2 -> 'bad'/'neutral'/'good' lookup key
-const STRENGTH_LABEL=['bad','neutral','good'];
-
-function scoreForAnswer(question,strengthIndex){
-  const idx=Math.max(0,Math.min(2,strengthIndex));
-  const table=TIER_WEIGHTS[question.polarity]||TIER_WEIGHTS.positive;
-  const tierRow=table[question.tier]||table.B;
-  return tierRow[STRENGTH_LABEL[idx]];
-}
-
 // The 3 mandatory questions every user has — fixed S-tier, stable keys so
 // migrated/legacy data needs no remapping.
 const FIXED_QUESTIONS=[
@@ -231,25 +450,11 @@ const QUESTION_LIBRARY=[
   {libKey:'meal_prep',  cat:'ENVIRONMENT',text:'Meal prep',               opts:['None','Light prep','Full prep done'],              polarity:'positive', defaultTier:'B'},
 ];
 
-const MIN_TOTAL_QUESTIONS=10;
-const MIN_POLARITY_RATIO=0.3; // each polarity must be >=30% of the active set
 
 // Default placeholder option labels shown when a user writes a custom
 // question and hasn't customised the option text yet.
 const CUSTOM_OPT_PLACEHOLDERS_POSITIVE=['Didn\'t do it','Did it partially','Did it fully'];
 const CUSTOM_OPT_PLACEHOLDERS_NEGATIVE=['Did it heavily','Did it a little','Avoided it'];
-
-function checkBalance(questions){
-  const total=questions.length;
-  if(total===0) return{ok:false,reason:'No questions.'};
-  const posCount=questions.filter(q=>q.polarity==='positive').length;
-  const negCount=total-posCount;
-  const posRatio=posCount/total,negRatio=negCount/total;
-  if(total<MIN_TOTAL_QUESTIONS) return{ok:false,reason:`Need at least ${MIN_TOTAL_QUESTIONS} questions (have ${total}).`,posCount,negCount,total};
-  if(posRatio<MIN_POLARITY_RATIO) return{ok:false,reason:`Too few positive-habit questions (need \u226530%, have ${Math.round(posRatio*100)}%).`,posCount,negCount,total};
-  if(negRatio<MIN_POLARITY_RATIO) return{ok:false,reason:`Too few negative-habit questions (need \u226530%, have ${Math.round(negRatio*100)}%).`,posCount,negCount,total};
-  return{ok:true,posCount,negCount,total};
-}
 
 // ══════════════════════════════════
 // ONE-TIME LEGACY MIGRATION
@@ -329,47 +534,9 @@ function getActiveQuestions(){
 
 // ENGINE
 function runEngine(answers,prevV,posS,negS){
-  const questions=getActiveQuestions();
-  let thrust=0,drag=0,thrustItems=[],dragItems=[];
-  questions.forEach(q=>{
-    if(answers[q.key]===undefined||answers[q.key]===null) return;
-    const idx=(parseInt(answers[q.key])||1)-1;
-    const score=scoreForAnswer(q,idx);
-    if(score>0){thrust+=score;thrustItems.push({name:q.text,score});}
-    else if(score<0){drag+=Math.abs(score);dragItems.push({name:q.text,score});}
-  });
-  const rawDv=thrust-drag;
-  let mult=1.0;
-  if(rawDv>0) mult=Math.min(2.2,1+Math.log(posS+1)/Math.log(1.8)*0.25);
-  else if(rawDv<0) mult=Math.min(3.5,1+Math.pow(negS+1,1.4)*0.15);
-  mult=Math.round(mult*100)/100;
-  const finalDv=Math.round(rawDv*mult);
-  return{thrust,drag,rawDv,mult,finalDv,
-    newVelocity:Math.max(0,prevV+finalDv),
-    posStreak:finalDv>0?posS+1:0,negStreak:finalDv<0?negS+1:0,
-    thrustItems,dragItems};
+  return MomentumDomain.runEngine(getActiveQuestions(),answers,prevV,posS,negS);
 }
-
-function recomputeAll(rows){
-  const questions=getActiveQuestions();
-  const sorted=[...rows].sort((a,b)=>a.date<b.date?-1:1);
-  const cache={};let prevV=100,posS=0,negS=0;
-  sorted.forEach(row=>{
-    if(!row.answers) return;
-    const c=runEngine(row.answers,prevV,posS,negS);
-    const pd=Object.keys(cache).sort();
-    let shadow=0;
-    if(pd.length>=1) shadow+=(cache[pd[pd.length-1]].computed.drag||0)*0.6;
-    if(pd.length>=2) shadow+=(cache[pd[pd.length-2]].computed.drag||0)*0.4*0.6;
-    const sp=Math.round(shadow*0.5);
-    c.newVelocity=Math.max(0,c.newVelocity-sp);c.finalDv-=sp;c.shadow=sp;
-    c.posStreak=c.finalDv>0?posS+1:0;c.negStreak=c.finalDv<0?negS+1:0;
-    prevV=c.newVelocity;posS=c.posStreak;negS=c.negStreak;
-    const ac=Object.keys(row.answers).filter(k=>row.answers[k]!==undefined).length;
-    cache[row.date]={answers:row.answers,computed:c,partial:ac<questions.length,answeredCount:ac};
-  });
-  return cache;
-}
+function recomputeAll(rows){return MomentumDomain.recomputeAll(getActiveQuestions(),rows);}
 
 async function loadCache(){
   return recomputeAll(await sbLoadAll());
@@ -490,14 +657,7 @@ function invalidateEntry(){
 function readDraft(userId,date){
   try{
     const raw=window.localStorage&&window.localStorage.getItem(draftKey(userId,date));
-    if(!raw)return {};
-    if(raw.length>1000000)throw new Error('Oversized draft');
-    const draft=JSON.parse(raw);
-    if(!draft||draft.version!==1||draft.userId!==userId||draft.date!==date||
-       !draft.answers||typeof draft.answers!=='object'||Array.isArray(draft.answers)||
-       Object.entries(draft.answers).some(([key,val])=>key.length>128||![1,2,3].includes(val)))
-      throw new Error('Invalid draft');
-    return draft.answers;
+    return MomentumDomain.parseDraft(raw,userId,date);
   }catch(e){_draftError='The saved draft could not be restored. Your saved entry is still available.';return {};}
 }
 function persistDraft(){
