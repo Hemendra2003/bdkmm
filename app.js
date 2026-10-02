@@ -342,20 +342,36 @@ function recomputeAll(questions, rows, options = {}) {
     sorted.forEach((row) => {
         if (!row.answers)
             return; // Preserve legacy absent-answer-row handling.
+        const stamped = row.question_set_revision != null || row.engine_version != null;
+        if (row.revision_invalid ||
+            (stamped &&
+                (row.engine_version !== rounding_1.ENGINE_VERSION || !Array.isArray(row.question_set_revision))))
+            throw new Error('Unsupported or corrupt entry revision: ' + row.date);
+        const definitions = stamped ? row.question_set_revision : questions;
+        // Repository validates snapshots; direct domain callers must not silently accept invalid definitions.
+        if (stamped &&
+            (definitions.some((q) => !q ||
+                typeof q.key !== 'string' ||
+                !q.key ||
+                typeof q.text !== 'string' ||
+                !['positive', 'negative'].includes(q.polarity) ||
+                !['S', 'A', 'B'].includes(q.tier)) ||
+                new Set(definitions.map((q) => q.key)).size !== definitions.length))
+            throw new Error('Invalid entry revision: ' + row.date);
         const prior = applyConservativeCarryOver({
             velocity: prevV,
             posS,
             negS,
             previousDate,
             currentDate: row.date,
-            eligible: (0, validation_1.assessEligibility)(questions, row.answers, row).eligible,
+            eligible: (0, validation_1.assessEligibility)(definitions, row.answers, row).eligible,
             todayKey: options.todayKey,
         });
         const yesterday = cache[(0, dates_1.calendarKeyOffset)(row.date, -1)]?.computed;
         const twoDaysAgo = cache[(0, dates_1.calendarKeyOffset)(row.date, -2)]?.computed;
         const shadow = (0, rounding_1.roundHalfAwayFromZero)(0.3 * (yesterday?.eligible ? yesterday.drag : 0) +
             0.12 * (twoDaysAgo?.eligible ? twoDaysAgo.drag : 0));
-        const c = (0, scoring_1.runEngine)(questions, row.answers, prior.velocity, prior.posS, prior.negS, {
+        const c = (0, scoring_1.runEngine)(definitions, row.answers, prior.velocity, prior.posS, prior.negS, {
             ...row,
             shadow,
         });
@@ -368,6 +384,7 @@ function recomputeAll(questions, rows, options = {}) {
             computed: c,
             partial: c.partial,
             answeredCount: c.answeredCount,
+            revisionStatus: stamped ? 'stored' : 'legacy-unversioned',
         };
     });
     return cache;
@@ -444,7 +461,7 @@ async function saveValidatedQuestion(q){
 async function sbLoadAll(){return window.MomentumData.loadEntries();}
 // A successful owner/date-specific repository read confirms editor absence.
 async function sbLoadEntry(date){return window.MomentumData.loadEntry(date);}
-async function sbUpsert(row,revision){return writableStore(revision).saveEntry(row.date,row.answers);}
+async function sbUpsert(row,revision){return writableStore(revision).saveEntry(row.date,row.answers,getActiveQuestions());}
 async function sbDeleteAll(){throw new Error('Destructive developer tools are disabled.');}
 
 // Device-local calendar policy. Calendar keys are never UTC instants.

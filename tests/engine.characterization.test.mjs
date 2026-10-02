@@ -319,14 +319,20 @@ test('[FIXED-IN-B-1: AUDIT-11] recomputeAll: an orphan key cannot inflate the co
   assert.equal(c.partial, true); // Legacy: false (orphan completed day).
 });
 
-test('[KNOWN-BUG: AUDIT-05] recomputeAll: retiering a question retroactively rewrites an already-saved day', () => {
-  // Same stored answer, same date: switching the question S->B silently changes
-  // the historical score (108 -> 103). History is not immutable.
-  const rows = "[{date:'2026-06-01',answers:{sleep:3}}]";
+test('[FIXED-IN-B-1: AUDIT-05] recomputeAll: stored revision survives retiering', () => {
+  // Legacy: 103 after S→B. ENGINE §7 E6 requires stored S definition to retain 108.
+  const rows = JSON.stringify([
+    {
+      date: '2026-06-01',
+      answers: { sleep: 3 },
+      question_set_revision: [pos('sleep', 'S')],
+      engine_version: 'b-1',
+    },
+  ]);
   const sTier = loadEngine();
   sTier.setQuestions([pos('sleep', 'S')]);
   assert.equal(sTier.run(`recomputeAll(${rows})['2026-06-01'].computed.newVelocity`), 108);
   const bTier = loadEngine();
   bTier.setQuestions([pos('sleep', 'B')]);
-  assert.equal(bTier.run(`recomputeAll(${rows})['2026-06-01'].computed.newVelocity`), 103);
+  assert.equal(bTier.run(`recomputeAll(${rows})['2026-06-01'].computed.newVelocity`), 108);
 });
