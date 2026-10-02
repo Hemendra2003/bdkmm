@@ -2,6 +2,23 @@
 
 All notable changes to MOMENTUM. Each release is one reviewed pull request into `main`.
 
+## [0.5.0] - 2026-10-02 — New app UI (`/app/`)
+
+### Added
+
+- Responsive shell with bottom navigation (Today · Habits · Progress), pixel icons, safe-area layout; route changes update title, scroll and focus.
+- **Today:** start/continue/edit check-in, last scored velocity with its real date, last-7-days count, honest pending/no-score states.
+- **Check-in:** one control per habit, answered counter, Skip for now, local draft, save independent of score readiness.
+- **Results:** engine card with thrust, drag, multiplier, shadow, change and velocity from Engine B.
+- **Habits:** list, add, edit, remove; new habits get unique keys; past scores never change (stored revisions).
+- **Progress:** last 7 days / 30 days / all time history with scored, pending and no-score states.
+- **Accounts:** password recovery with resend cooldown, reset screen, Google sign-in, optional 4-habit starter set for new users.
+
+### Notes
+
+- The original app at `/` is unchanged.
+- Founder action for password recovery: enable the recovery email and allowlist `<site>/app/?flow=recovery` and `<site>/app/` in Supabase Auth redirect URLs.
+
 ## [0.4.0] - 2026-10-02 — Past scores stay fixed
 
 ### Database
