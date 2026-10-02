@@ -29,7 +29,11 @@ const KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 // Gate: without staging credentials, skip so the default offline test run is green.
 if (!URL || !KEY) {
-  test('RLS isolation against staging', { skip: 'STAGING env not set (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY)' }, () => {});
+  test(
+    'RLS isolation against staging',
+    { skip: 'STAGING env not set (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY)' },
+    () => {},
+  );
 } else if (/ejrlskbemmdxomznmutx/.test(URL)) {
   // Hard stop: the known production project ref must never be the target.
   test('RLS isolation against staging', () => {
@@ -60,7 +64,11 @@ async function signUpUser(client, label) {
   const email = `rls-${randomUUID().slice(0, 8)}@example.test`;
   const password = `Rls!${randomUUID()}`; // > 6 chars, meets the policy
   const { data, error } = await client.auth.signUp({ email, password });
-  assert.equal(error, null, `${label} sign-up should succeed (confirm-email must be off): ${error && error.message}`);
+  assert.equal(
+    error,
+    null,
+    `${label} sign-up should succeed (confirm-email must be off): ${error && error.message}`,
+  );
   const userId = data && data.user && data.user.id;
   assert.ok(userId, `${label} sign-up should return a user id`);
   assert.ok(data.session, `${label} sign-up should return a session (email confirmation off)`);
@@ -103,17 +111,21 @@ function runSuite() {
     });
 
     // ---- B must not be able to READ A's rows ----
-    await t.test('B cannot SELECT A\'s rows (all three tables return nothing)', async () => {
+    await t.test("B cannot SELECT A's rows (all three tables return nothing)", async () => {
       for (const table of ['momentum_entries', 'user_questions', 'user_settings']) {
         const { data, error } = await clientB.from(table).select('*').eq('user_id', A.userId);
         // RLS filters rows out: expect success with an empty set (or a permission error).
         if (error) continue; // a hard denial is also acceptable
-        assert.deepEqual(data, [], `B should see no ${table} rows of A, saw ${data && data.length}`);
+        assert.deepEqual(
+          data,
+          [],
+          `B should see no ${table} rows of A, saw ${data && data.length}`,
+        );
       }
     });
 
     // ---- B must not be able to UPDATE A's rows ----
-    await t.test('B cannot UPDATE A\'s entry (0 rows changed, A\'s data intact)', async () => {
+    await t.test("B cannot UPDATE A's entry (0 rows changed, A's data intact)", async () => {
       const upd = await clientB
         .from('momentum_entries')
         .update({ answers: { hacked: 1 } })
@@ -121,7 +133,7 @@ function runSuite() {
         .eq('date', TEST_DATE)
         .select('date');
       // Either a denial error, or success affecting zero rows.
-      if (!upd.error) assert.deepEqual(upd.data, [], 'B\'s update should touch 0 of A\'s rows');
+      if (!upd.error) assert.deepEqual(upd.data, [], "B's update should touch 0 of A's rows");
       // Confirm as A that the value is unchanged.
       const check = await clientA
         .from('momentum_entries')
@@ -130,18 +142,18 @@ function runSuite() {
         .eq('date', TEST_DATE)
         .single();
       assert.equal(check.error, null, `A re-read: ${check.error && check.error.message}`);
-      assert.deepEqual(check.data.answers, { [QUESTION.key]: 3 }, 'A\'s answers must be unchanged');
+      assert.deepEqual(check.data.answers, { [QUESTION.key]: 3 }, "A's answers must be unchanged");
     });
 
     // ---- B must not be able to DELETE A's rows ----
-    await t.test('B cannot DELETE A\'s rows (A\'s entry still present)', async () => {
+    await t.test("B cannot DELETE A's rows (A's entry still present)", async () => {
       const del = await clientB
         .from('momentum_entries')
         .delete()
         .eq('user_id', A.userId)
         .eq('date', TEST_DATE)
         .select('date');
-      if (!del.error) assert.deepEqual(del.data, [], 'B\'s delete should remove 0 of A\'s rows');
+      if (!del.error) assert.deepEqual(del.data, [], "B's delete should remove 0 of A's rows");
       const check = await clientA
         .from('momentum_entries')
         .select('date')
@@ -149,11 +161,11 @@ function runSuite() {
         .eq('date', TEST_DATE)
         .maybeSingle();
       assert.equal(check.error, null, `A re-read: ${check.error && check.error.message}`);
-      assert.ok(check.data, 'A\'s entry must still exist after B\'s delete attempt');
+      assert.ok(check.data, "A's entry must still exist after B's delete attempt");
     });
 
     // ---- B must not be able to INSERT a row owned by A (forged user_id) ----
-    await t.test('B cannot INSERT a row with A\'s user_id (WITH CHECK blocks forgery)', async () => {
+    await t.test("B cannot INSERT a row with A's user_id (WITH CHECK blocks forgery)", async () => {
       const ins = await clientB
         .from('momentum_entries')
         .insert({ user_id: A.userId, date: '2026-06-16', answers: { forged: 1 } })
@@ -170,7 +182,7 @@ function runSuite() {
     });
 
     // ---- A must not be able to INSERT a row owned by B ----
-    await t.test('A cannot INSERT a row with B\'s user_id', async () => {
+    await t.test("A cannot INSERT a row with B's user_id", async () => {
       const ins = await clientA
         .from('user_questions')
         .insert({ user_id: B.userId, key: 'forged_by_a', ...QUESTION })
