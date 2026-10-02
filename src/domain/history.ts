@@ -1,18 +1,22 @@
 import { runEngine } from './scoring';
 import { calendarKeyOffset } from './dates';
-import { roundHalfAwayFromZero } from './rounding';
+import { ENGINE_VERSION, roundHalfAwayFromZero } from './rounding';
 import type { Answers, EngineResult, ScoreQuestion } from './scoring';
 import { assessEligibility } from './validation';
 import type { EligibilityOptions } from './validation';
 export interface EntryRow extends EligibilityOptions {
   date: string;
   answers?: Answers | null;
+  question_set_revision?: readonly ScoreQuestion[] | null;
+  engine_version?: string | null;
+  revision_invalid?: boolean;
 }
 export interface HistoryEntry {
   answers: Answers;
   computed: EngineResult;
   partial: boolean;
   answeredCount: number;
+  revisionStatus: 'stored' | 'legacy-unversioned';
 }
 export type HistoryCache = Record<string, HistoryEntry>;
 
@@ -56,13 +60,36 @@ export function recomputeAll(
   let previousDate: string | null = null;
   sorted.forEach((row) => {
     if (!row.answers) return; // Preserve legacy absent-answer-row handling.
+    const stamped = row.question_set_revision != null || row.engine_version != null;
+    if (
+      row.revision_invalid ||
+      (stamped &&
+        (row.engine_version !== ENGINE_VERSION || !Array.isArray(row.question_set_revision)))
+    )
+      throw new Error('Unsupported or corrupt entry revision: ' + row.date);
+    const definitions = stamped ? row.question_set_revision! : questions;
+    // Repository validates snapshots; direct domain callers must not silently accept invalid definitions.
+    if (
+      stamped &&
+      (definitions.some(
+        (q) =>
+          !q ||
+          typeof q.key !== 'string' ||
+          !q.key ||
+          typeof q.text !== 'string' ||
+          !['positive', 'negative'].includes(q.polarity) ||
+          !['S', 'A', 'B'].includes(q.tier),
+      ) ||
+        new Set(definitions.map((q) => q.key)).size !== definitions.length)
+    )
+      throw new Error('Invalid entry revision: ' + row.date);
     const prior = applyConservativeCarryOver({
       velocity: prevV,
       posS,
       negS,
       previousDate,
       currentDate: row.date,
-      eligible: assessEligibility(questions, row.answers, row).eligible,
+      eligible: assessEligibility(definitions, row.answers, row).eligible,
       todayKey: options.todayKey,
     });
     const yesterday = cache[calendarKeyOffset(row.date, -1)]?.computed;
@@ -71,7 +98,7 @@ export function recomputeAll(
       0.3 * (yesterday?.eligible ? yesterday.drag : 0) +
         0.12 * (twoDaysAgo?.eligible ? twoDaysAgo.drag : 0),
     );
-    const c = runEngine(questions, row.answers, prior.velocity, prior.posS, prior.negS, {
+    const c = runEngine(definitions, row.answers, prior.velocity, prior.posS, prior.negS, {
       ...row,
       shadow,
     });
@@ -84,6 +111,7 @@ export function recomputeAll(
       computed: c,
       partial: c.partial,
       answeredCount: c.answeredCount,
+      revisionStatus: stamped ? 'stored' : 'legacy-unversioned',
     };
   });
   return cache;

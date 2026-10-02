@@ -147,6 +147,10 @@ test('classic data bundle stays fresh, executes in storage bridge and leaves nat
   assert.equal(context.window.Storage, nativeStorage);
   assert.equal((await context.window.MomentumData.loadEntry(entry.date)).date, entry.date);
   assert.equal(typeof context.window.MomentumData.saveQuestion, 'function');
+  const revision = [{ key: 'habit', text: 'Habit', polarity: 'positive', tier: 'S' }];
+  const saved = await context.window.MomentumData.saveEntry(entry.date, entry.answers, revision);
+  assert.deepEqual(plain(saved.question_set_revision), revision);
+  assert.equal(saved.engine_version, 'b-1');
 });
 
 test('every read and mutation includes the current user_id query filter and owned upsert payload', async () => {
@@ -174,7 +178,7 @@ test('table projections, conflict keys and payload columns retain existing schem
   await h.repos.settings.markMigrated();
   const [e, q, s] = h.client.calls;
   assert.equal(e.table, 'momentum_entries');
-  assert.equal(e.columns, 'date,answers,updated_at');
+  assert.equal(e.columns, 'date,answers,updated_at,question_set_revision,engine_version');
   assert.equal(e.options.onConflict, 'user_id,date');
   assert.deepEqual(Object.keys(e.payload).sort(), ['answers', 'date', 'user_id']);
   assert.equal(q.table, 'user_questions');
@@ -469,4 +473,54 @@ test('explicit boundary reset clears diagnostics across same-owner logout/login'
     droppedFields: 0,
     droppedRows: 0,
   });
+});
+
+test('entry revisions round-trip strict save/import and reject invalid metadata before querying', async () => {
+  const h = harness();
+  const revision = [{ key: 'habit', text: 'Original', polarity: 'positive', tier: 'S' }];
+  const saved = await h.repos.entries.save(entry.date, entry.answers, revision);
+  assert.deepEqual(plain(saved.question_set_revision), revision);
+  assert.equal(saved.engine_version, 'b-1');
+  assert.deepEqual(plain(h.client.calls[0].payload.question_set_revision), revision);
+  const imported = await h.repos.entries.import([
+    { ...entry, question_set_revision: revision, engine_version: 'b-1' },
+  ]);
+  assert.deepEqual(plain(imported[0].question_set_revision), revision);
+  const count = h.client.calls.length;
+  for (const invalid of [[{ ...revision[0], tier: 'X' }], [revision[0], revision[0]], null])
+    await assert.rejects(h.repos.entries.save(entry.date, entry.answers, invalid));
+  for (const invalid of [
+    { question_set_revision: revision, engine_version: 'b-2' },
+    { question_set_revision: null, engine_version: 'b-1' },
+    { revision_invalid: true },
+  ])
+    await assert.rejects(h.repos.entries.import([{ ...entry, ...invalid }]));
+  assert.equal(h.client.calls.length, count);
+});
+
+test('revision reads tolerate legacy nulls and mark corrupt snapshots without losing answers', async () => {
+  const h = harness();
+  h.client.setResponse({
+    data: [{ ...entry, question_set_revision: null, engine_version: null }],
+    error: null,
+  });
+  assert.deepEqual(plain(await h.repos.entries.list()), [entry]);
+  for (const metadata of [
+    {
+      question_set_revision: [{ key: 'habit', text: 'x', polarity: 'positive', tier: 'X' }],
+      engine_version: 'b-1',
+    },
+    { question_set_revision: [], engine_version: 'b-2' },
+    { question_set_revision: null, engine_version: 'b-1' },
+  ]) {
+    h.client.setResponse({ data: [{ ...entry, ...metadata }], error: null });
+    const result = await h.repos.entries.list();
+    assert.equal(result[0].revision_invalid, true);
+    assert.deepEqual(plain(result[0].answers), entry.answers);
+  }
+  h.client.setResponse({
+    data: [{ ...entry, user_id: 'B', question_set_revision: 'bad' }],
+    error: null,
+  });
+  await assert.rejects(h.repos.entries.list(), /different account/);
 });
