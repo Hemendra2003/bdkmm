@@ -155,27 +155,30 @@ filter are unchanged. History reads remain unpaginated; only the separate
 owner/date-specific `entries.get(date)` can establish that an editor day is
 absent. No production policies, data or schema were inspected or changed here.
 
-Read results and mutation responses are validated before being returned. Lists
-must be arrays; only a `null` single-row result confirms absence. Entry dates must
-be real `YYYY-MM-DD` dates; answer maps permit numeric `1`, `2`, `3`, or `null`
-(with partial/orphan keys retained), and at most 1,000 safe keys. String answers,
-invalid choices, invalid dates and malformed timestamps are rejected, not
-silently repaired. Questions require valid identity, polarity/tier, three text
-choices, boolean fixed status, library/custom source and nonnegative integer
-order. Existing labels up to 4,096 characters can be read without truncation;
-new question and option text still has the P0.4 80-character limit. Question IDs
-permit nonempty strings or nonnegative safe integers because no tracked/live
-schema establishes one ID type. Settings validate the boolean migration flag
-and nullable timestamp. Errors identify fields without embedding private values.
+Reads normalize legacy numeric answer strings (including whitespace) to `1`,
+`2`, or `3`. Invalid answer fields are dropped independently; invalid timestamps
+become null. Irreparable entry rows and invalid question rows are omitted, keeping
+other valid rows available. A targeted read may return null for a dropped row;
+this is a sanitized view, not deletion or proof that corrupt data never existed.
+No alternative historical enum spellings were found in tracked code, so unknown
+question enums are dropped rather than guessed. Read labels retain the 4,096
+character bound. Corrupt settings fields fall back to null timestamps and a true
+migration flag to prevent an automatic legacy import from repeating.
 
-Batches validate all members, duplicates and optional ownership before making
-any request. Invalid batches cannot partially begin from this client. Returned
-batches must contain all expected dates/keys without duplicates. Backend errors
-propagate rather than becoming empty rows or success. These boundary contracts
-may reject malformed legacy/imported data (including string-valued answers or
-unknown source/tier values); inventory and a deliberate repair/migration are
-required if such data exists. No legacy data was normalized in this task, and
-the pure scoring engine/golden rules remain unchanged.
+Every normalization/drop emits `console.warn` with table, bounded date/key,
+field name and action only; no labels, answer values or account IDs are logged.
+`MomentumData.getReadDiagnostics()` returns cumulative `normalizedFields`,
+`droppedFields`, and `droppedRows` counts for the current account since adapter
+initialization; changing accounts resets counts. Counts track read events, not
+unique records, and are available for future UI use. No repaired values are
+persisted. Ownership/auth/account-change failures and backend/protocol errors
+still throw; only row corruption is tolerated.
+
+Writes and mutation responses stay strict: numeric answers only, valid enums,
+80-character labels/options, valid dates/IDs and complete batch results. All
+batch inputs are checked before requesting a mutation. No schema changes or
+scoring/golden-rule changes are made.
+Production data inventory is still recommended once Supabase access exists.
 
 `storage.js` is now only a generated repository bundle plus a classic adapter.
 The custom browser global is `window.MomentumData`, preserving the old method

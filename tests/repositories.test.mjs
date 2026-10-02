@@ -105,14 +105,17 @@ function fakeClient() {
 function harness() {
   let user = 'A';
   const client = fakeClient();
+  const warnings = [];
   const repos = api.createRepositories({
     client,
     getUserId: () => user,
     now: () => new Date(stamp),
+    warn: (issue) => warnings.push(issue),
   });
   return {
     client,
     repos,
+    warnings,
     setUser: (value) => {
       user = value;
     },
@@ -202,40 +205,73 @@ test('all operations refuse missing/non-string user before querying', async () =
   }
 });
 
-test('single-day read accepts only explicit null as absence and validates returned date/row', async () => {
+test('single-day reads tolerate corrupt fields/rows but reject protocol, date and ownership failures', async () => {
   const h = harness();
   h.client.setResponse({ data: null, error: null });
   assert.equal(await h.repos.entries.get(entry.date), null);
   for (const data of [
     undefined,
-    {},
-    [],
     { ...entry, date: '2026-09-04' },
-    { ...entry, answers: 'bad' },
-    { ...entry, updated_at: 'bad' },
+    { ...entry, user_id: 'B', answers: 'bad' },
   ]) {
     h.client.setResponse({ data, error: null });
     await assert.rejects(h.repos.entries.get(entry.date));
   }
+  for (const data of [{}, [], { ...entry, answers: 'bad' }]) {
+    h.client.setResponse({ data, error: null });
+    assert.equal(await h.repos.entries.get(entry.date), null);
+  }
+  h.client.setResponse({
+    data: { ...entry, answers: { habit: ' 3 ', bad: 99 }, updated_at: 'bad' },
+    error: null,
+  });
+  assert.deepEqual(plain(await h.repos.entries.get(entry.date)), {
+    ...entry,
+    answers: { habit: 3 },
+    updated_at: null,
+  });
   assert(
     h.client.calls[0].filters.some(([field, value]) => field === 'date' && value === entry.date),
   );
 });
 
-test('read boundaries reject malformed entries and foreign-owner records', async () => {
+test('legacy numeric answers normalize on reads, invalid fields drop and good rows survive corruption', async () => {
   const h = harness();
-  for (const bad of [
-    { ...entry, date: '2026-02-30' },
-    { ...entry, answers: [] },
-    { ...entry, answers: { habit: '3' } },
-    { ...entry, answers: { habit: 99 } },
-    { ...entry, user_id: 'B' },
-  ]) {
-    h.client.setResponse({ data: [bad], error: null });
-    await assert.rejects(h.repos.entries.list());
+  const legacy = {
+    ...entry,
+    answers: {
+      a: '1',
+      b: ' 2 ',
+      c: '3.0',
+      d: null,
+      bad: '3x',
+      blank: ' ',
+      nope: 4,
+      ...JSON.parse('{"__proto__":3}'),
+    },
+  };
+  h.client.setResponse({
+    data: [legacy, { ...entry, date: '2026-02-30' }, null, { ...entry, date: '2026-09-06' }],
+    error: null,
+  });
+  const rows = await h.repos.entries.list();
+  assert.deepEqual(plain(rows[0].answers), { a: 1, b: 2, c: 3, d: null });
+  assert.equal(rows.length, 2);
+  assert.equal(rows[1].date, '2026-09-06');
+  assert.deepEqual(plain(h.repos.getReadDiagnostics()), {
+    normalizedFields: 3,
+    droppedFields: 4,
+    droppedRows: 2,
+  });
+  assert.equal(h.warnings.length, 9);
+  for (const warning of h.warnings) {
+    assert.deepEqual(Object.keys(warning).sort(), ['action', 'field', 'identifier', 'table']);
+    assert.equal(warning.table, 'entries');
   }
-  h.client.setResponse({ data: [{ ...entry, answers: { habit: null } }], error: null });
-  assert.equal((await h.repos.entries.list())[0].answers.habit, null);
+  h.client.setResponse({ data: [{ ...entry, user_id: 'B', date: 'bad' }], error: null });
+  await assert.rejects(h.repos.entries.list(), /different account/);
+  h.client.setResponse({ data: {}, error: null });
+  await assert.rejects(h.repos.entries.list(), /list of rows/);
 });
 
 test('entry writes reject invalid date/answer shape before mutation and preserve partial/null answers', async () => {
@@ -257,7 +293,7 @@ test('entry writes reject invalid date/answer shape before mutation and preserve
   assert.equal(result.answers.habit, null);
 });
 
-test('question reads validate enums, choices, required id/flags/order and allow bounded legacy long text', async () => {
+test('question reads drop corrupt rows while preserving good questions and bounded legacy text', async () => {
   const h = harness();
   for (const bad of [
     { ...question, id: null },
@@ -268,13 +304,14 @@ test('question reads validate enums, choices, required id/flags/order and allow 
     { ...question, is_fixed: 'true' },
     { ...question, source: 'unknown' },
     { ...question, sort_order: 1.5 },
-    { ...question, user_id: 'B' },
   ]) {
-    h.client.setResponse({ data: [bad], error: null });
-    await assert.rejects(h.repos.questions.list());
+    h.client.setResponse({ data: [question, bad], error: null });
+    assert.deepEqual(plain(await h.repos.questions.list()), [question]);
   }
   h.client.setResponse({ data: [{ ...question, text: 'x'.repeat(81) }], error: null });
   assert.equal((await h.repos.questions.list())[0].text.length, 81);
+  h.client.setResponse({ data: [{ ...question, user_id: 'B', tier: 'C' }], error: null });
+  await assert.rejects(h.repos.questions.list(), /different account/);
 });
 
 test('question writes validate runtime input, defaults and text without HTML encoding', async () => {
@@ -330,20 +367,51 @@ test('malformed or incomplete mutation responses are rejected', async () => {
   await assert.rejects(h.repos.entries.import([entry]), /Incomplete/);
 });
 
-test('settings default only for null and reject malformed flags/timestamps/ownership', async () => {
+test('settings tolerate corrupt fields without triggering another legacy migration; ownership stays strict', async () => {
   const h = harness();
   h.client.setResponse({ data: null, error: null });
   assert.deepEqual(plain(await h.repos.settings.get()), settings);
+  h.client.setResponse({ data: undefined, error: null });
+  await assert.rejects(h.repos.settings.get(), /Missing settings/);
   for (const data of [
-    undefined,
     {},
     { legacy_migrated: 'true', migrated_at: null },
     { legacy_migrated: true, migrated_at: 'bad' },
-    { ...settings, user_id: 'B' },
+    [],
   ]) {
     h.client.setResponse({ data, error: null });
-    await assert.rejects(h.repos.settings.get());
+    assert.deepEqual(plain(await h.repos.settings.get()), {
+      legacy_migrated: true,
+      migrated_at: null,
+    });
   }
+  h.client.setResponse({ data: { ...settings, user_id: 'B' }, error: null });
+  await assert.rejects(h.repos.settings.get(), /different account/);
+});
+
+test('diagnostics are snapshots scoped to the current account and warnings never log content', async () => {
+  const h = harness();
+  const privateText = 'private label and answer content';
+  h.client.setResponse({
+    data: [
+      { ...entry, answers: { habit: privateText } },
+      { ...question, key: privateText },
+    ],
+    error: null,
+  });
+  await h.repos.entries.list();
+  assert(!JSON.stringify(h.warnings).includes(privateText));
+  const counts = h.repos.getReadDiagnostics();
+  counts.droppedRows = 999;
+  assert.equal(h.repos.getReadDiagnostics().droppedRows, 1);
+  h.setUser('B');
+  assert.deepEqual(plain(h.repos.getReadDiagnostics()), {
+    normalizedFields: 0,
+    droppedFields: 0,
+    droppedRows: 0,
+  });
+  h.setUser(null);
+  assert.throws(() => h.repos.getReadDiagnostics(), /signed-in user/);
 });
 
 test('delete filters include owner plus target and malformed delete key never queries', async () => {

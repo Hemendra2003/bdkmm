@@ -36,6 +36,19 @@ export interface RepositoryDependencies {
   client: Pick<SupabaseClient, 'from'>;
   getUserId: () => unknown;
   now: () => Date;
+  warn?: (issue: ReadIssue) => void;
+}
+
+export interface ReadDiagnostics {
+  normalizedFields: number;
+  droppedFields: number;
+  droppedRows: number;
+}
+export interface ReadIssue {
+  table: 'entries' | 'questions' | 'settings';
+  identifier: string;
+  field: string;
+  action: 'normalizedFields' | 'droppedFields' | 'droppedRows';
 }
 
 function object(value: unknown, field: string): Record<string, unknown> {
@@ -164,12 +177,97 @@ function distinct(rows: readonly { date?: string; key?: string }[], field: 'date
 
 // Client, current-account accessor and clock are injected. This module never
 // accesses browser globals or chooses a session. RLS remains the authority.
-export function createRepositories({ client, getUserId, now }: RepositoryDependencies) {
+export function createRepositories({
+  client,
+  getUserId,
+  now,
+  warn = (issue) => console.warn('Momentum data read:', issue),
+}: RepositoryDependencies) {
+  let diagnosticsOwner: string | null = null;
+  let diagnostics: ReadDiagnostics = { normalizedFields: 0, droppedFields: 0, droppedRows: 0 };
   function requireUserId(): string {
-    return text(getUserId(), 'signed-in user', 128);
+    const userId = text(getUserId(), 'signed-in user', 128);
+    if (diagnosticsOwner !== userId) {
+      diagnosticsOwner = userId;
+      diagnostics = { normalizedFields: 0, droppedFields: 0, droppedRows: 0 };
+    }
+    return userId;
   }
   function sameUser(userId: string): void {
     if (getUserId() !== userId) throw new Error('Account changed during the request.');
+  }
+
+  function getReadDiagnostics(): ReadDiagnostics {
+    requireUserId();
+    return { ...diagnostics };
+  }
+  function issue(
+    table: ReadIssue['table'],
+    value: unknown,
+    field: string,
+    action: ReadIssue['action'],
+  ): void {
+    const row =
+      value && typeof value === 'object' && !Array.isArray(value)
+        ? (value as Record<string, unknown>)
+        : {};
+    const candidate = table === 'entries' ? row.date : table === 'questions' ? row.key : 'settings';
+    // Log only bounded identifiers; never labels, answer values, account IDs or raw rows.
+    const identifier =
+      typeof candidate === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(candidate)
+        ? candidate
+        : '[invalid]';
+    diagnostics[action]++;
+    warn({ table, identifier, field, action });
+  }
+  function readRow<T>(
+    value: unknown,
+    userId: string,
+    table: ReadIssue['table'],
+    parse: (row: Record<string, unknown>) => T,
+  ): T | null {
+    // Ownership errors must never enter the corruption fallback, even on an otherwise invalid row.
+    if (value && typeof value === 'object' && !Array.isArray(value))
+      owned(value as Record<string, unknown>, userId);
+    try {
+      return parse(object(value, 'read row'));
+    } catch {
+      issue(table, value, 'row', 'droppedRows');
+      return null;
+    }
+  }
+  function readEntry(value: unknown, userId: string): EntryRow | null {
+    return readRow(value, userId, 'entries', (row) => {
+      const date = dateKey(row.date);
+      const source = object(row.answers, 'entry answers');
+      if (Object.keys(source).length > 1000) throw new Error('Too many entry answers.');
+      const items: [string, Answer][] = [];
+      for (const [name, original] of Object.entries(source)) {
+        try {
+          key(name);
+          // Number accepts whitespace/decimal numeric spellings but no partial parseInt coercion.
+          const answer =
+            typeof original === 'string' && original.trim() ? Number(original) : original;
+          if (answer !== null && answer !== 1 && answer !== 2 && answer !== 3)
+            throw new Error('Invalid answer choice.');
+          items.push([name, answer]);
+          if (answer !== original) issue('entries', row, 'answer', 'normalizedFields');
+        } catch {
+          issue('entries', row, 'answer', 'droppedFields');
+        }
+      }
+      let updated_at: string | null = null;
+      try {
+        updated_at = timestamp(row.updated_at, 'entry timestamp');
+      } catch {
+        issue('entries', row, 'updated_at', 'droppedFields');
+      }
+      return { date, answers: Object.fromEntries(items), updated_at };
+    });
+  }
+  function readList<T>(value: unknown, parse: (row: unknown) => T | null): T[] {
+    if (!Array.isArray(value)) throw new Error('Expected a list of rows.');
+    return value.map(parse).filter((row): row is T => row !== null);
   }
   const entryColumns = 'date,answers,updated_at';
   const questionColumns = 'id,key,text,opts,polarity,tier,is_fixed,source,sort_order';
@@ -183,7 +281,7 @@ export function createRepositories({ client, getUserId, now }: RepositoryDepende
         .order('date', { ascending: true });
       if (error) throw error;
       sameUser(userId);
-      return list(data, (row) => entryRow(row, userId));
+      return readList(data, (row) => readEntry(row, userId));
     },
     async get(date: string): Promise<EntryRow | null> {
       const userId = requireUserId(),
@@ -197,8 +295,10 @@ export function createRepositories({ client, getUserId, now }: RepositoryDepende
       if (error) throw error;
       sameUser(userId);
       if (data === null) return null;
-      const row = entryRow(data, userId);
-      if (row.date !== target) throw new Error('Unexpected entry date.');
+      // Missing response data is a protocol failure, not evidence of absence.
+      if (data === undefined) throw new Error('Missing entry result.');
+      const row = readEntry(data, userId);
+      if (row && row.date !== target) throw new Error('Unexpected entry date.');
       return row;
     },
     async save(date: string, values: Answers): Promise<EntryRow> {
@@ -263,7 +363,9 @@ export function createRepositories({ client, getUserId, now }: RepositoryDepende
         .order('sort_order', { ascending: true });
       if (error) throw error;
       sameUser(userId);
-      return list(data, (row) => questionRow(row, userId));
+      return readList(data, (row) =>
+        readRow(row, userId, 'questions', (value) => questionRow(value, userId)),
+      );
     },
     async save(value: QuestionInput): Promise<QuestionRow> {
       const userId = requireUserId();
@@ -327,9 +429,23 @@ export function createRepositories({ client, getUserId, now }: RepositoryDepende
         .maybeSingle();
       if (error) throw error;
       sameUser(userId);
-      return data === null
-        ? { legacy_migrated: false, migrated_at: null }
-        : settingsRow(data, userId);
+      if (data === null) return { legacy_migrated: false, migrated_at: null };
+      if (data === undefined) throw new Error('Missing settings result.');
+      // A corrupt migration flag must not trigger another automatic legacy import.
+      return (
+        readRow(data, userId, 'settings', (row) => {
+          let legacy_migrated = true,
+            migrated_at: string | null = null;
+          if (typeof row.legacy_migrated === 'boolean') legacy_migrated = row.legacy_migrated;
+          else issue('settings', row, 'legacy_migrated', 'droppedFields');
+          try {
+            migrated_at = timestamp(row.migrated_at, 'migration timestamp');
+          } catch {
+            issue('settings', row, 'migrated_at', 'droppedFields');
+          }
+          return { legacy_migrated, migrated_at };
+        }) ?? { legacy_migrated: true, migrated_at: null }
+      );
     },
     async markMigrated(): Promise<true> {
       const userId = requireUserId(),
@@ -351,6 +467,6 @@ export function createRepositories({ client, getUserId, now }: RepositoryDepende
       return true;
     },
   };
-  return { requireUserId, entries, questions, settings };
+  return { requireUserId, getReadDiagnostics, entries, questions, settings };
 }
 export type Repositories = ReturnType<typeof createRepositories>;
