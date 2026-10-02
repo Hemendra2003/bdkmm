@@ -26,8 +26,8 @@ for (const example of fixture.cases) {
 }
 for (const example of fixture.trajectoryCases) {
   test(`Engine b-1 fixture ${example.id}: supplied raw change/single floor`, () => {
-    // E7 supplies mult=1/rawChange=-10 as arithmetic inputs; the ordinary daily
-    // negative multiplier with no prior streak is 1.15, not 1 (ENGINE sections3.2/7).
+    // Corrected ENGINE E7 (Oscar d30afcc): raw -10 ×1.15 rounds to -12.
+    // Daily and trajectory fixtures share the same single-floor outcome.
     assert.deepEqual(
       plain(api.applyVelocityChange(example.previousVelocity, example.rawChange, example.shadow)),
       example.expected,
@@ -152,12 +152,70 @@ test('E5 backfill replays the suffix deterministically in calendar position', ()
   assert.notEqual(a['2026-06-03'].computed.newVelocity, b['2026-06-03'].computed.newVelocity);
   assert.deepEqual(plain(api.recomputeAll(questions, filled)), plain(b));
 });
-test('gap policy remains legacy carry/streak continuity with no synthetic rows', () => {
+test('Variant1 carries velocity, resets gap streaks and creates no synthetic rows', () => {
   const rows = [
     { date: '2026-05-01', answers: { sleep: 3 } },
     { date: '2026-06-01', answers: { sleep: 3 } },
   ];
   const cache = api.recomputeAll([q('sleep')], rows);
-  assert.equal(cache['2026-06-01'].computed.posStreak, 2);
+  assert.equal(cache['2026-06-01'].computed.posStreak, 1);
+  assert.equal(cache['2026-06-01'].computed.newVelocity, 116);
   assert.deepEqual(Object.keys(cache), ['2026-05-01', '2026-06-01']);
+});
+
+test('an unfinished today keeps continuity until that local day closes', () => {
+  const rows = [
+    { date: '2026-06-01', answers: { sleep: 3 } },
+    { date: '2026-06-02', answers: { sleep: null } },
+  ];
+  const current = api.recomputeAll([q('sleep')], rows, { todayKey: '2026-06-02' });
+  const closed = api.recomputeAll([q('sleep')], rows, { todayKey: '2026-06-03' });
+  assert.equal(current['2026-06-02'].computed.posStreak, 1);
+  assert.equal(closed['2026-06-02'].computed.posStreak, 0);
+  assert.equal(current['2026-06-02'].computed.newVelocity, 108);
+  assert.equal(closed['2026-06-02'].computed.newVelocity, 108);
+});
+
+test('closed no-action/excused/draft days carry velocity but reset multiplier continuity', () => {
+  for (const row of [
+    { date: '2026-06-02', answers: {}, dueKeys: [] },
+    { date: '2026-06-02', answers: {}, excusedKeys: ['sleep'] },
+    { date: '2026-06-02', answers: { sleep: 3 }, finalized: false },
+  ]) {
+    const cache = api.recomputeAll(
+      [q('sleep')],
+      [
+        { date: '2026-06-01', answers: { sleep: 3 } },
+        row,
+        { date: '2026-06-03', answers: { sleep: 3 } },
+      ],
+      { todayKey: '2026-06-03' },
+    );
+    assert.equal(cache['2026-06-02'].computed.newVelocity, 108);
+    assert.equal(cache['2026-06-02'].computed.posStreak, 0);
+    assert.equal(cache['2026-06-03'].computed.mult, 1);
+    assert.equal(cache['2026-06-03'].computed.posStreak, 1);
+  }
+});
+
+test('one missed closed day resets positive and negative continuity without decay', () => {
+  const positive = api.recomputeAll(
+    [q('sleep')],
+    [
+      { date: '2026-06-01', answers: { sleep: 3 } },
+      { date: '2026-06-03', answers: { sleep: 3 } },
+    ],
+  );
+  assert.equal(positive['2026-06-03'].computed.mult, 1);
+  assert.equal(positive['2026-06-03'].computed.newVelocity, 116);
+  const negative = api.recomputeAll(
+    [q('vice', 'negative')],
+    [
+      { date: '2026-06-01', answers: { vice: 1 } },
+      { date: '2026-06-03', answers: { vice: 1 } },
+    ],
+  );
+  assert.equal(negative['2026-06-03'].computed.mult, 1.15);
+  assert.equal(negative['2026-06-03'].computed.negStreak, 1);
+  assert.equal(negative['2026-06-03'].computed.shadow, 1);
 });

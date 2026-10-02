@@ -275,7 +275,7 @@ test('[CURRENT-BEHAVIOR] recomputeAll: shadow drag accrues from the two most-rec
   assert.equal(cache['2026-06-03'].computed.drag, 0); // the day itself is clean
 });
 
-test('[KNOWN-BUG: AUDIT-10] recomputeAll: a month-long gap still yields a 2-day streak', () => {
+test('[FIXED-IN-B-1: AUDIT-10] recomputeAll: a month-long gap resets multiplier continuity', () => {
   const e = loadEngine();
   e.setQuestions([pos('sleep')]);
   // No calendar-gap check: consecutive CACHE entries count as a streak regardless of date distance.
@@ -283,7 +283,7 @@ test('[KNOWN-BUG: AUDIT-10] recomputeAll: a month-long gap still yields a 2-day 
     e.run(
       "recomputeAll([{date:'2026-05-01',answers:{sleep:3}},{date:'2026-06-01',answers:{sleep:3}}])['2026-06-01'].computed.posStreak",
     ),
-    2,
+    1, // Legacy: 2; ENGINE.md §4 Variant1 resets closed gaps.
   );
 });
 

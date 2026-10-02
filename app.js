@@ -319,15 +319,22 @@ function runEngine(questions, answers, prevV, posS, negS, options = {}) {
 "./history":function(exports,require){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.retainLegacyGapContinuityPendingPolicy = retainLegacyGapContinuityPendingPolicy;
+exports.applyConservativeCarryOver = applyConservativeCarryOver;
 exports.recomputeAll = recomputeAll;
 const scoring_1 = require("./scoring");
 const dates_1 = require("./dates");
 const rounding_1 = require("./rounding");
-function retainLegacyGapContinuityPendingPolicy(state) {
-    return { ...state };
+const validation_1 = require("./validation");
+function applyConservativeCarryOver(state) {
+    const closedGap = state.previousDate !== null && (0, dates_1.calendarKeyOffset)(state.previousDate, 1) < state.currentDate;
+    const closedUnscoredDay = !state.eligible && (!state.todayKey || state.currentDate < state.todayKey);
+    return {
+        ...state,
+        posS: closedGap || closedUnscoredDay ? 0 : state.posS,
+        negS: closedGap || closedUnscoredDay ? 0 : state.negS,
+    };
 }
-function recomputeAll(questions, rows) {
+function recomputeAll(questions, rows, options = {}) {
     const sorted = [...rows].sort((a, b) => (a.date < b.date ? -1 : 1));
     const cache = {};
     let prevV = 100, posS = 0, negS = 0;
@@ -335,12 +342,14 @@ function recomputeAll(questions, rows) {
     sorted.forEach((row) => {
         if (!row.answers)
             return; // Preserve legacy absent-answer-row handling.
-        const prior = retainLegacyGapContinuityPendingPolicy({
+        const prior = applyConservativeCarryOver({
             velocity: prevV,
             posS,
             negS,
             previousDate,
             currentDate: row.date,
+            eligible: (0, validation_1.assessEligibility)(questions, row.answers, row).eligible,
+            todayKey: options.todayKey,
         });
         const yesterday = cache[(0, dates_1.calendarKeyOffset)(row.date, -1)]?.computed;
         const twoDaysAgo = cache[(0, dates_1.calendarKeyOffset)(row.date, -2)]?.computed;
@@ -668,7 +677,7 @@ function getActiveQuestions(){
 function runEngine(answers,prevV,posS,negS){
   return MomentumDomain.runEngine(getActiveQuestions(),answers,prevV,posS,negS);
 }
-function recomputeAll(rows){return MomentumDomain.recomputeAll(getActiveQuestions(),rows);}
+function recomputeAll(rows){return MomentumDomain.recomputeAll(getActiveQuestions(),rows,{todayKey:todayKey()});}
 
 async function loadCache(){
   const context=captureAppContext();

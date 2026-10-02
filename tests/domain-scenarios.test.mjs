@@ -153,7 +153,7 @@ test('[CURRENT-BEHAVIOR] recomputeAll: a genuinely incomplete day is marked part
   assert.equal(c.answeredCount, 1);
 });
 
-test('[KNOWN-BUG: AUDIT-10 gap] [FIXED-IN-B-1 shadow] recomputeAll: legacy gap streak, calendar shadow', () => {
+test('[FIXED-IN-B-1: AUDIT-10] recomputeAll: carry-over gaps reset continuity and calendar shadow', () => {
   const streak = recomputeAll(
     [q('k', 'positive', 'S')],
     [
@@ -161,7 +161,7 @@ test('[KNOWN-BUG: AUDIT-10 gap] [FIXED-IN-B-1 shadow] recomputeAll: legacy gap s
       { date: '2026-06-01', answers: { k: 3 } },
     ],
   )['2026-06-01'].computed.posStreak;
-  assert.equal(streak, 2);
+  assert.equal(streak, 1); // Legacy: 2; ENGINE.md §4 Variant1 closed-gap reset.
   const shadow = recomputeAll(
     [q('k', 'positive', 'S')],
     [
@@ -169,7 +169,7 @@ test('[KNOWN-BUG: AUDIT-10 gap] [FIXED-IN-B-1 shadow] recomputeAll: legacy gap s
       { date: '2026-06-01', answers: { k: 3 } },
     ],
   )['2026-06-01'].computed.shadow;
-  assert.equal(shadow, 0); // FIXED-IN-B-1: ENGINE.md §3.3 calendar shadow; legacy 2. Gap streak above remains pending WP2.4.
+  assert.equal(shadow, 0); // FIXED-IN-B-1: ENGINE.md §3.3 calendar shadow; legacy 2. Gap rule above is founder-selected carry-over.
 });
 
 // ENGINE.md §§5–6: only resolved currently-due keys count.

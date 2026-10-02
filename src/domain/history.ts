@@ -2,6 +2,7 @@ import { runEngine } from './scoring';
 import { calendarKeyOffset } from './dates';
 import { roundHalfAwayFromZero } from './rounding';
 import type { Answers, EngineResult, ScoreQuestion } from './scoring';
+import { assessEligibility } from './validation';
 import type { EligibilityOptions } from './validation';
 export interface EntryRow extends EligibilityOptions {
   date: string;
@@ -15,21 +16,37 @@ export interface HistoryEntry {
 }
 export type HistoryCache = Record<string, HistoryEntry>;
 
-// WP2.4 is blocked on founder policy. Keep legacy continuity explicitly behind
-// this seam: no reset/decay/grace/synthetic dates until that decision is made.
+// Founder chose Variant1: closed days without eligible action scores reset
+// multiplier continuity. They carry velocity and never invent drag or answers.
 export interface GapContext {
   velocity: number;
   posS: number;
   negS: number;
   previousDate: string | null;
   currentDate: string;
+  eligible: boolean;
+  todayKey?: string;
 }
-export function retainLegacyGapContinuityPendingPolicy(state: GapContext): GapContext {
-  return { ...state };
+export function applyConservativeCarryOver(state: GapContext): GapContext {
+  const closedGap =
+    state.previousDate !== null && calendarKeyOffset(state.previousDate, 1) < state.currentDate;
+  const closedUnscoredDay =
+    !state.eligible && (!state.todayKey || state.currentDate < state.todayKey);
+  return {
+    ...state,
+    posS: closedGap || closedUnscoredDay ? 0 : state.posS,
+    negS: closedGap || closedUnscoredDay ? 0 : state.negS,
+  };
+}
+export interface HistoryOptions {
+  // The adapter supplies its local today. Offline fixtures may omit it to
+  // replay a closed historical batch; no ambient clock is read by the domain.
+  todayKey?: string;
 }
 export function recomputeAll(
   questions: readonly ScoreQuestion[],
   rows: readonly EntryRow[],
+  options: HistoryOptions = {},
 ): HistoryCache {
   const sorted = [...rows].sort((a, b) => (a.date < b.date ? -1 : 1));
   const cache: HistoryCache = {};
@@ -39,12 +56,14 @@ export function recomputeAll(
   let previousDate: string | null = null;
   sorted.forEach((row) => {
     if (!row.answers) return; // Preserve legacy absent-answer-row handling.
-    const prior = retainLegacyGapContinuityPendingPolicy({
+    const prior = applyConservativeCarryOver({
       velocity: prevV,
       posS,
       negS,
       previousDate,
       currentDate: row.date,
+      eligible: assessEligibility(questions, row.answers, row).eligible,
+      todayKey: options.todayKey,
     });
     const yesterday = cache[calendarKeyOffset(row.date, -1)]?.computed;
     const twoDaysAgo = cache[calendarKeyOffset(row.date, -2)]?.computed;

@@ -302,7 +302,7 @@ schedulers and deferred responses; no live authentication/database/browser run
 is claimed by these tests.
 
 
-### Engine B core (WP2.1–2.3)
+### Engine B core (WP2.1–2.4)
 
 The domain bundle now derives version `b-1` results. `isValidAnswer` is shared
 by draft validation and scoring: only numeric integers 1–3 are answers.
@@ -327,11 +327,14 @@ The trajectory floor appears once, in `applyVelocityChange`; history passes its
 calendar shadow into the daily engine instead of flooring a second time.
 Streaks are derived once from actualChange; zero actual change resets both.
 
-Gap continuity remains deliberately legacy behind
-`retainLegacyGapContinuityPendingPolicy` (date/state seam for WP2.4). There is no
-new decay, grace, closed-day reset or synthetic row. Month-gap shadow is now 0,
-but the month-gap positive streak remains 2 until founder policy is chosen.
-Historical re-tiering still recalculates from the current definitions; immutable
+Founder selected Variant1 carry-over on 2026-10-02. `applyConservativeCarryOver`
+keeps velocity unchanged and resets multiplier streaks for closed gaps or closed
+rows without an eligible action score. No decay, grace, fabricated drag or
+synthetic rows are applied. `recomputeAll` accepts an explicit `todayKey`; the
+classic adapter supplies device-local today so unfinished today cannot reset
+continuity early. Pure historical batches without todayKey treat their rows as
+closed. Month-gap positive streak is now1 and calendar shadow0.
+Historical re-tiering still recalculates from current definitions; immutable
 entry revisions (WP3/WP2.5) and the legacy cutover manifest remain pending. This
 core implementation does not authorize production cutover or historical data
 migration.
@@ -340,6 +343,5 @@ Worked fixtures are `tests/fixtures/engine-b-1.json` (E1–E4, supplied E7 traje
 arithmetic and a negative half-tie). `tests/engine-b.test.mjs` also checks calendar
 shadow, floor/streak behavior, due/excused/draft eligibility, shadow sign reversal
 and deterministic E5 suffix replay. E6 immutable definitions remain an explicit
-known bug. The E7 arithmetic example supplies rawChange −10 (mult 1); the frozen
-ordinary daily negative multiplier starts at 1.15, so E7 tests the supplied
-trajectory inputs rather than changing that multiplier constant.
+known bug. E7 follows Oscar's corrected contract (d30afcc): raw −10 with mult1.15
+rounds to rawChange−12; the fixture tests both daily scoring and trajectory math.

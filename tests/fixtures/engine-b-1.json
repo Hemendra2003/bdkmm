@@ -4,8 +4,17 @@
     {
       "id": "E1",
       "description": "First Build-S full day",
-      "questions": [{ "key": "sleep", "text": "Sleep", "polarity": "positive", "tier": "S" }],
-      "answers": { "sleep": 3 },
+      "questions": [
+        {
+          "key": "sleep",
+          "text": "Sleep",
+          "polarity": "positive",
+          "tier": "S"
+        }
+      ],
+      "answers": {
+        "sleep": 3
+      },
       "previousVelocity": 100,
       "priorPositive": 0,
       "priorNegative": 0,
@@ -27,8 +36,17 @@
     {
       "id": "E2",
       "description": "Prior negative streak amplification",
-      "questions": [{ "key": "vice", "text": "Vice", "polarity": "negative", "tier": "S" }],
-      "answers": { "vice": 1 },
+      "questions": [
+        {
+          "key": "vice",
+          "text": "Vice",
+          "polarity": "negative",
+          "tier": "S"
+        }
+      ],
+      "answers": {
+        "vice": 1
+      },
       "previousVelocity": 100,
       "priorPositive": 0,
       "priorNegative": 3,
@@ -48,11 +66,28 @@
       "id": "E3",
       "description": "One of three due actions, no published score",
       "questions": [
-        { "key": "a", "text": "A", "polarity": "positive", "tier": "S" },
-        { "key": "b", "text": "B", "polarity": "positive", "tier": "S" },
-        { "key": "c", "text": "C", "polarity": "positive", "tier": "S" }
+        {
+          "key": "a",
+          "text": "A",
+          "polarity": "positive",
+          "tier": "S"
+        },
+        {
+          "key": "b",
+          "text": "B",
+          "polarity": "positive",
+          "tier": "S"
+        },
+        {
+          "key": "c",
+          "text": "C",
+          "polarity": "positive",
+          "tier": "S"
+        }
       ],
-      "answers": { "a": 3 },
+      "answers": {
+        "a": 3
+      },
       "previousVelocity": 108,
       "priorPositive": 1,
       "priorNegative": 0,
@@ -74,11 +109,23 @@
       "id": "E4",
       "description": "All excused, no action score",
       "questions": [
-        { "key": "sleep", "text": "Sleep", "polarity": "positive", "tier": "S" },
-        { "key": "vice", "text": "Vice", "polarity": "negative", "tier": "S" }
+        {
+          "key": "sleep",
+          "text": "Sleep",
+          "polarity": "positive",
+          "tier": "S"
+        },
+        {
+          "key": "vice",
+          "text": "Vice",
+          "polarity": "negative",
+          "tier": "S"
+        }
       ],
       "answers": {},
-      "options": { "excusedKeys": ["sleep", "vice"] },
+      "options": {
+        "excusedKeys": ["sleep", "vice"]
+      },
       "previousVelocity": 108,
       "priorPositive": 1,
       "priorNegative": 0,
@@ -98,8 +145,17 @@
     {
       "id": "negative-half-tie",
       "description": "ENGINE section2, legacy rawChange -8 becomes -9",
-      "questions": [{ "key": "sleep", "text": "Sleep", "polarity": "positive", "tier": "S" }],
-      "answers": { "sleep": 1 },
+      "questions": [
+        {
+          "key": "sleep",
+          "text": "Sleep",
+          "polarity": "positive",
+          "tier": "S"
+        }
+      ],
+      "answers": {
+        "sleep": 1
+      },
       "previousVelocity": 100,
       "priorPositive": 0,
       "priorNegative": 2,
@@ -111,22 +167,56 @@
         "newVelocity": 91,
         "negStreak": 3
       }
+    },
+    {
+      "id": "E7-daily",
+      "description": "Corrected ENGINE E7: negative multiplier1.15 with single floor",
+      "questions": [
+        {
+          "key": "vice",
+          "text": "Vice",
+          "polarity": "negative",
+          "tier": "S"
+        }
+      ],
+      "answers": {
+        "vice": 1
+      },
+      "previousVelocity": 5,
+      "priorPositive": 0,
+      "priorNegative": 0,
+      "expected": {
+        "mult": 1.15,
+        "rawChange": -12,
+        "intendedChange": -12,
+        "actualChange": -5,
+        "newVelocity": 0,
+        "negStreak": 1
+      }
     }
   ],
   "trajectoryCases": [
     {
       "id": "E7",
       "previousVelocity": 5,
-      "rawChange": -10,
+      "rawChange": -12,
       "shadow": 0,
-      "expected": { "newVelocity": 0, "intendedChange": -10, "actualChange": -5 }
+      "expected": {
+        "newVelocity": 0,
+        "intendedChange": -12,
+        "actualChange": -5
+      }
     },
     {
       "id": "E7-at-zero",
       "previousVelocity": 0,
-      "rawChange": -10,
+      "rawChange": -12,
       "shadow": 0,
-      "expected": { "newVelocity": 0, "intendedChange": -10, "actualChange": 0 }
+      "expected": {
+        "newVelocity": 0,
+        "intendedChange": -12,
+        "actualChange": 0
+      }
     }
   ]
 }
