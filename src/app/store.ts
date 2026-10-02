@@ -1,7 +1,8 @@
 import type { Session } from '../state/session.ts';
 import { createSessionController } from '../state/session.ts';
 import { createRepositories, type QuestionRow, type EntryRow } from '../data/repositories.ts';
-import { localDateKey } from '../domain/dates.ts';
+import { localDateKey, calendarKeyOffset } from '../domain/dates.ts';
+import { recomputeAll, type HistoryCache } from '../domain/history.ts';
 import { supabase, SUPABASE_SETUP_ERROR } from './supabase.ts';
 
 export interface AppState {
@@ -11,6 +12,8 @@ export interface AppState {
   questions: QuestionRow[];
   todayEntry: EntryRow | null;
   loadError: string | null;
+  lastScored: { date: string; velocity: number } | null;
+  weekCheckIns: number;
 }
 
 type Listener = (state: AppState) => void;
@@ -22,7 +25,24 @@ const initialState: AppState = {
   questions: [],
   todayEntry: null,
   loadError: null,
+  lastScored: null,
+  weekCheckIns: 0,
 };
+
+function findLastScored(history: HistoryCache): { date: string; velocity: number } | null {
+  const eligibleDates = Object.keys(history)
+    .filter((d) => history[d].computed.eligible)
+    .sort()
+    .reverse();
+  if (eligibleDates.length === 0) return null;
+  const date = eligibleDates[0];
+  return { date, velocity: history[date].computed.newVelocity };
+}
+
+function countWeekCheckIns(allEntries: readonly { date: string }[], todayKey: string): number {
+  const weekStart = calendarKeyOffset(todayKey, -6);
+  return allEntries.filter((e) => e.date >= weekStart && e.date <= todayKey).length;
+}
 
 let state: AppState = { ...initialState };
 const listeners = new Set<Listener>();
@@ -76,21 +96,44 @@ const controller = createSessionController({
         questions: [],
         todayEntry: null,
         loadError: null,
+        lastScored: null,
+        weekCheckIns: 0,
       });
     }
   },
   async boot(session, _event, context) {
     if (!session) return;
     const userId = session.user.id;
-    setState({ status: 'loading', userId, questions: [], todayEntry: null, loadError: null });
+    setState({
+      status: 'loading',
+      userId,
+      questions: [],
+      todayEntry: null,
+      loadError: null,
+      lastScored: null,
+      weekCheckIns: 0,
+    });
     try {
       const todayKey = localDateKey(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone);
-      const [questions, todayEntry] = await Promise.all([
+      const [questions, todayEntry, allEntries] = await Promise.all([
         repos.questions.list(),
         repos.entries.get(todayKey),
+        repos.entries.list(),
       ]);
       if (!controller.isCurrent(context)) return;
-      setState({ status: 'signed-in', userId, todayKey, questions, todayEntry, loadError: null });
+      const history = recomputeAll(questions, allEntries, { todayKey });
+      const lastScored = findLastScored(history);
+      const weekCheckIns = countWeekCheckIns(allEntries, todayKey);
+      setState({
+        status: 'signed-in',
+        userId,
+        todayKey,
+        questions,
+        todayEntry,
+        loadError: null,
+        lastScored,
+        weekCheckIns,
+      });
     } catch (err) {
       if (!controller.isCurrent(context)) return;
       const msg = err instanceof Error ? err.message : 'Could not load your data.';

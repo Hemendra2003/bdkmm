@@ -1,7 +1,7 @@
 import type { AppState } from '../store.ts';
 import { Card } from '../components/Card.tsx';
 import { StatusLine } from '../components/StatusLine.tsx';
-import type { QuestionRow } from '../../data/repositories.ts';
+import { Button } from '../components/Button.tsx';
 
 interface TodayProps {
   state: AppState;
@@ -21,9 +21,56 @@ function formatDate(key: string): string {
   }
 }
 
-function answerLabel(question: QuestionRow, value: 1 | 2 | 3 | null): string {
-  if (value === null) return '—';
-  return question.opts[value - 1];
+function formatLastScoredDate(date: string, todayKey: string): string {
+  try {
+    if (date === todayKey) return 'today';
+    const [year, month, day] = date.split('-').map(Number);
+    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(
+      new Date(year, month - 1, day),
+    );
+  } catch {
+    return date;
+  }
+}
+
+function MomentumIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="currentColor"
+      aria-hidden="true"
+      style={{ flexShrink: 0 }}
+    >
+      <rect x="6" y="0" width="4" height="2" />
+      <rect x="4" y="2" width="8" height="2" />
+      <rect x="4" y="4" width="8" height="6" />
+      <rect x="2" y="10" width="12" height="2" />
+      <rect x="5" y="12" width="6" height="2" />
+      <rect x="6" y="14" width="4" height="2" />
+    </svg>
+  );
+}
+
+function getNudge(
+  todayEntry: AppState['todayEntry'],
+  lastScored: AppState['lastScored'],
+  weekCheckIns: number,
+  todayKey: string | null,
+): string | null {
+  if (todayEntry !== null) return null;
+  if (lastScored === null && weekCheckIns === 0) return 'No check-ins yet. Start here.';
+  if (lastScored !== null && todayKey !== null && lastScored.date < todayKey) {
+    // Gap: last score was before today
+    const [ly, lm, ld] = lastScored.date.split('-').map(Number);
+    const [ty, tm, td] = todayKey.split('-').map(Number);
+    const lastMs = Date.UTC(ly, lm - 1, ld);
+    const todayMs = Date.UTC(ty, tm - 1, td);
+    const daysSince = Math.round((todayMs - lastMs) / 86_400_000);
+    if (daysSince > 1) return 'Welcome back. Start with today.';
+  }
+  return null;
 }
 
 export function Today({ state }: TodayProps) {
@@ -51,8 +98,6 @@ export function Today({ state }: TodayProps) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          flexDirection: 'column',
-          gap: 'var(--space-4)',
           padding: 'var(--space-4)',
         }}
       >
@@ -61,8 +106,9 @@ export function Today({ state }: TodayProps) {
     );
   }
 
-  const { questions, todayEntry, todayKey } = state;
+  const { todayEntry, todayKey, lastScored, weekCheckIns } = state;
   const isLogged = todayEntry !== null;
+  const nudge = getNudge(todayEntry, lastScored, weekCheckIns, todayKey);
 
   return (
     <main
@@ -74,117 +120,113 @@ export function Today({ state }: TodayProps) {
         margin: '0 auto',
         width: '100%',
         padding: 'var(--space-4)',
-        gap: 'var(--space-6)',
+        gap: 'var(--space-5)',
       }}
     >
-      <header>
-        {todayKey && (
-          <p
-            style={{
-              fontSize: 'var(--text-lg)',
-              fontWeight: 600,
-              color: 'var(--text-primary)',
-            }}
-          >
-            {formatDate(todayKey)}
-          </p>
-        )}
-      </header>
+      {todayKey && (
+        <p
+          style={{
+            fontSize: 'var(--text-sm)',
+            color: 'var(--text-muted)',
+            fontFamily: 'var(--font-mono)',
+            textTransform: 'uppercase',
+            letterSpacing: '.06em',
+          }}
+        >
+          {formatDate(todayKey)}
+        </p>
+      )}
 
-      <section aria-label="Today's status">
-        <Card
+      {/* Primary action */}
+      <Card padding="md">
+        <div
           style={{
             display: 'flex',
             alignItems: 'center',
+            justifyContent: 'space-between',
             gap: 'var(--space-3)',
           }}
-          padding="md"
         >
-          <span
-            aria-hidden="true"
+          <p
             style={{
-              fontSize: 'var(--text-xl)',
-              lineHeight: 1,
+              fontSize: 'var(--text-sm)',
+              color: isLogged ? 'var(--color-green)' : 'var(--text-secondary)',
             }}
           >
-            {isLogged ? '✅' : '📋'}
-          </span>
-          <p style={{ color: isLogged ? 'var(--color-green)' : 'var(--text-secondary)' }}>
-            {isLogged ? "Today's check-in is recorded." : 'No check-in logged yet for today.'}
+            {isLogged ? "Today's check-in is recorded." : 'No check-in logged yet.'}
           </p>
-        </Card>
-      </section>
+          <Button variant="primary" disabled style={{ minWidth: 120, fontSize: 'var(--text-xs)' }}>
+            {isLogged ? 'Edit check-in' : 'Start check-in'}
+          </Button>
+        </div>
+      </Card>
 
-      <section aria-label="Your questions">
-        <h2
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 'var(--text-xs)',
-            letterSpacing: '.06em',
-            textTransform: 'uppercase',
-            color: 'var(--text-muted)',
-            marginBottom: 'var(--space-3)',
-          }}
-        >
-          Questions ({questions.length})
-        </h2>
-
-        {questions.length === 0 ? (
-          <Card padding="md">
-            <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>
-              No questions configured yet.
-            </p>
-          </Card>
-        ) : (
-          <ul
+      {/* Momentum */}
+      <Card padding="md">
+        {lastScored !== null ? (
+          <div
             style={{
-              listStyle: 'none',
               display: 'flex',
-              flexDirection: 'column',
+              alignItems: 'center',
               gap: 'var(--space-2)',
+              color: 'var(--color-gold)',
             }}
           >
-            {questions.map((q) => {
-              const answer = todayEntry?.answers[q.key] ?? null;
-              return (
-                <li key={q.key}>
-                  <Card
-                    padding="md"
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 'var(--space-1)',
-                    }}
-                  >
-                    <p
-                      style={{
-                        fontSize: 'var(--text-sm)',
-                        color: 'var(--text-primary)',
-                      }}
-                    >
-                      {q.text}
-                    </p>
-                    <p
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 'var(--text-xs)',
-                        color:
-                          answer === null
-                            ? 'var(--text-muted)'
-                            : q.polarity === 'positive'
-                              ? 'var(--color-green)'
-                              : 'var(--color-negred)',
-                      }}
-                    >
-                      {answerLabel(q, answer)}
-                    </p>
-                  </Card>
-                </li>
-              );
-            })}
-          </ul>
+            <MomentumIcon />
+            <span
+              style={{
+                fontFamily: 'var(--font-pixel)',
+                fontSize: '9px',
+                letterSpacing: '.04em',
+                lineHeight: 1.6,
+              }}
+            >
+              {Math.round(lastScored.velocity)} km/s
+            </span>
+            <span
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: 'var(--text-xs)',
+                color: 'var(--text-muted)',
+              }}
+            >
+              · last scored {formatLastScoredDate(lastScored.date, todayKey ?? '')}
+            </span>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+              color: 'var(--text-muted)',
+            }}
+          >
+            <MomentumIcon />
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)' }}>
+              No velocity yet — score your first check-in.
+            </span>
+          </div>
         )}
-      </section>
+      </Card>
+
+      {/* Week summary */}
+      <p
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: 'var(--text-xs)',
+          color: 'var(--text-muted)',
+          letterSpacing: '.04em',
+        }}
+      >
+        This week:{' '}
+        <span style={{ color: weekCheckIns > 0 ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
+          {weekCheckIns === 1 ? '1 check-in' : `${weekCheckIns} check-ins`}
+        </span>
+      </p>
+
+      {/* Contextual nudge — at most one */}
+      {nudge !== null && <StatusLine text={nudge} tone="info" />}
     </main>
   );
 }
