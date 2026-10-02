@@ -1,2 +1,23 @@
+# ── Local tool / editor settings (never commit; these have leaked secrets before) ──
+.claude/settings.local.json
+.claude/settings.json
+.vscode/
+.idea/
+
+# ── Environment secrets ──
+# Ignore every .env variant, but keep a committable, value-free template.
+.env
+.env.*
+!.env.example
+
+# ── Dependencies / build output ──
+node_modules/
+
+# ── OS cruft ──
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# ── Pre-existing project ignores ──
 *.patch
 index_backup.html
