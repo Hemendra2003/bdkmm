@@ -2,6 +2,12 @@
 
 All notable changes to MOMENTUM. Each release is one reviewed pull request into `main`.
 
+## [0.2.1] - 2026-10-02 — Browser tests for /app/
+
+### Build & CI
+
+- Browser tests now cover `/app/` on desktop and 390px mobile: missing and malformed settings show the setup error, and the sign-in form is keyboard reachable. All real network traffic is blocked during tests.
+
 ## [0.2.0] - 2026-10-02 — React app shell
 
 ### Added

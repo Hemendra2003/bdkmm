@@ -23,9 +23,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run preview',
+    command: 'node tests/e2e/preview.mjs',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: false,
-    timeout: 30_000,
+    timeout: 60_000,
   },
 });
