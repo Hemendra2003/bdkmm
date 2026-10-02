@@ -27,18 +27,29 @@ const q2: QuestionRow = {
   sort_order: 2,
 };
 
+function makeSave(result: 'resolve' | 'reject' = 'resolve') {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const fn = vi.fn((_: Answers): Promise<void> => {
+    if (result === 'reject') return Promise.reject(new Error('Network error'));
+    return Promise.resolve();
+  });
+  return fn;
+}
+
 const defaultProps = {
   questions: [q1, q2],
-  initialAnswers: null,
+  initialAnswers: null as Answers | null,
   todayKey: '2026-10-02',
   userId: 'user-1',
-  onSave: vi.fn<[Answers], Promise<void>>().mockResolvedValue(undefined),
+  onSave: makeSave(),
   onClose: vi.fn(),
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
+  defaultProps.onSave = makeSave();
+  defaultProps.onClose = vi.fn();
 });
 
 describe('CheckIn', () => {
@@ -67,7 +78,7 @@ describe('CheckIn', () => {
     expect(screen.getByText(/1 unanswered · Score will remain pending/)).toBeTruthy();
   });
 
-  it('shows all answered in green when complete', () => {
+  it('shows all answered when complete', () => {
     render(<CheckIn {...defaultProps} />);
     fireEvent.click(screen.getByText('Yes, fully'));
     fireEvent.click(screen.getByText('Yes'));
@@ -75,27 +86,27 @@ describe('CheckIn', () => {
   });
 
   it('calls onSave and onClose on successful save', async () => {
-    render(<CheckIn {...defaultProps} />);
+    const onSave = makeSave('resolve');
+    const onClose = vi.fn();
+    render(<CheckIn {...defaultProps} onSave={onSave} onClose={onClose} />);
     fireEvent.click(screen.getByText('Yes, fully'));
     fireEvent.click(screen.getByText('Save check-in'));
-    await waitFor(() => expect(defaultProps.onSave).toHaveBeenCalledOnce());
-    expect(defaultProps.onSave).toHaveBeenCalledWith({ q1: 1 });
-    await waitFor(() => expect(defaultProps.onClose).toHaveBeenCalledOnce());
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave).toHaveBeenCalledWith({ q1: 1 });
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
   });
 
   it('shows error and stays open when save fails', async () => {
-    const onSave = vi.fn<[Answers], Promise<void>>().mockRejectedValue(new Error('Network error'));
-    render(<CheckIn {...defaultProps} onSave={onSave} />);
+    const onSave = makeSave('reject');
+    const onClose = vi.fn();
+    render(<CheckIn {...defaultProps} onSave={onSave} onClose={onClose} />);
     fireEvent.click(screen.getByText('Save check-in'));
     await waitFor(() => expect(screen.getByText('Network error')).toBeTruthy());
-    expect(defaultProps.onClose).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('loads draft from localStorage', () => {
-    localStorage.setItem(
-      'md:draft:user-1:2026-10-02',
-      JSON.stringify({ q1: 2, q2: 3 }),
-    );
+    localStorage.setItem('md:draft:user-1:2026-10-02', JSON.stringify({ q1: 2, q2: 3 }));
     render(<CheckIn {...defaultProps} />);
     expect(screen.getByText(/2 \/ 2 answered/)).toBeTruthy();
   });

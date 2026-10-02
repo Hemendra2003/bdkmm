@@ -2,6 +2,7 @@ import type { AppState } from '../store.ts';
 import { Card } from '../components/Card.tsx';
 import { StatusLine } from '../components/StatusLine.tsx';
 import { Button } from '../components/Button.tsx';
+import { EngineCard } from '../components/EngineCard.tsx';
 
 interface TodayProps {
   state: AppState;
@@ -107,7 +108,7 @@ export function Today({ state, onStartCheckIn }: TodayProps) {
     );
   }
 
-  const { todayEntry, todayKey, lastScored, weekCheckIns } = state;
+  const { todayEntry, todayKey, lastScored, weekCheckIns, todayResult } = state;
   const isLogged = todayEntry !== null;
   const nudge = getNudge(todayEntry, lastScored, weekCheckIns, todayKey);
 
@@ -165,6 +166,9 @@ export function Today({ state, onStartCheckIn }: TodayProps) {
           </Button>
         </div>
       </Card>
+
+      {/* Today's engine result — shown when a check-in has been saved */}
+      {todayResult !== null && <EngineCard result={todayResult} />}
 
       {/* Momentum */}
       <Card padding="md">

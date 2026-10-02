@@ -2,7 +2,7 @@ import type { Session } from '../state/session.ts';
 import { createSessionController } from '../state/session.ts';
 import { createRepositories, type QuestionRow, type EntryRow } from '../data/repositories.ts';
 import { localDateKey, calendarKeyOffset } from '../domain/dates.ts';
-import { recomputeAll, type HistoryCache } from '../domain/history.ts';
+import { recomputeAll, type HistoryCache, type HistoryEntry } from '../domain/history.ts';
 import { supabase, SUPABASE_SETUP_ERROR } from './supabase.ts';
 
 export interface AppState {
@@ -14,6 +14,7 @@ export interface AppState {
   loadError: string | null;
   lastScored: { date: string; velocity: number } | null;
   weekCheckIns: number;
+  todayResult: HistoryEntry | null;
 }
 
 type Listener = (state: AppState) => void;
@@ -27,6 +28,7 @@ const initialState: AppState = {
   loadError: null,
   lastScored: null,
   weekCheckIns: 0,
+  todayResult: null,
 };
 
 function findLastScored(history: HistoryCache): { date: string; velocity: number } | null {
@@ -98,6 +100,7 @@ const controller = createSessionController({
         loadError: null,
         lastScored: null,
         weekCheckIns: 0,
+        todayResult: null,
       });
     }
   },
@@ -112,6 +115,7 @@ const controller = createSessionController({
       loadError: null,
       lastScored: null,
       weekCheckIns: 0,
+      todayResult: null,
     });
     try {
       const todayKey = localDateKey(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -124,6 +128,7 @@ const controller = createSessionController({
       const history = recomputeAll(questions, allEntries, { todayKey });
       const lastScored = findLastScored(history);
       const weekCheckIns = countWeekCheckIns(allEntries, todayKey);
+      const todayResult = history[todayKey] ?? null;
       setState({
         status: 'signed-in',
         userId,
@@ -133,6 +138,7 @@ const controller = createSessionController({
         loadError: null,
         lastScored,
         weekCheckIns,
+        todayResult,
       });
     } catch (err) {
       if (!controller.isCurrent(context)) return;
@@ -158,7 +164,8 @@ export async function saveEntry(answers: import('../data/repositories.ts').Answe
   const history = recomputeAll(questions, allEntries, { todayKey });
   const lastScored = findLastScored(history);
   const weekCheckIns = countWeekCheckIns(allEntries, todayKey);
-  setState({ todayEntry: entry, lastScored, weekCheckIns });
+  const todayResult = history[todayKey] ?? null;
+  setState({ todayEntry: entry, lastScored, weekCheckIns, todayResult });
 }
 
 export async function signIn(email: string, password: string): Promise<string | null> {
