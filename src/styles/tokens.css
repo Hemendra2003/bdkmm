@@ -1,0 +1,208 @@
+/* ============================================================
+   MOMENTUM — Design Tokens  ·  src/styles/tokens.css
+   WP1.7: new file only. Do not edit index.html, app.js,
+   storage.js or auth.js. Wiring tokens into the live app
+   is a later ticket.
+   ============================================================ */
+
+/* ── 1. Primitive palette (extracted from index.html :root) ── */
+:root {
+
+  /* Backgrounds — surface depth */
+  --color-bg-base:     #05060D; /* deepest, page background  */
+  --color-bg-raised:   #0D0F1A; /* cards, dialogs             */
+  --color-bg-overlay:  #181A28; /* borders, dividers, bg3     */
+  --color-bg-inset:    #1F2133; /* elevated surface, bg4      */
+
+  /* Brand gold */
+  --color-gold:        #FFB830;
+  --color-gold-light:  #FFE066; /* intentional highlight, not a substitute */
+
+  /* Status primitives */
+  --color-green:   #3DFF6E; /* positive / success              */
+  --color-blue:    #5BBFFF; /* info / chart secondary          */
+  --color-red:     #D62828; /* brand red; artwork only at body size (see contrast §) */
+  --color-red-ui:  #FF5555; /* accessible error text           */
+  --color-negred:  #FF3030; /* drag / negative score; avoid body text on bg3 (see contrast §) */
+
+  /* Text primitives */
+  --color-text-primary:   #F0F0F8;
+  --color-text-secondary: #B8B8D0;
+  --color-text-muted:     #9090B0;
+  --color-text-disabled:  #505068;
+  /* ⚠ --color-text-disabled fails WCAG AA 4.5:1 on every
+     surface (2.2–2.9:1). Use only for decorative or
+     purely ornamental elements; never for informational text. */
+
+  /* ── 2. Semantic roles ── */
+
+  /* Brand */
+  --color-brand:    var(--color-gold);
+  --color-positive: var(--color-green);
+  --color-negative: var(--color-negred);
+  --color-warning:  var(--color-gold);
+  --color-info:     var(--color-blue);
+  --color-error:    var(--color-red-ui);
+  --color-danger:   var(--color-red);
+
+  /* Surface roles */
+  --surface-page:     var(--color-bg-base);
+  --surface-card:     var(--color-bg-raised);
+  --surface-border:   var(--color-bg-overlay);
+  --surface-elevated: var(--color-bg-inset);
+
+  /* Text roles */
+  --text-primary:   var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted:     var(--color-text-muted);
+  --text-disabled:  var(--color-text-disabled);
+  --text-brand:     var(--color-brand);
+  --text-positive:  var(--color-positive);
+  --text-negative:  var(--color-negative);
+  --text-warning:   var(--color-warning);
+  --text-info:      var(--color-info);
+  --text-error:     var(--color-error);
+
+  /* ── 3. Alpha variants ── */
+
+  /* Gold */
+  --gold-a04: rgba(255, 184,  48, 0.04);
+  --gold-a07: rgba(255, 184,  48, 0.07);
+  --gold-a10: rgba(255, 184,  48, 0.10);
+  --gold-a18: rgba(255, 184,  48, 0.18);
+  --gold-a25: rgba(255, 184,  48, 0.25);
+  --gold-a35: rgba(255, 184,  48, 0.35);
+  --gold-a50: rgba(255, 184,  48, 0.50);
+
+  /* Green */
+  --green-a05: rgba( 61, 255, 110, 0.05);
+  --green-a08: rgba( 61, 255, 110, 0.08);
+  --green-a12: rgba( 61, 255, 110, 0.12);
+  --green-a14: rgba( 61, 255, 110, 0.14);
+  --green-a20: rgba( 61, 255, 110, 0.20);
+  --green-a30: rgba( 61, 255, 110, 0.30);
+
+  /* Red-ui (#FF5555) */
+  --red-ui-a05: rgba(255,  85,  85, 0.05);
+  --red-ui-a10: rgba(255,  85,  85, 0.10);
+  --red-ui-a18: rgba(255,  85,  85, 0.18);
+  --red-ui-a35: rgba(255,  85,  85, 0.35);
+
+  /* NegRed (#FF3030) */
+  --negred-a04: rgba(255,  48,  48, 0.04);
+  --negred-a10: rgba(255,  48,  48, 0.10);
+  --negred-a18: rgba(255,  48,  48, 0.18);
+  --negred-a20: rgba(255,  48,  48, 0.20);
+
+  /* Blue */
+  --blue-a08: rgba( 91, 191, 255, 0.08);
+  --blue-a14: rgba( 91, 191, 255, 0.14);
+  --blue-a30: rgba( 91, 191, 255, 0.30);
+
+  /* Brand red (#D62828) */
+  --red-a10: rgba(214,  40,  40, 0.10);
+  --red-a18: rgba(214,  40,  40, 0.18);
+  --red-a35: rgba(214,  40,  40, 0.35);
+  --red-a40: rgba(214,  40,  40, 0.40);
+
+  /* Nav overlay */
+  --bg-nav: rgba(5, 6, 13, 0.96);
+
+  /* ── 4. Chart tokens ── */
+
+  --chart-line-momentum:   var(--color-gold);
+  --chart-line-positive:   var(--color-green);
+  --chart-line-negative:   var(--color-negred);
+  --chart-line-neutral:    var(--color-blue);
+  --chart-area-positive:   var(--green-a12);
+  --chart-area-negative:   var(--negred-a10);
+  --chart-grid:            var(--color-bg-overlay);
+  --chart-axis-label:      var(--color-text-muted);
+  --chart-tooltip-bg:      var(--color-bg-raised);
+  --chart-tooltip-border:  var(--color-bg-overlay);
+  --chart-skeleton:        var(--color-bg-raised);
+  --chart-marker-today:    var(--color-gold);
+  --chart-marker-gap:      var(--color-text-disabled);
+  /* gap marker uses disabled color because it is decorative/ornamental */
+
+  /* ── 5. Typography ── */
+
+  --font-pixel: 'Press Start 2P', monospace;
+  --font-mono:  'DM Mono', monospace;
+  --font-sans:  'Space Grotesk', system-ui, sans-serif;
+
+  /* Type scale */
+  --text-xs:   12px; /* metadata, labels                        */
+  --text-sm:   14px; /* secondary body                          */
+  --text-base: 16px; /* body                                    */
+  --text-lg:   18px;
+  --text-xl:   22px;
+  --text-2xl:  28px;
+  --text-3xl:  36px;
+
+  /* Line heights paired with scale (spec: 12/16, 14/20, 16/24) */
+  --leading-xs:   16px; /* 12px text → 16px leading */
+  --leading-sm:   20px; /* 14px text → 20px leading */
+  --leading-base: 24px; /* 16px text → 24px leading */
+  --leading-lg:   28px;
+  --leading-xl:   32px;
+
+  /* ── 6. Spacing ── */
+
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+
+  /* ── 7. Radius scale ── */
+
+  --radius-sm:  4px;
+  --radius:     6px; /* preserved from original app */
+  --radius-lg: 12px;
+  --radius-xl: 16px; /* bottom sheets, drawers      */
+
+  /* ── 8. Layout ── */
+
+  --max-width:  680px;
+  --nav-height:  56px;
+  --touch-min:   44px; /* minimum touch target (product standard) */
+
+  /* ── 9. Motion ── */
+
+  --duration-fast:   120ms;
+  --duration-base:   200ms;
+  --duration-slow:   300ms;
+  --duration-float: 4000ms; /* rocket float animation         */
+  --easing-default:   ease;
+  --easing-out:   ease-out;
+  --easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── 10. Focus ── */
+
+  --focus-ring-color:  var(--color-gold);
+  --focus-ring-width:  2px;
+  --focus-ring-offset: 3px;
+}
+
+/* Reduced-motion: collapse all durations to zero.
+   Apply animations through these variables so this override
+   takes effect automatically. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast:   0ms;
+    --duration-base:   0ms;
+    --duration-slow:   0ms;
+    --duration-float:  0ms;
+  }
+}
+
+/* ── 11. Focus utility class ── */
+
+/* Apply to any interactive element that needs the gold focus ring. */
+.focus-gold:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+}

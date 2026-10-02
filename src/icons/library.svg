@@ -1,0 +1,9 @@
+<svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor" aria-hidden="true">
+  <!-- four book spines (varying heights) -->
+  <rect x="0" y="1" width="3" height="13"/>
+  <rect x="4" y="3" width="3" height="11"/>
+  <rect x="8" y="0" width="3" height="14"/>
+  <rect x="12" y="4" width="4" height="10"/>
+  <!-- shelf -->
+  <rect x="0" y="14" width="16" height="2"/>
+</svg>
