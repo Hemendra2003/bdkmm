@@ -574,6 +574,13 @@ body.app-auth-locked .auth-floating-signout{display:none!important}
 body.demo-active .page{padding-top:38px}
 body.demo-active .overlay{padding-top:38px}
 
+/* ENTRY EDITOR STATUS LINE */
+#be-entry-status{font-family:var(--mono);font-size:11px;letter-spacing:.06em;line-height:1.5;text-align:center;padding:6px 0 2px;min-height:0}
+#be-entry-status:empty{display:none}
+#be-retry-load-btn{width:100%;background:rgba(91,191,255,.08);border:1px solid rgba(91,191,255,.3);color:var(--blue);font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:12px;cursor:pointer;border-radius:var(--radius);margin-bottom:8px;transition:background .15s}
+#be-retry-load-btn:hover{background:rgba(91,191,255,.14)}
+#be-retry-load-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
 </style>
 </head>
 <body>
@@ -904,6 +911,8 @@ body.demo-active .overlay{padding-top:38px}
     </div>
     <div id="be-questions"></div>
     <div class="be-save-btn-wrap">
+      <div id="be-entry-status" role="status" aria-live="polite" aria-atomic="true"></div>
+      <button id="be-retry-load-btn" style="display:none">↺ Retry loading</button>
       <button class="be-save-btn" id="be-save-btn" onclick="finishQuestionnaire()">🚀 Save &amp; Finish</button>
     </div>
   </div>
@@ -997,6 +1006,45 @@ body.demo-active .overlay{padding-top:38px}
 
   // Track runtime changes
   window.addEventListener('momentum-demo-change',function(e){applyDemoState(e.detail);});
+})();
+</script>
+<script>
+/* Entry status line — drives #be-entry-status and #be-retry-load-btn
+   from window.MomentumEntry contract (P0.5).                         */
+(function(){
+  var _lastText='';
+  function setStatus(text,color){
+    var el=document.getElementById('be-entry-status');
+    if(!el) return;
+    if(text===_lastText) return;
+    _lastText=text;
+    el.textContent=text;
+    el.style.color=color||'';
+  }
+  function applyEntryState(state){
+    var status=state&&state.status;
+    var retryBtn=document.getElementById('be-retry-load-btn');
+    if(retryBtn) retryBtn.style.display=(status==='load-error')?'':'none';
+    var text='',color='';
+    switch(status){
+      case 'loading':      text='Loading your entry…';                              color='var(--slate2)'; break;
+      case 'load-error':   text=state.error||'Could not load your entry.';              color='var(--red2)';   break;
+      case 'saving':       text='Saving…';                                          color='var(--slate2)'; break;
+      case 'save-error':   text='Not saved — your answers are kept, try again';   color='var(--red2)';   break;
+      case 'refresh-error':text='Saved. Refresh failed — your entry was recorded.';color='var(--gold)';   break;
+      default:             text='';
+    }
+    if(!text&&state&&state.draftError){text='Drafts unavailable on this device';color='var(--gold)';}
+    setStatus(text,color);
+  }
+  var retryBtn=document.getElementById('be-retry-load-btn');
+  if(retryBtn){
+    retryBtn.addEventListener('click',function(){
+      if(window.MomentumEntry) window.MomentumEntry.retryLoad();
+    });
+  }
+  if(window.MomentumEntry) applyEntryState(window.MomentumEntry.getState());
+  window.addEventListener('momentum-entry-change',function(e){applyEntryState(e.detail);});
 })();
 </script>
 </body>
