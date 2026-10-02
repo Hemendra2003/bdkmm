@@ -77,8 +77,63 @@ export function parseDraft(
     !draft.answers ||
     typeof draft.answers !== 'object' ||
     Array.isArray(draft.answers) ||
-    Object.entries(draft.answers).some(([key, val]) => key.length > 128 || ![1, 2, 3].includes(val))
+    Object.entries(draft.answers).some(([key, val]) => key.length > 128 || !isValidAnswer(val))
   )
     throw new Error('Invalid draft');
   return draft.answers as Record<string, 1 | 2 | 3>;
+}
+
+export type ValidAnswer = 1 | 2 | 3;
+export function isValidAnswer(value: unknown): value is ValidAnswer {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 && value <= 3;
+}
+export interface EligibilityOptions {
+  dueKeys?: readonly string[];
+  excusedKeys?: readonly string[];
+  finalized?: boolean;
+}
+export interface Eligibility {
+  eligible: boolean;
+  partial: boolean;
+  answeredCount: number;
+  excusedCount: number;
+  dueCount: number;
+  status: 'scored' | 'pending' | 'no-action' | 'draft';
+  answerStates: Record<string, 'answered' | 'excused' | 'unanswered' | 'invalid'>;
+}
+export function assessEligibility(
+  questions: readonly { key: string }[],
+  answers: Record<string, unknown>,
+  options: EligibilityOptions = {},
+): Eligibility {
+  const due = new Set(options.dueKeys ?? questions.map((q) => q.key));
+  const excused = new Set(options.excusedKeys ?? []);
+  const keys = [...new Set(questions.map((q) => q.key))].filter((key) => due.has(key));
+  let answeredCount = 0,
+    excusedCount = 0;
+  const states = keys.map((key) => {
+    if (excused.has(key)) {
+      excusedCount++;
+      return [key, 'excused'] as const;
+    }
+    const value = Object.hasOwn(answers, key) ? answers[key] : undefined;
+    if (isValidAnswer(value)) {
+      answeredCount++;
+      return [key, 'answered'] as const;
+    }
+    return [key, value === null || value === undefined ? 'unanswered' : 'invalid'] as const;
+  });
+  const partial = answeredCount + excusedCount < keys.length;
+  const eligible = options.finalized !== false && !partial && answeredCount > 0;
+  const status =
+    options.finalized === false ? 'draft' : partial ? 'pending' : eligible ? 'scored' : 'no-action';
+  return {
+    eligible,
+    partial,
+    answeredCount,
+    excusedCount,
+    dueCount: keys.length,
+    status,
+    answerStates: Object.fromEntries(states),
+  };
 }

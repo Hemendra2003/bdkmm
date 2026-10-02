@@ -5,7 +5,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import ts from 'typescript';
 import { pathToFileURL } from 'node:url';
-const names = ['dates', 'scoring', 'validation', 'history'];
+const names = ['dates', 'rounding', 'validation', 'scoring', 'history'];
 export function buildLegacyBundle() {
   const factories = names.map((name) => {
     const source = readFileSync(new URL(`./${name}.ts`, import.meta.url), 'utf8');
