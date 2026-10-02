@@ -320,6 +320,12 @@ body{margin:0;padding:0;width:100vw;max-width:100%;height:100vh}
 .sum-delta-big{font-family:var(--pixel);font-size:13px}
 .sum-mult-tag{font-family:var(--mono);font-size:9px;color:var(--gold);background:rgba(255,184,48,.08);border:1px solid rgba(255,184,48,.18);padding:3px 9px;margin-top:5px;display:inline-block;border-radius:3px}
 .streak-ribbon{display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid;border-radius:var(--radius);font-family:var(--mono);font-size:11px;margin-bottom:16px}
+.sum-breakdown{background:var(--bg2);border:1px solid var(--bg3);border-radius:var(--radius);padding:12px 14px;margin-bottom:16px}
+.sum-breakdown-title{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--slate2);margin-bottom:10px}
+.sum-breakdown-row{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:11px;padding:3px 0}
+.sum-breakdown-row:not(:last-child){border-bottom:1px solid var(--bg3)}
+.sum-breakdown-label{color:var(--slate2)}
+.sum-breakdown-value{color:var(--white);text-align:right}
 .sum-compare-title{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--slate2);margin-bottom:10px}
 .compare-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
 .compare-card{background:var(--bg2);border:1px solid var(--bg3);padding:12px;text-align:center;border-radius:var(--radius)}
@@ -938,6 +944,15 @@ body.demo-active .overlay{padding-top:38px}
       <div style="text-align:right"><div class="sum-delta-big" id="sh-dv">—</div><div class="sum-mult-tag" id="sh-mult">—</div></div>
     </div>
     <div class="streak-ribbon" id="sh-streak-ribbon"><span id="sh-streak-icon"></span><span id="sh-streak-text" style="font-family:var(--mono);font-size:11px">—</span></div>
+    <div class="sum-breakdown" id="sh-breakdown">
+      <div class="sum-breakdown-title">SCORE BREAKDOWN</div>
+      <div class="sum-breakdown-row"><span class="sum-breakdown-label">Raw &#x394;v</span><span class="sum-breakdown-value" id="sh-raw-dv">—</span></div>
+      <div class="sum-breakdown-row"><span class="sum-breakdown-label">Multiplier</span><span class="sum-breakdown-value" id="sh-mult-val">—</span></div>
+      <div class="sum-breakdown-row"><span class="sum-breakdown-label">Raw change</span><span class="sum-breakdown-value" id="sh-raw-change">—</span></div>
+      <div class="sum-breakdown-row"><span class="sum-breakdown-label">Shadow</span><span class="sum-breakdown-value" id="sh-shadow-val">—</span></div>
+      <div class="sum-breakdown-row"><span class="sum-breakdown-label">Intended change</span><span class="sum-breakdown-value" id="sh-intended">—</span></div>
+      <div class="sum-breakdown-row"><span class="sum-breakdown-label">Actual change</span><span class="sum-breakdown-value" id="sh-actual">—</span></div>
+    </div>
     <div class="sum-compare-title">VS PREVIOUS DAYS</div>
     <div class="compare-grid" id="sh-compare"></div>
     <div class="section-label" style="margin-top:4px;width:100%">THIS WEEK TREND</div>

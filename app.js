@@ -373,9 +373,55 @@ function recomputeAll(questions, rows, options = {}) {
     return cache;
 }
 
+},
+"./explain":function(exports,require){
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.explainResult = explainResult;
+function signed(n) {
+    return n >= 0 ? '+' + String(n) : String(n);
+}
+function explainResult(r) {
+    const status = r.status ?? (r.eligible ? 'scored' : 'no-action');
+    const floored = r.eligible && r.intendedChange !== r.actualChange;
+    const breakdown = r.eligible
+        ? {
+            raw: signed(r.rawDv),
+            mult: '×' + r.mult.toFixed(2),
+            rawChange: signed(r.rawChange),
+            shadow: r.shadow === 0 ? '0' : '−' + String(r.shadow),
+            intendedChange: signed(r.intendedChange),
+            actualChange: signed(r.actualChange) + (floored ? ' (zero floor)' : ''),
+            floored,
+        }
+        : null;
+    let engineStreakLine;
+    if (!r.eligible) {
+        if (status === 'pending')
+            engineStreakLine = 'Score pending — finish all actions to publish.';
+        else if (status === 'no-action')
+            engineStreakLine = 'No action score — all actions excused or none due.';
+        else if (status === 'draft')
+            engineStreakLine = 'Draft saved — no score or score streak change yet.';
+        else
+            engineStreakLine = 'No score this day.';
+    }
+    else {
+        const ps = r.posStreak;
+        const ns = r.negStreak;
+        if (ps > 0)
+            engineStreakLine = `${ps}-day positive score streak — multiplier compounding.`;
+        else if (ns > 0)
+            engineStreakLine = `${ns}-day negative score streak — penalty multiplier active.`;
+        else
+            engineStreakLine = 'Score streak reset. Build from here.';
+    }
+    return { eligible: r.eligible, status, breakdown, engineStreakLine };
+}
+
 }};
 const cache={};function load(name){if(cache[name])return cache[name];const exports={};cache[name]=exports;modules[name](exports,load);return exports;}
-return Object.assign({},load('./dates'),load('./rounding'),load('./validation'),load('./scoring'),load('./history'));
+return Object.assign({},load('./dates'),load('./rounding'),load('./validation'),load('./scoring'),load('./history'),load('./explain'));
 })();
 // END GENERATED DOMAIN BUNDLE
 // Plain text is escaped only at HTML text sinks, never before persistence.
@@ -432,7 +478,8 @@ function clearAccountUI(){
     const el=document.getElementById(id);if(el)el.innerHTML='';
   });
   ['velocity-display','status-line','stat-best','stat-days','stat-streak','mult-text','delta-badge-num',
-   'sh-thrust','sh-drag','sh-vel','sh-dv','sh-mult','sh-streak-text','streak-badge-num','streak-badge-label'].forEach(id=>{
+   'sh-thrust','sh-drag','sh-vel','sh-dv','sh-mult','sh-streak-text','streak-badge-num','streak-badge-label',
+   'sh-raw-dv','sh-mult-val','sh-raw-change','sh-shadow-val','sh-intended','sh-actual'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.textContent='—';
   });
   ['logged-note','db-status','be-entry-status','sh-streak-icon','auth-message'].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent='';});
@@ -1059,10 +1106,23 @@ function showSummary(c,cache,tk){
   const dv=c.finalDv,dvEl=document.getElementById('sh-dv');
   dvEl.textContent=(dv>=0?'+':'')+dv+' KM/S';dvEl.style.color=dv>=0?'var(--green)':'var(--negred)';
   document.getElementById('sh-mult').textContent=c.mult+'× MULTIPLIER';
+  const explain=MomentumDomain.explainResult(c);
   const ps=c.posStreak||0,ns=c.negStreak||0,rb=document.getElementById('sh-streak-ribbon');
   document.getElementById('sh-streak-icon').textContent='';
-  document.getElementById('sh-streak-text').textContent=ps>0?`${ps}-day clean streak — compounding active`:ns>0?`${ns}-day drag streak — multiplier punishing`:'First entry. Build from here.';
+  document.getElementById('sh-streak-text').textContent=explain.engineStreakLine;
   rb.style.cssText='display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid;border-radius:6px;font-family:var(--mono);font-size:11px;margin-bottom:16px;'+(ps>0?'border-color:rgba(61,255,110,.25);background:rgba(61,255,110,.04);color:var(--green)':ns>0?'border-color:rgba(255,48,48,.25);background:rgba(255,48,48,.04);color:var(--negred)':'border-color:rgba(255,184,48,.18);background:rgba(255,184,48,.04);color:var(--gold)');
+  const bd=explain.breakdown,bEl=document.getElementById('sh-breakdown');
+  if(bd&&bEl){
+    bEl.style.display='';
+    document.getElementById('sh-raw-dv').textContent=bd.raw;
+    document.getElementById('sh-mult-val').textContent=bd.mult;
+    document.getElementById('sh-raw-change').textContent=bd.rawChange;
+    document.getElementById('sh-shadow-val').textContent=bd.shadow;
+    document.getElementById('sh-intended').textContent=bd.intendedChange;
+    document.getElementById('sh-actual').textContent=bd.actualChange;
+  } else if(bEl){
+    bEl.style.display='none';
+  }
   const allKeys=Object.keys(cache).sort(),ti=allKeys.indexOf(tk),cKeys=[];
   for(let i=2;i>=1;i--) if(allKeys[ti-i]) cKeys.push(allKeys[ti-i]);
   cKeys.push(tk);
