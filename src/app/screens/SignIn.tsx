@@ -18,6 +18,8 @@ export function SignIn() {
     try {
       const err = await signIn(email.trim(), password);
       if (err) setError(err);
+    } catch {
+      setError('Sign in failed. Please check your connection and try again.');
     } finally {
       setBusy(false);
     }

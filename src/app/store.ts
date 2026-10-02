@@ -2,7 +2,7 @@ import type { Session } from '../state/session.ts';
 import { createSessionController } from '../state/session.ts';
 import { createRepositories, type QuestionRow, type EntryRow } from '../data/repositories.ts';
 import { localDateKey } from '../domain/dates.ts';
-import { supabase } from './supabase.ts';
+import { supabase, SUPABASE_SETUP_ERROR } from './supabase.ts';
 
 export interface AppState {
   status: 'loading' | 'signed-out' | 'signed-in' | 'error';
@@ -61,7 +61,8 @@ const controller = createSessionController({
     return () => data.subscription.unsubscribe();
   },
   async readSession() {
-    const { data } = await supabase.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
     return data.session as Session | null;
   },
   publish(session) {
@@ -97,7 +98,7 @@ const controller = createSessionController({
     }
   },
   schedule(work) {
-    queueMicrotask(work);
+    setTimeout(work, 0);
   },
   onError(err) {
     const msg = err instanceof Error ? err.message : 'Authentication error.';
@@ -111,8 +112,13 @@ export async function signIn(email: string, password: string): Promise<string | 
 }
 
 export async function signOut(): Promise<void> {
-  await supabase.auth.signOut();
+  const { error } = await supabase.auth.signOut();
+  if (error) setState({ status: 'error', loadError: error.message });
 }
 
-// Start the session controller once on module load.
-void controller.start();
+// Start the session controller once on module load (skip if env vars are missing).
+if (SUPABASE_SETUP_ERROR) {
+  setState({ status: 'error', loadError: SUPABASE_SETUP_ERROR });
+} else {
+  void controller.start();
+}
