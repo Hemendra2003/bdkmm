@@ -233,6 +233,7 @@ export function CheckIn({
         gap: 'var(--space-4)',
       }}
     >
+      <h1 style={{ fontFamily: 'var(--font-pixel)', fontSize: 'var(--text-lg)' }}>Check-in</h1>
       {/* Date + answered progress */}
       <div
         style={{

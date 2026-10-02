@@ -5,6 +5,7 @@ import type { HistoryCache } from '../../domain/history.ts';
 
 const cache: HistoryCache = {
   '2026-09-30': {
+    revisionStatus: 'stored',
     answers: { q1: 3 },
     computed: {
       engineVersion: 'b-1',
@@ -34,6 +35,7 @@ const cache: HistoryCache = {
     answeredCount: 1,
   },
   '2026-10-01': {
+    revisionStatus: 'stored',
     answers: { q1: 1 },
     computed: {
       engineVersion: 'b-1',

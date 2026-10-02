@@ -3,7 +3,7 @@ import {
   getState,
   subscribe,
   signOut,
-  saveEntry,
+  saveCheckIn,
   saveQuestion,
   removeQuestion,
   type AppState,
@@ -122,6 +122,7 @@ function Shell({ state, route, onNavigate }: ShellProps) {
         )}
       </header>
       <div
+        data-route-content
         style={{
           flex: 1,
           overflowY: 'auto',
@@ -129,26 +130,52 @@ function Shell({ state, route, onNavigate }: ShellProps) {
         }}
       >
         {route === 'today' && <Today state={state} onStartCheckIn={() => onNavigate('checkin')} />}
-        {route === 'checkin' && state.todayKey && state.userId && (
-          <CheckIn
-            questions={state.questions}
-            initialAnswers={state.todayEntry?.answers ?? null}
-            todayKey={state.todayKey}
-            userId={state.userId}
-            onSave={saveEntry}
-            onClose={() => onNavigate('today')}
-          />
+        {route === 'checkin' && state.userId && (
+          <DatedCheckIn key={state.userId} state={state} onClose={() => onNavigate('today')} />
         )}
         {route === 'habits' && (
           <Habits questions={state.questions} onSave={saveQuestion} onRemove={removeQuestion} />
         )}
         {route === 'progress' && (
-          <Progress historyCache={state.historyCache} todayKey={state.todayKey} />
+          <Progress historyCache={state.history} todayKey={state.todayKey} />
         )}
       </div>
       <BottomNav activeTab={activeTab} onNavigate={(t) => onNavigate(t)} />
     </div>
   );
+}
+
+function DatedCheckIn({ state, onClose }: { state: AppState; onClose: () => void }) {
+  const [date] = useState(state.todayKey);
+  if (!date || !state.userId) return null;
+  return (
+    <CheckIn
+      questions={state.questions}
+      initialAnswers={state.entries.find((entry) => entry.date === date)?.answers ?? null}
+      todayKey={date}
+      userId={state.userId}
+      onSave={(answers) => saveCheckIn(date, answers)}
+      onClose={onClose}
+    />
+  );
+}
+
+const routeTitles: Record<Route, string> = {
+  today: 'Today',
+  checkin: 'Check-in',
+  habits: 'Habits',
+  progress: 'Progress',
+};
+function focusRoute() {
+  const content = document.querySelector<HTMLElement>('[data-route-content]');
+  if (!content) return;
+  content.scrollTop = 0;
+  window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  const heading = content.querySelector<HTMLElement>('h1');
+  if (heading) {
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+  }
 }
 
 export function App() {
@@ -163,9 +190,16 @@ export function App() {
     return () => window.removeEventListener('hashchange', handler);
   }, []);
 
+  useEffect(() => {
+    document.title =
+      (state.status === 'signed-out' ? 'Sign in' : routeTitles[route]) + ' · MOMENTUM';
+    if (state.userId && state.status !== 'loading') focusRoute();
+  }, [route, state.status, state.userId]);
+
   function navigate(r: Route) {
     window.location.hash = r;
     setRoute(r);
+    if (r === route) focusRoute();
   }
 
   if (state.status === 'loading') return <LoadingScreen />;

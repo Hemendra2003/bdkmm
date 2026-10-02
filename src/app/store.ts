@@ -5,6 +5,7 @@ import {
   type QuestionRow,
   type EntryRow,
   type Answers,
+  type QuestionInput,
 } from '../data/repositories.ts';
 import { localDateKey, calendarKeyOffset } from '../domain/dates.ts';
 import { recomputeAll, type HistoryCache } from '../domain/history.ts';
@@ -227,6 +228,47 @@ export async function saveCheckIn(date: string, values: Answers): Promise<void> 
     }
     throw error;
   }
+}
+
+let routineMutationGeneration: number | null = null;
+async function changeRoutine(write: () => Promise<unknown>): Promise<void> {
+  const owner = _userId,
+    generation = accountGeneration;
+  const current = () => _userId === owner && accountGeneration === generation;
+  if (!owner || !state.todayKey) throw new Error('Routine requires loaded account data.');
+  if (routineMutationGeneration === generation)
+    throw new Error('A routine change is already saving.');
+  routineMutationGeneration = generation;
+  try {
+    await write();
+    if (!current()) throw new Error('Account changed during the request.');
+    const questions = await repos.questions.list();
+    if (!current()) throw new Error('Account changed during the request.');
+    const history = recomputeAll(questions, state.entries, { todayKey: state.todayKey! });
+    setState({
+      questions,
+      history,
+      lastScored: findLastScored(history, state.todayKey!),
+      status: 'signed-in',
+      loadError: null,
+    });
+  } catch (error) {
+    if (current())
+      setState({
+        status: 'error',
+        loadError: error instanceof Error ? error.message : 'Could not save routine.',
+      });
+    throw error;
+  } finally {
+    if (routineMutationGeneration === generation) routineMutationGeneration = null;
+  }
+}
+export async function saveQuestion(input: QuestionInput): Promise<void> {
+  const snapshot = { ...input, opts: [...input.opts] as [string, string, string] };
+  await changeRoutine(() => repos.questions.save(snapshot));
+}
+export async function removeQuestion(questionKey: string): Promise<void> {
+  await changeRoutine(() => repos.questions.remove(questionKey));
 }
 
 export async function signIn(email: string, password: string): Promise<string | null> {

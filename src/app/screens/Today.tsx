@@ -1,4 +1,4 @@
-import type { AppState } from '../store.ts';
+import { getDayScore, type AppState } from '../store.ts';
 import { Card } from '../components/Card.tsx';
 import { StatusLine } from '../components/StatusLine.tsx';
 import { Button } from '../components/Button.tsx';
@@ -108,7 +108,10 @@ export function Today({ state, onStartCheckIn }: TodayProps) {
     );
   }
 
-  const { todayEntry, todayKey, lastScored, weekCheckIns, todayResult } = state;
+  const { todayEntry, todayKey, lastScored, weekCheckIns } = state;
+  const todayScore = todayKey ? getDayScore(todayKey) : null;
+  const todayResult = todayKey ? (state.history[todayKey] ?? null) : null;
+  const isPartial = todayScore?.checkInStatus === 'partial';
   const isLogged = todayEntry !== null;
   const nudge = getNudge(todayEntry, lastScored, weekCheckIns, todayKey);
 
@@ -125,6 +128,7 @@ export function Today({ state, onStartCheckIn }: TodayProps) {
         gap: 'var(--space-5)',
       }}
     >
+      <h1 style={{ fontFamily: 'var(--font-pixel)', fontSize: 'var(--text-lg)' }}>Today</h1>
       {todayKey && (
         <p
           style={{
@@ -155,14 +159,18 @@ export function Today({ state, onStartCheckIn }: TodayProps) {
               color: isLogged ? 'var(--color-green)' : 'var(--text-secondary)',
             }}
           >
-            {isLogged ? "Today's check-in is recorded." : 'No check-in logged yet.'}
+            {isPartial
+              ? 'Check-in saved · Score pending'
+              : isLogged
+                ? "Today's check-in is recorded."
+                : 'No check-in logged yet.'}
           </p>
           <Button
             variant="primary"
             onClick={onStartCheckIn}
             style={{ minWidth: 120, fontSize: 'var(--text-xs)' }}
           >
-            {isLogged ? 'Edit check-in' : 'Start check-in'}
+            {isPartial ? 'Continue check-in' : isLogged ? 'Edit check-in' : 'Start check-in'}
           </Button>
         </div>
       </Card>
@@ -228,7 +236,7 @@ export function Today({ state, onStartCheckIn }: TodayProps) {
           letterSpacing: '.04em',
         }}
       >
-        This week:{' '}
+        Last 7 days:{' '}
         <span style={{ color: weekCheckIns > 0 ? 'var(--text-secondary)' : 'var(--text-muted)' }}>
           {weekCheckIns === 1 ? '1 check-in' : `${weekCheckIns} check-ins`}
         </span>

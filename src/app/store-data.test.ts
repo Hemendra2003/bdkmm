@@ -40,6 +40,7 @@ async function harness(rows = [entry('2026-10-01', { sleep: 3 })], questions = [
     payload?: Record<string, unknown>;
   }[] = [];
   const databases: Record<string, typeof rows> = { A: rows, B: [] };
+  const questionDatabases: Record<string, typeof questions> = { A: [...questions], B: [] };
   const supabase = {
     auth: {
       onAuthStateChange: vi.fn((fn: typeof receive) => {
@@ -56,6 +57,7 @@ async function harness(rows = [entry('2026-10-01', { sleep: 3 })], questions = [
       } = { table, filters: [] };
       calls.push(call);
       let single = false;
+      let deleted = false;
       const query = {
         select() {
           return this;
@@ -75,12 +77,26 @@ async function harness(rows = [entry('2026-10-01', { sleep: 3 })], questions = [
           single = true;
           return this;
         },
+        delete() {
+          deleted = true;
+          return this;
+        },
         upsert(payload: Record<string, unknown>) {
           call.payload = payload;
           return this;
         },
         async then(resolve: (value: unknown) => void) {
           const user = String(call.filters.find(([key]) => key === 'user_id')?.[1]);
+          if (table === 'user_questions' && (call.payload || deleted)) {
+            if (pending) await pending;
+            if (writeError) return resolve({ data: null, error: writeError });
+            const target = call.payload?.key ?? call.filters.find(([key]) => key === 'key')?.[1];
+            questionDatabases[user] = questionDatabases[user].filter((q) => q.key !== target);
+            if (deleted) return resolve({ data: null, error: null });
+            const saved = { ...call.payload, id: 1 } as typeof question;
+            questionDatabases[user].push(saved);
+            return resolve({ data: saved, error: null });
+          }
           if (call.payload) {
             if (pending) await pending;
             if (writeError) return resolve({ data: null, error: writeError });
@@ -95,7 +111,8 @@ async function harness(rows = [entry('2026-10-01', { sleep: 3 })], questions = [
             databases[user] = [...databases[user].filter((row) => row.date !== saved.date), saved];
             return resolve({ data: saved, error: null });
           }
-          if (table === 'user_questions') return resolve({ data: questions, error: null });
+          if (table === 'user_questions')
+            return resolve({ data: questionDatabases[user], error: null });
           let found = databases[user];
           const date = call.filters.find(([key]) => key === 'date')?.[1];
           if (date) found = found.filter((row) => row.date === date);
@@ -331,5 +348,51 @@ it('late save error from A cannot overwrite B error or loading state', async () 
     status: 'signed-in',
     loadError: null,
     lastScored: null,
+  });
+});
+
+it('routine save/remove use repositories and preserve stored historical scores', async () => {
+  const h = await harness();
+  await h.store.saveQuestion({
+    ...question,
+    polarity: 'positive',
+    source: 'custom',
+    tier: 'B',
+    opts: ['Low', 'Mid', 'High'],
+  });
+  expect(h.store.getState().questions[0].tier).toBe('B');
+  expect(h.store.getDayScore('2026-10-01')?.result.newVelocity).toBe(108);
+  await h.store.removeQuestion('sleep');
+  expect(h.store.getState().questions).toEqual([]);
+  expect(h.store.getDayScore('2026-10-01')?.result.newVelocity).toBe(108);
+});
+
+it('routine mutation failure keeps confirmed history and exposes the error', async () => {
+  const h = await harness();
+  h.setError(new Error('Routine offline'));
+  await expect(h.store.removeQuestion('sleep')).rejects.toThrow('Routine offline');
+  expect(h.store.getState()).toMatchObject({ status: 'error', loadError: 'Routine offline' });
+  expect(h.store.getState().questions[0].key).toBe('sleep');
+});
+
+it('late routine mutation cannot reload questions into a different owner', async () => {
+  const h = await harness();
+  let release!: () => void;
+  h.setPending(
+    new Promise<void>((resolve) => {
+      release = resolve;
+    }),
+  );
+  const save = h.store.removeQuestion('sleep');
+  const rejected = expect(save).rejects.toThrow(/Account changed/);
+  h.switchOwner('B');
+  await vi.runAllTimersAsync();
+  release();
+  await rejected;
+  expect(h.store.getState()).toMatchObject({
+    userId: 'B',
+    status: 'signed-in',
+    questions: [],
+    loadError: null,
   });
 });
