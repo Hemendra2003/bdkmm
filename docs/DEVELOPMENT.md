@@ -191,3 +191,77 @@ WP1.6 can add direct module cases; the existing 19 engine golden assertions and
 all legacy editor/rendering tests remain intact. Once the page uses the module
 pipeline, import the TypeScript sources directly and remove the generated bridge
 and its classic adapters together.
+
+## Typed data repositories and native Storage (WP1.3)
+
+`src/data/repositories.ts` exports `createRepositories({client, getUserId, now})`.
+The injected client uses the existing Supabase SDK; account identity and the
+migration timestamp clock are explicit dependencies. The factory returns typed
+`entries`, `questions`, and `settings` repositories, with typed input/row/results.
+Every public operation checks the current account before starting a query.
+Every read, upsert and delete includes `.eq('user_id', currentUserId)`; upsert
+payloads also stamp that identity. Supplied foreign ownership is rejected rather
+than forwarded. A result from an operation whose account has since changed is
+rejected. A write already sent cannot be cancelled by this result check.
+
+These client checks are defence in depth, not database authorization. Supabase
+row-level security, grants and ownership constraints remain required. Table
+names, selected columns, payload columns, conflict keys and legacy delete-date
+filter are unchanged. History reads remain unpaginated; only the separate
+owner/date-specific `entries.get(date)` can establish that an editor day is
+absent. No production policies, data or schema were inspected or changed here.
+
+Reads normalize legacy numeric answer strings (including whitespace) to `1`,
+`2`, or `3`. Invalid answer fields are dropped independently; invalid timestamps
+become null. Irreparable entry rows and invalid question rows are omitted, keeping
+other valid rows available. A targeted read may return null for a dropped row;
+this is a sanitized view, not deletion or proof that corrupt data never existed.
+No alternative historical enum spellings were found in tracked code, so unknown
+question enums are dropped rather than guessed. Read labels retain the 4,096
+character bound. Corrupt settings fields fall back to null timestamps and a true
+migration flag to prevent an automatic legacy import from repeating.
+
+Every normalization/drop emits `console.warn` with table, bounded date/key,
+field name and action only; no labels, answer values or account IDs are logged.
+`MomentumData.getReadDiagnostics()` returns cumulative `normalizedFields`,
+`droppedFields`, and `droppedRows` counts for the current account since adapter
+initialization; changing accounts resets counts. Counts track read events, not
+unique records, and are available for future UI use. No repaired values are
+persisted. Ownership/auth/account-change failures and backend/protocol errors
+still throw; only row corruption is tolerated.
+
+Writes and mutation responses stay strict: numeric answers only, valid enums,
+80-character labels/options, valid dates/IDs and complete batch results. All
+batch inputs are checked before requesting a mutation. No schema changes or
+scoring/golden-rule changes are made.
+Production data inventory is still recommended once Supabase access exists.
+Dashboard route loads now surface failures with a visible status and Retry button
+instead of silently swallowing errors or rendering an empty history. Boot failures
+use the same recovery action. Late route results are guarded by request/context.
+
+`storage.js` is now only a generated repository bundle plus a classic adapter.
+The custom browser global is `window.MomentumData`, preserving the old method
+names and adding `loadEntry(date)` for the editor. The browser's native
+`window.Storage` interface is never replaced. `app.js` routes every data call
+through the adapter; it no longer queries Supabase directly. `auth.js` keeps its
+existing auth client/session behavior for WP1.4. Existing entry/demo UI hooks are
+unchanged; future module consumers can call the typed factory directly.
+
+Regenerate and verify the data bridge with:
+
+```sh
+node src/data/build-legacy.mjs
+node src/data/build-legacy.mjs --check
+node src/domain/build-legacy.mjs --check
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+The data bridge uses the same pinned compiler and generated-marker approach as
+the domain bridge. No runtime dependency/import, script tag, package or Vite
+config changes are needed. Its freshness test fails if the checked-in classic
+bundle differs from `repositories.ts`. Repository tests inject a local client
+that records every filter/payload and returns adversarial results; they do not
+certify live Supabase permissions or perform any production call.

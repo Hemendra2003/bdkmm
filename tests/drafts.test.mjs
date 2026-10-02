@@ -31,6 +31,10 @@ function harness(localStorage=localStore()){
       async maybeSingle(){if(h.read)return h.read(query);return {data:entries.get(query.filters.user_id+':'+query.filters.date)??null,error:null};}};
   }};
   const storage={
+    async loadEntry(date){
+      const {data,error}=await client.from('momentum_entries').select('date,answers,updated_at').eq('user_id',account).eq('date',date).maybeSingle();
+      if(error)throw error;if(data===undefined)throw new Error('Missing entry read result');return data;
+    },
     async saveEntry(date,answers){
       writes.push({userId:account,date,answers:{...answers}});
       if(h.save)return h.save(date,answers);
@@ -38,7 +42,7 @@ function harness(localStorage=localStore()){
     },
     async loadEntries(){if(h.refresh)return h.refresh();return Array.from(entries.entries()).filter(([key])=>key.startsWith(account+':')).map(([,value])=>value);}
   };
-  const context=vm.createContext({window:{localStorage,supabaseClient:client,Storage:storage,Auth:{getUserId:()=>account},
+  const context=vm.createContext({window:{localStorage,supabaseClient:client,MomentumData:storage,Auth:{getUserId:()=>account},
       dispatchEvent:event=>events.push(event)},document,Date:ClockDate,console,CustomEvent:class {constructor(type,options){this.type=type;this.detail=options.detail;}},
     alert:message=>alerts.push(message),setTimeout:fn=>{fn();return 0;},clearTimeout(){}});
   vm.runInContext(app,context);const run=code=>vm.runInContext(code,context);
