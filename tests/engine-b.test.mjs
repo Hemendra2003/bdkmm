@@ -219,3 +219,52 @@ test('one missed closed day resets positive and negative continuity without deca
   assert.equal(negative['2026-06-03'].computed.negStreak, 1);
   assert.equal(negative['2026-06-03'].computed.shadow, 1);
 });
+
+test('E6: immutable definitions survive re-tier, removal, polarity/label changes and suffix replay', () => {
+  const definitions = [q('sleep')];
+  const rows = [
+    {
+      date: '2026-06-01',
+      answers: { sleep: 3 },
+      question_set_revision: definitions,
+      engine_version: 'b-1',
+    },
+    {
+      date: '2026-06-02',
+      answers: { sleep: 3 },
+      question_set_revision: definitions,
+      engine_version: 'b-1',
+    },
+  ];
+  const expected = plain(api.recomputeAll(definitions, rows));
+  assert.equal(expected['2026-06-01'].computed.newVelocity, 108);
+  for (const live of [
+    [],
+    [q('sleep', 'positive', 'B')],
+    [{ ...q('sleep', 'negative', 'B'), text: 'Renamed' }],
+  ]) {
+    assert.deepEqual(plain(api.recomputeAll(live, rows)), expected);
+  }
+  const corrected = [{ ...rows[0], answers: { sleep: 2 } }, rows[1]];
+  assert.deepEqual(
+    plain(api.recomputeAll([], corrected)),
+    plain(api.recomputeAll(definitions, corrected)),
+  );
+  assert.equal(rows[0].answers.sleep, 3);
+});
+
+test('legacy definitions are labelled; corrupt/unknown stamped history fails closed', () => {
+  const row = { date: '2026-06-01', answers: { sleep: 3 } };
+  assert.equal(
+    api.recomputeAll([q('sleep')], [row])[row.date].revisionStatus,
+    'legacy-unversioned',
+  );
+  for (const metadata of [
+    { question_set_revision: [q('sleep')], engine_version: 'b-2' },
+    { question_set_revision: null, engine_version: 'b-1' },
+    { question_set_revision: [q('sleep'), q('sleep')], engine_version: 'b-1' },
+    { question_set_revision: [q('sleep', 'positive', 'X')], engine_version: 'b-1' },
+    { revision_invalid: true },
+  ])
+    assert.throws(() => api.recomputeAll([q('sleep')], [{ ...row, ...metadata }]), /revision/);
+});

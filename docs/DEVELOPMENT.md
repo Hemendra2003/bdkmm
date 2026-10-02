@@ -363,14 +363,46 @@ synthetic rows are applied. `recomputeAll` accepts an explicit `todayKey`; the
 classic adapter supplies device-local today so unfinished today cannot reset
 continuity early. Pure historical batches without todayKey treat their rows as
 closed. Month-gap positive streak is now1 and calendar shadow0.
-Historical re-tiering still recalculates from current definitions; immutable
-entry revisions (WP3/WP2.5) and the legacy cutover manifest remain pending. This
+WP2.5 adds immutable entry revisions below; the legacy cutover manifest remains pending. This
 core implementation does not authorize production cutover or historical data
 migration.
 
 Worked fixtures are `tests/fixtures/engine-b-1.json` (E1–E4, supplied E7 trajectory
 arithmetic and a negative half-tie). `tests/engine-b.test.mjs` also checks calendar
 shadow, floor/streak behavior, due/excused/draft eligibility, shadow sign reversal
-and deterministic E5 suffix replay. E6 immutable definitions remain an explicit
-known bug. E7 follows Oscar's corrected contract (d30afcc): raw −10 with mult1.15
+and deterministic E5 suffix replay. E6 immutable definitions are covered by WP2.5 revision tests. E7 follows Oscar's corrected contract (d30afcc): raw −10 with mult1.15
 rounds to rawChange−12; the fixture tests both daily scoring and trajectory math.
+
+
+### Immutable entry revisions (WP2.5)
+
+Migration `0002_entry_question_revisions.sql` adds nullable `question_set_revision`
+(JSON array of key/text/polarity/tier definitions) and `engine_version` to entries.
+The embedded array is the complete immutable revision, rather than a pointer to
+mutable user_questions. No new table, anonymous grant or RLS exception is added.
+The trigger uses invoker privileges and keeps the existing owner-only policies.
+Apply through Michael to staging before deploying the extended read projections;
+Michael runs `npm run test:integration` afterward. No production cutover is authorized.
+
+New inserts capture a revision and `b-1`; old clients omit metadata and the trigger
+captures current owner questions at receipt. Classic `MomentumData.saveEntry(date,
+answers, questions?)` and typed `entries.save` accept optional scoring definitions;
+the classic app passes its loaded question set, so edits during a network delay
+cannot alter which definitions were submitted. Re-saving/upserting an existing
+stamped entry preserves its original definitions/version in the database even if
+the client submits new ones. Import accepts validated paired metadata and follows
+the same database immutability rule. Strict writes reject invalid/unsupported
+supplied revisions. Read normalization preserves valid revisions; corrupt stamps
+retain answers plus `revision_invalid: true`, causing history replay to fail closed.
+
+History uses each row's definitions for eligibility, scores and shadow inputs.
+Results expose `revisionStatus: stored | legacy-unversioned`. Only b-1 is supported;
+a new engine version needs an explicit dispatcher, never implicit b-1 replay.
+Unversioned NULL/NULL rows keep the legacy current-definition fallback, labelled
+as unknown provenance. No backfill invents original definitions. Their historical
+scores are NOT guaranteed immutable until an approved evidence-based cutover.
+Editing a legacy row establishes its first baseline at that edit; it does not
+recover the definitions used originally. Revisions do not freeze trajectory
+velocity: answer correction/backfill intentionally replays the suffix under each
+row's original definitions. Checkpoints, mutation queues, due/excuse persistence
+and WP3 interfaces remain outside this ticket.

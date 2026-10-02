@@ -56,6 +56,39 @@ function owned(row, userId) {
     if ('user_id' in row && row.user_id !== userId)
         throw new Error('Row belongs to a different account.');
 }
+function revision(value) {
+    if (!Array.isArray(value) || value.length > 1000)
+        throw new Error('Invalid question revision.');
+    const result = value.map((value) => {
+        const row = object(value, 'revision question');
+        if (row.polarity !== 'positive' && row.polarity !== 'negative')
+            throw new Error('Invalid revision polarity.');
+        if (row.tier !== 'S' && row.tier !== 'A' && row.tier !== 'B')
+            throw new Error('Invalid revision tier.');
+        return {
+            key: key(row.key),
+            text: text(row.text, 'revision text', 4096),
+            polarity: row.polarity,
+            tier: row.tier,
+        };
+    });
+    distinct(result, 'key');
+    return result;
+}
+function metadata(row) {
+    if (row.question_set_revision == null && row.engine_version == null)
+        return {};
+    if (row.engine_version !== 'b-1')
+        throw new Error('Unsupported entry engine version.');
+    return { question_set_revision: revision(row.question_set_revision), engine_version: 'b-1' };
+}
+function writeMetadata(row) {
+    if (row.revision_invalid)
+        throw new Error('Invalid entry revision.');
+    if (row.question_set_revision == null && row.engine_version == null)
+        return {};
+    return metadata(row);
+}
 function entryRow(value, userId) {
     const row = object(value, 'entry row');
     owned(row, userId);
@@ -63,6 +96,7 @@ function entryRow(value, userId) {
         date: dateKey(row.date),
         answers: answers(row.answers),
         updated_at: timestamp(row.updated_at, 'entry timestamp'),
+        ...metadata(row),
     };
 }
 function questionFields(value, userId, writing) {
@@ -202,7 +236,16 @@ function createRepositories({ client, getUserId, now, warn = (issue) => console.
             catch {
                 issue('entries', row, 'updated_at', 'droppedFields');
             }
-            return { date, answers: Object.fromEntries(items), updated_at };
+            let stored;
+            try {
+                stored = metadata(row);
+            }
+            catch {
+                issue('entries', row, 'revision', 'droppedFields');
+                // Preserve an explicit failure marker: never silently score corrupt stamped history with live definitions.
+                stored = { revision_invalid: true };
+            }
+            return { date, answers: Object.fromEntries(items), updated_at, ...stored };
         });
     }
     function readList(value, parse) {
@@ -210,7 +253,7 @@ function createRepositories({ client, getUserId, now, warn = (issue) => console.
             throw new Error('Expected a list of rows.');
         return value.map(parse).filter((row) => row !== null);
     }
-    const entryColumns = 'date,answers,updated_at';
+    const entryColumns = 'date,answers,updated_at,question_set_revision,engine_version';
     const questionColumns = 'id,key,text,opts,polarity,tier,is_fixed,source,sort_order';
     const entries = {
         async list() {
@@ -246,9 +289,16 @@ function createRepositories({ client, getUserId, now, warn = (issue) => console.
                 throw new Error('Unexpected entry date.');
             return row;
         },
-        async save(date, values) {
+        async save(date, values, questions) {
             const userId = requireUserId();
-            const payload = { user_id: userId, date: dateKey(date), answers: answers(values) };
+            const payload = {
+                user_id: userId,
+                date: dateKey(date),
+                answers: answers(values),
+                ...(questions === undefined
+                    ? {}
+                    : { question_set_revision: revision(questions), engine_version: 'b-1' }),
+            };
             const { data, error } = await client
                 .from('momentum_entries')
                 .upsert(payload, { onConflict: 'user_id,date' })
@@ -276,7 +326,12 @@ function createRepositories({ client, getUserId, now, warn = (issue) => console.
             const rows = list(value, (value) => {
                 const row = object(value, 'imported entry');
                 owned(row, userId);
-                return { user_id: userId, date: dateKey(row.date), answers: answers(row.answers) };
+                return {
+                    user_id: userId,
+                    date: dateKey(row.date),
+                    answers: answers(row.answers),
+                    ...writeMetadata(row),
+                };
             });
             distinct(rows, 'date');
             if (!rows.length)
@@ -431,7 +486,7 @@ window.MomentumData={
   resetReadDiagnostics:momentumRepositories.resetReadDiagnostics,
   loadEntries:()=>momentumRepositories.entries.list(),
   loadEntry:date=>momentumRepositories.entries.get(date),
-  saveEntry:(date,answers)=>momentumRepositories.entries.save(date,answers),
+  saveEntry:(date,answers,questions)=>momentumRepositories.entries.save(date,answers,questions),
   deleteEntries:()=>momentumRepositories.entries.removeAll(),
   exportEntries:()=>momentumRepositories.entries.list(),
   importEntries:rows=>momentumRepositories.entries.import(rows),

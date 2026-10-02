@@ -1,8 +1,14 @@
 import type { Session } from '../state/session.ts';
 import { createSessionController } from '../state/session.ts';
-import { createRepositories, type QuestionRow, type EntryRow } from '../data/repositories.ts';
+import {
+  createRepositories,
+  type QuestionRow,
+  type EntryRow,
+  type Answers,
+} from '../data/repositories.ts';
 import { localDateKey, calendarKeyOffset } from '../domain/dates.ts';
-import { recomputeAll, type HistoryCache, type HistoryEntry } from '../domain/history.ts';
+import { recomputeAll, type HistoryCache } from '../domain/history.ts';
+import type { EngineResult } from '../domain/scoring.ts';
 import { supabase, SUPABASE_SETUP_ERROR } from './supabase.ts';
 
 export interface AppState {
@@ -14,8 +20,9 @@ export interface AppState {
   loadError: string | null;
   lastScored: { date: string; velocity: number } | null;
   weekCheckIns: number;
-  todayResult: HistoryEntry | null;
-  historyCache: HistoryCache;
+  entries: EntryRow[];
+  history: HistoryCache;
+  savingDate: string | null;
 }
 
 type Listener = (state: AppState) => void;
@@ -29,13 +36,17 @@ const initialState: AppState = {
   loadError: null,
   lastScored: null,
   weekCheckIns: 0,
-  todayResult: null,
-  historyCache: {},
+  entries: [],
+  history: {},
+  savingDate: null,
 };
 
-function findLastScored(history: HistoryCache): { date: string; velocity: number } | null {
+function findLastScored(
+  history: HistoryCache,
+  todayKey: string,
+): { date: string; velocity: number } | null {
   const eligibleDates = Object.keys(history)
-    .filter((d) => history[d].computed.eligible)
+    .filter((d) => d <= todayKey && history[d].computed.eligible)
     .sort()
     .reverse();
   if (eligibleDates.length === 0) return null;
@@ -70,6 +81,7 @@ export function subscribe(listener: Listener): () => void {
 }
 
 let _userId: string | null = null;
+let accountGeneration = 0;
 
 const repos = createRepositories({
   client: supabase,
@@ -90,22 +102,12 @@ const controller = createSessionController({
     return data.session as Session | null;
   },
   publish(session) {
-    _userId = session?.user.id ?? null;
+    const next = session?.user.id ?? null;
+    if (next !== _userId) accountGeneration++;
+    _userId = next;
   },
   clear(_previous, current) {
-    if (current === null) {
-      setState({
-        status: 'signed-out',
-        userId: null,
-        questions: [],
-        todayEntry: null,
-        loadError: null,
-        lastScored: null,
-        weekCheckIns: 0,
-        todayResult: null,
-        historyCache: {},
-      });
-    }
+    setState({ ...initialState, status: current ? 'loading' : 'signed-out', userId: current });
   },
   async boot(session, _event, context) {
     if (!session) return;
@@ -118,8 +120,9 @@ const controller = createSessionController({
       loadError: null,
       lastScored: null,
       weekCheckIns: 0,
-      todayResult: null,
-      historyCache: {},
+      entries: [],
+      history: {},
+      savingDate: null,
     });
     try {
       const todayKey = localDateKey(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -130,9 +133,8 @@ const controller = createSessionController({
       ]);
       if (!controller.isCurrent(context)) return;
       const history = recomputeAll(questions, allEntries, { todayKey });
-      const lastScored = findLastScored(history);
+      const lastScored = findLastScored(history, todayKey);
       const weekCheckIns = countWeekCheckIns(allEntries, todayKey);
-      const todayResult = history[todayKey] ?? null;
       setState({
         status: 'signed-in',
         userId,
@@ -142,8 +144,8 @@ const controller = createSessionController({
         loadError: null,
         lastScored,
         weekCheckIns,
-        todayResult,
-        historyCache: history,
+        entries: allEntries,
+        history,
       });
     } catch (err) {
       if (!controller.isCurrent(context)) return;
@@ -160,31 +162,71 @@ const controller = createSessionController({
   },
 });
 
-export async function saveQuestion(
-  input: import('../data/repositories.ts').QuestionInput,
-): Promise<void> {
-  await repos.questions.save(input);
-  const questions = await repos.questions.list();
-  setState({ questions });
+export type DayScoreState = 'pending' | 'no-score' | 'scored';
+export type CheckInStatus = 'partial' | 'complete-unscored' | 'scored';
+export interface DayScore {
+  date: string;
+  state: DayScoreState;
+  checkInStatus: CheckInStatus;
+  result: EngineResult;
 }
 
-export async function removeQuestion(questionKey: string): Promise<void> {
-  await repos.questions.remove(questionKey);
-  const questions = await repos.questions.list();
-  setState({ questions });
+// Confirmed server entries only. Missing date is unrecorded, not a synthetic score.
+// Subscribe/getState (or the existing React store hook) supplies change notifications.
+export function getDayScore(date: string): DayScore | null {
+  const entry = state.history[date];
+  if (!entry) return null;
+  const result = entry.computed;
+  return {
+    date,
+    state: result.eligible ? 'scored' : result.status === 'no-action' ? 'no-score' : 'pending',
+    checkInStatus: result.partial ? 'partial' : result.eligible ? 'scored' : 'complete-unscored',
+    result,
+  };
 }
 
-// Saves an entry and recomputes store state. Will be updated when Jim's WP2.5 lands.
-export async function saveEntry(answers: import('../data/repositories.ts').Answers): Promise<void> {
-  const { todayKey, questions } = state;
-  if (!todayKey) throw new Error('No date set.');
-  const entry = await repos.entries.save(todayKey, answers);
-  const allEntries = await repos.entries.list();
-  const history = recomputeAll(questions, allEntries, { todayKey });
-  const lastScored = findLastScored(history);
-  const weekCheckIns = countWeekCheckIns(allEntries, todayKey);
-  const todayResult = history[todayKey] ?? null;
-  setState({ todayEntry: entry, lastScored, weekCheckIns, todayResult, historyCache: history });
+export async function saveCheckIn(date: string, values: Answers): Promise<void> {
+  const userId = _userId;
+  const generation = accountGeneration;
+  const current = () => _userId === userId && accountGeneration === generation;
+  if (!userId || !state.todayKey || (state.status !== 'signed-in' && state.status !== 'error'))
+    throw new Error('Check-in requires loaded account data.');
+  if (state.savingDate) throw new Error('A check-in is already saving.');
+  try {
+    // Snapshot inputs before the first await; no UI edits can alter this request.
+    const answers = { ...values };
+    const questions = state.questions.map(({ key, text, polarity, tier }) => ({
+      key,
+      text,
+      polarity,
+      tier,
+    }));
+    setState({ savingDate: date, loadError: null });
+    const saved = await repos.entries.save(date, answers, questions);
+    if (!current()) throw new Error('Account changed during the request.');
+    const entries = [...state.entries.filter((entry) => entry.date !== date), saved].sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
+    const todayKey = localDateKey(new Date(), Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const history = recomputeAll(state.questions, entries, { todayKey });
+    setState({
+      status: 'signed-in',
+      loadError: null,
+      entries,
+      history,
+      todayKey,
+      todayEntry: entries.find((entry) => entry.date === todayKey) ?? null,
+      lastScored: findLastScored(history, todayKey),
+      weekCheckIns: countWeekCheckIns(entries, todayKey),
+      savingDate: null,
+    });
+  } catch (error) {
+    if (current()) {
+      const message = error instanceof Error ? error.message : 'Could not save check-in.';
+      setState({ status: 'error', loadError: message, savingDate: null });
+    }
+    throw error;
+  }
 }
 
 export async function signIn(email: string, password: string): Promise<string | null> {
