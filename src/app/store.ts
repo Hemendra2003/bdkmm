@@ -155,6 +155,20 @@ const controller = createSessionController({
   },
 });
 
+export async function saveQuestion(
+  input: import('../data/repositories.ts').QuestionInput,
+): Promise<void> {
+  await repos.questions.save(input);
+  const questions = await repos.questions.list();
+  setState({ questions });
+}
+
+export async function removeQuestion(questionKey: string): Promise<void> {
+  await repos.questions.remove(questionKey);
+  const questions = await repos.questions.list();
+  setState({ questions });
+}
+
 // Saves an entry and recomputes store state. Will be updated when Jim's WP2.5 lands.
 export async function saveEntry(answers: import('../data/repositories.ts').Answers): Promise<void> {
   const { todayKey, questions } = state;

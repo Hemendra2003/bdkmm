@@ -1,5 +1,13 @@
 import { useState, useEffect } from 'react';
-import { getState, subscribe, signOut, saveEntry, type AppState } from './store.ts';
+import {
+  getState,
+  subscribe,
+  signOut,
+  saveEntry,
+  saveQuestion,
+  removeQuestion,
+  type AppState,
+} from './store.ts';
 import { SignIn } from './screens/SignIn.tsx';
 import { Today } from './screens/Today.tsx';
 import { CheckIn } from './screens/CheckIn.tsx';
@@ -131,7 +139,9 @@ function Shell({ state, route, onNavigate }: ShellProps) {
             onClose={() => onNavigate('today')}
           />
         )}
-        {route === 'habits' && <Habits />}
+        {route === 'habits' && (
+          <Habits questions={state.questions} onSave={saveQuestion} onRemove={removeQuestion} />
+        )}
         {route === 'progress' && <Progress />}
       </div>
       <BottomNav activeTab={activeTab} onNavigate={(t) => onNavigate(t)} />
